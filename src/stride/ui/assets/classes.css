@@ -1,0 +1,41 @@
+.button-on {
+    background-color: transparent;
+    color: black;
+    border: 0;
+    font-size: 16;
+    padding-left: 20px;
+    padding-right: 20px;
+}
+
+.button-off {
+    background-color: transparent;
+    color: 'rgba(128, 128, 128, .25)';
+    border: 0;
+    font-size: 16;
+    padding-left: 20px;
+    padding-right: 20px;
+}
+
+.nav-button-off {
+    background-color: transparent;
+    color: black;
+    border: 0;
+    font-size: 24;
+    padding-left: 20px;
+    padding-right: 20px;
+}
+
+.nav-button-off:hover {
+    /* This is the default button color, makes hover consistent */
+    /* nav-button-on uses the default background color */
+    background-color: #0d6efd;
+}
+
+.nav-button-on {
+    border: 0;
+    font-size: 24;
+    padding-left: 20px;
+    padding-right: 20px;
+}
+
+/* TODO: Figure out how to turn off hover/disabled button styles */
