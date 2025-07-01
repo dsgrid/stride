@@ -1,0 +1,18 @@
+[
+    {
+        type: 'geography',
+        class: 'Geography',
+        name: "country",
+        description: "Countries supported by STRIDE tests",
+        file: "countries.csv",
+        module: 'dsgrid.dimension.standard',
+    },
+    {
+        type: 'model_year',
+        class: 'ModelYear',
+        name: 'model_year',
+        description: "Model years supported by STRIDE tests",
+        file: "model_years.csv",
+        module: "dsgrid.dimension.standard",
+    },
+]
