@@ -25,7 +25,8 @@ classifiers = [
 ]
 dependencies = [
     "dsgrid @ git+https://github.com/dsgrid/dsgrid.git@main",
-    "duckdb ~= 1.1.0",
+    "duckdb >= 1.1, < 2",
+    "loguru",
     "pandas >= 2.2, < 3",
     "pyarrow",
     "pydantic >= 2.7, < 3",

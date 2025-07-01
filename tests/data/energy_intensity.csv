@@ -1,0 +1,13 @@
+﻿country,sector,parameter,value,unit,model_type
+country_1,industrial,intercept,0.1,MWh/1000$,exp
+country_1,industrial,slope,0.005,MWh/1000$-yr,exp
+country_1,residential,intercept,10,MWh/1000-people-HDI,exp
+country_1,residential,slope,-0.05,MWh/1000-people-HDI-yr,exp
+country_1,transportation,intercept,0.02,MWh/1000$,lin
+country_1,transportation,slope,0.001,MWh/1000$-yr,lin
+country_2,industrial,intercept,0.08,MWh/1000$,exp
+country_2,industrial,slope,0.01,MWh/1000$-yr,exp
+country_2,residential,intercept,8,MWh/1000-people-HDI,exp
+country_2,residential,slope,0.02,MWh/1000-people-HDI-yr,exp
+country_2,transportation,intercept,0.01,MWh/1000$,exp
+country_2,transportation,slope,0.002,MWh/1000$-yr,exp

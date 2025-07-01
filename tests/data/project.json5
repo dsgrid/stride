@@ -1,0 +1,57 @@
+{
+    project_id: "test_project",
+    creator: "tester",
+    description: "This is a test project.",
+    country: "country1",
+    start_year: 2025,
+    end_year: 2055,
+    datasets: [
+        {
+            dataset_id: "energy_intensity",
+            path: "tests/data/energy_intensity.csv",
+            dataset_type: "energy_intensity_by_sector",
+            dimension_columns: {
+                country: "geography",
+                sector: "sector",
+                year: "model_year",
+            }
+        },
+        {
+            dataset_id: "gdp",
+            path: "tests/data/gdp.csv",
+            dataset_type: "gdp",
+            dimension_columns: {
+                country: "geography",
+                year: "model_year",
+            }
+        },
+        {
+            dataset_id: "hdi",
+            path: "tests/data/hdi.csv",
+            dataset_type: "gdp",
+            dimension_columns: {
+                country: "geography",
+                year: "model_year",
+            }
+        },
+        {
+            dataset_id: "population",
+            path: "tests/data/population.csv",
+            dataset_type: "population",
+            dimension_columns: {
+                country: "geography",
+                year: "model_year",
+            }
+        },
+        {
+            dataset_id: "hourly_profiles",
+            path: "tests/data/hourly_profiles.csv",
+            dataset_type: "energy_by_sector",
+            time_columns: ["hour"],
+            dimension_columns: {
+                country: "geography",
+                sector: "sector",
+            }
+        },
+    ]
+}
