@@ -137,7 +137,7 @@
                 name: 'GDP',
                 description: 'Gross Domestic Product',
                 records: [
-                    ['gdp','GDP','$']
+                    ['gdp','GDP','billion USD-2024']
                 ],
                 module: 'dsgrid.dimension.standard'
             },
@@ -147,14 +147,14 @@
                 name: 'energy intensity regression',
                 description: 'Energy intensity regression coefficients for linear and exponential fits',
                 records: [
-                    ['res_a0_lin','Residential Intercept Linear','linear','MWh/1000-people-HDI'],
-                    ['res_a1_lin','Residential Slope Linear','linear','MWh/1000-people-HDI-yr'],
-                    ['res_a0_exp','Residential Intercept Exponential','exponential','MWh/1000-people-HDI'],
-                    ['res_a1_exp','Residential Slope Exponential','exponential','MWh/1000-people-HDI-yr'],
-                    ['nonres_a0_lin','Non-residential Intercept Linear', 'linear', 'MWh/1000$'],
-                    ['nonres_a1_lin','Non-residential Slope Linear', 'linear','MWh/1000$-yr'],
-                    ['nonres_a0_lin','Non-residential Intercept Exponential', 'exponential', 'MWh/1000$'],
-                    ['nonres_a1_lin','Non-residential Slope Exponential', 'exponential','MWh/1000$-yr'],
+                    ['res_a0_lin','Residential Intercept Linear','linear','TJ/HDI-person'],
+                    ['res_a1_lin','Residential Slope Linear','linear','TJ/HDI-person'],
+                    ['res_a0_exp','Residential Intercept Exponential','exponential','TJ/HDI-person'],
+                    ['res_a1_exp','Residential Slope Exponential','exponential','TJ/HDI-person'],
+                    ['nonres_a0_lin','Non-residential Intercept Linear', 'linear', 'TJ/billion USD-2024'],
+                    ['nonres_a1_lin','Non-residential Slope Linear', 'linear','TJ/billion USD-2024'],
+                    ['nonres_a0_lin','Non-residential Intercept Exponential', 'exponential', 'TJ/billion USD-2024'],
+                    ['nonres_a1_lin','Non-residential Slope Exponential', 'exponential','TJ/billion USD-2024'],
                 ],
                 module: 'dsgrid.dimension.standard'
             },
