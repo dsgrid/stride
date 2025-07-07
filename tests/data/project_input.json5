@@ -1,0 +1,8 @@
+{
+    project_id: "test_project",
+    creator: "tester",
+    description: "This is a test project.",
+    country: "country_1",
+    start_year: 2025,
+    end_year: 2045,
+}
