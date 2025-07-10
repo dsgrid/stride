@@ -74,6 +74,19 @@
                 module: 'dsgrid.dimension.standard',
             },
             {
+                type: 'weather_year',
+                class: 'WeatherYear',
+                name: 'weather_year',
+                description: "Selected weather year",
+                records: [
+                    {id: '2018', name: '2018'}
+                ],
+                module: 'dsgrid.dimension.standard'
+            },
+            // Time could be period beginning, hourly, aligned with weather_year
+            // and in the dominant time zone for the selected country. Right now
+            // the chronify time zones are US-centric: https://github.com/NREL/chronify/blob/main/src/chronify/time.py#L138.
+            {
                 type: 'geography',
                 class: 'Geography',
                 name: 'country',
