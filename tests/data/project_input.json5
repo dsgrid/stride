@@ -5,4 +5,5 @@
     country: "country_1",
     start_year: 2025,
     end_year: 2045,
+    weather_year: 2018,
 }
