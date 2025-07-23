@@ -24,7 +24,7 @@ Lingering Questions/Comments:
 
 import threading
 from pathlib import Path
-from typing import  Literal, TYPE_CHECKING, Union
+from typing import  Literal, TYPE_CHECKING
 if TYPE_CHECKING:
     import pandas as pd
     import duckdb
@@ -85,14 +85,14 @@ class APIClient:
     _instance = None
     _lock = threading.Lock()
 
-    def __new__(cls, path_or_conn: Union[str, Path, 'duckdb.DuckDBPyConnection'] = None):
+    def __new__(cls):
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
                     cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __init__(self, path_or_conn: Union[str, Path, 'duckdb.DuckDBPyConnection'] = None):
+    def __init__(self, path_or_conn: str | Path | 'duckdb.DuckDBPyConnection'):
         if not hasattr(self, '_initialized'):
             if path_or_conn is None:
                 raise ValueError("Database connection, path, or connection string must be provided on first initialization")
@@ -565,7 +565,7 @@ class APIClient:
             - season: str, season name (Winter, Spring, Summer, Fall) - if group_by includes "Seasonal"
             - day_type: str, day type (Weekday, Weekend) - if group_by includes "Weekday/Weekend"
             - year: int, model year - if multiple years specified
-            - 1, 2, ..., 24: float, aggregated load values for each hour of the day
+            - 0, 1, ..., 23: float, aggregated load values for each hour of the day
 
         Examples
         --------
@@ -573,7 +573,7 @@ class APIClient:
         >>> # Seasonal grouping only
         >>> df = client.get_seasonal_load_lines("baseline", "Seasonal", "Average Day", [2025, 2030])
 
-        | season | year | 1      | 2      | 3      | ... | 23     | 24     |
+        | season | year | 0      | 1      | 2      | ... | 22     | 23     |
         |--------|------|--------|--------|--------|-----|--------|--------|
         | Winter | 2025 | 3200.5 | 3100.2 | 3050.8 | ... | 3180.4 | 3220.1 |
         | Spring | 2025 | 2800.3 | 2750.8 | 2720.5 | ... | 2790.2 | 2810.6 |
@@ -584,7 +584,7 @@ class APIClient:
         >>> # Weekday/Weekend grouping only
         >>> df = client.get_seasonal_load_lines("baseline", "Weekday/Weekend", "Average Day", 2030)
 
-        | day_type | year | 1      | 2      | 3      | ... | 23     | 24     |
+        | day_type | year | 0      | 1      | 2      | ... | 22     | 23     |
         |----------|------|--------|--------|--------|-----|--------|--------|
         | Weekday  | 2025 | 3800.5 | 3750.2 | 3720.8 | ... | 3780.4 | 3820.1 |
         | Weekend  | 2025 | 3200.3 | 3150.8 | 3120.5 | ... | 3180.2 | 3220.6 |
@@ -592,7 +592,7 @@ class APIClient:
         >>> # Both seasonal and weekday/weekend grouping
         >>> df = client.get_seasonal_load_lines("baseline", "Seasonal and Weekday/Weekend", "Average Day", 2030)
 
-        | season | day_type | year | 1      | 2      | 3      | ... | 23     | 24     |
+        | season | day_type | year | 0      | 1      | 2      | ... | 22     | 23     |
         |--------|----------|------|--------|--------|--------|-----|--------|--------|
         | Winter | Weekday  | 2025 | 3400.5 | 3350.2 | 3320.8 | ... | 3380.4 | 3420.1 |
         | Winter | Weekend  | 2025 | 3000.3 | 2950.8 | 2920.5 | ... | 2980.2 | 3020.6 |
