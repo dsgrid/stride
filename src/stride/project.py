@@ -1,45 +1,48 @@
+import os
+import shutil
+import subprocess
 from pathlib import Path
-from typing import Self
+from typing import Literal, Self
 
-from chronify.exceptions import InvalidOperation, InvalidParameter
+from chronify.exceptions import InvalidParameter
 import duckdb
 from chronify.utils.path_utils import check_overwrite
 from dsgrid.utils.files import dump_data
-from dsgrid.dimension.base_models import DimensionType
-from dsgrid.dimension.time import TimeDimensionType
-from dsgrid.config.dataset_config import DataSchemaType
-from dsgrid.registry.common import DatabaseConnection
-from dsgrid.registry.dataset_config_generator import generate_config_from_dataset
-from dsgrid.registry.registry_manager import RegistryManager
 from duckdb import DuckDBPyConnection
 from loguru import logger
 
-from stride.forecasts import compute_energy_projection
-from stride.io import create_table_from_file
-from stride.models import DatasetType, ProjectConfig, DatasetConfig
+import stride
+from stride.default_datasets import create_test_datasets
+from stride.default_project import create_dsgrid_project
+from stride.dsgrid_integration import deploy_to_dsgrid_registry, make_mapped_datasets
+from stride.models import ProjectConfig, Scenario
+
+CONFIG_FILE = "project.json5"
+DATABASE_FILE = "data.duckdb"
+REGISTRY_DATA_DIR = "registry_data"
+DBT_DIR = "dbt"
 
 
 class Project:
     """Manages a Stride project."""
 
-    CONFIG_FILE = "project.json5"
-    ENERGY_PROJECTION = "energy_projection"
-    DATABASE_FILE = "stride.duckdb"
-    INPUT_CONFIGS_DIR = "input_configs"
-    INPUT_DATASETS_DIR = "input_datasets"
-    REGISTRY_FILE = "registry.db"
-    REGISTRY_DATA_DIR = "registry_data"
-
-    def __init__(self, config: ProjectConfig, project_path: Path, con: DuckDBPyConnection) -> None:
-        self._con = con
+    def __init__(self, config: ProjectConfig, project_path: Path) -> None:
         self._config = config
         self._path = project_path
-        self._registry_db = self._path / self.REGISTRY_FILE
+        self._con = self._connect()
+
+    def _connect(self) -> DuckDBPyConnection:
+        return duckdb.connect(self._path / REGISTRY_DATA_DIR / DATABASE_FILE)
 
     @property
-    def con(self) -> duckdb.DuckDBPyConnection:
+    def con(self) -> DuckDBPyConnection:
         """Return the connection to the database."""
         return self._con
+
+    @con.setter
+    def con(self, con: DuckDBPyConnection) -> None:
+        """Set the database connection."""
+        self._con = con
 
     @property
     def config(self) -> ProjectConfig:
@@ -53,138 +56,95 @@ class Project:
         project_path = base_dir / config.project_id
         check_overwrite(project_path, overwrite)
         project_path.mkdir()
-        db_file = project_path / cls.DATABASE_FILE
-        con = duckdb.connect(str(db_file))
-        project = cls(config, project_path, con)
-        for dataset in config.datasets:
-            if dataset.path is None:
-                msg = f"{dataset.dataset_id} does not define a file path"
-                raise InvalidOperation(msg)
-            create_table_from_file(project.con, dataset.dataset_id, dataset.path)
-            dataset.path = None
-            # Henceforth, load from the db.
-
-        project.compute_energy_projection()
+        dsg_project = create_dsgrid_project(config)
+        # TODO: this eventually needs a switch between test and real datasets.
+        datasets = create_test_datasets(config, dsg_project)
+        deploy_to_dsgrid_registry(project_path, dsg_project, datasets)
+        project = cls(config, project_path)
+        project.con.sql("CREATE SCHEMA stride")
+        make_mapped_datasets(project.con, project_path, config.project_id)
         project.persist()
+        dbt_dir = project_path / DBT_DIR
+        stride_base_dir = Path(next(iter(stride.__path__)))
+        shutil.copytree(stride_base_dir / DBT_DIR, dbt_dir)
+        for scenario in config.scenarios:
+            project.add_energy_projection_model(scenario.name)
+            project.compute_energy_projection(scenario)
         return project
 
     @classmethod
     def load(cls, project_path: Path | str) -> Self:
         """Load a project from a serialized directory."""
         path = Path(project_path)
-        config_file = path / cls.CONFIG_FILE
-        db_file = path / cls.DATABASE_FILE
+        config_file = path / CONFIG_FILE
+        db_file = path / DATABASE_FILE
         if not config_file.exists() or not db_file.exists():
             msg = f"{path} does not contain a Stride project"
             raise InvalidParameter(msg)
-        con = duckdb.connect(str(db_file))
         config = ProjectConfig.from_file(config_file)
-        return cls(config, path, con)
+        return cls(config, path)
+
+    def add_energy_projection_model(self, scenario: str) -> None:
+        stride_base_dir = Path(next(iter(stride.__path__)))
+        src_file = stride_base_dir / DBT_DIR / "energy_projection.sql"
+        dst_file = self._path / DBT_DIR / "models" / f"{scenario}__energy_projection.sql"
+        shutil.copyfile(src_file, dst_file)
+
+    def has_table(self, name: str, schema: Literal["stride", "dsgrid_data"] = "stride") -> bool:
+        """Return True if the table name is in the specified schema."""
+        return name in self.list_tables(schema=schema)
+
+    def list_tables(self, schema: Literal["stride", "dsgrid_data"] = "stride") -> list[str]:
+        """List all tables stored in the database in the specified schema."""
+        result = self._con.execute(
+            f"""
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema = '{schema}' AND table_type = 'BASE TABLE'
+        """
+        ).fetchall()
+        return [x[0] for x in result]
 
     def persist(self) -> None:
         """Persist the project config to the project directory."""
-        dump_data(self._config.model_dump(mode="json"), self._path / self.CONFIG_FILE, indent=2)
+        dump_data(self._config.model_dump(mode="json"), self._path / CONFIG_FILE, indent=2)
 
-    def compute_energy_projection(self) -> None:
+    def compute_energy_projection(self, scenario: Scenario) -> None:
         """Compute the energy projection dataset and add it to the project."""
-        for dataset in self._config.datasets:
-            if dataset.dataset_id == self.ENERGY_PROJECTION:
-                msg = f"{self.ENERGY_PROJECTION} is already created for project={self._config.project_id}"
-                msg = InvalidOperation(msg)
+        orig = os.getcwd()
+        model_years = ",".join((str(x) for x in self._config.list_model_years()))
+        for i, scenario in enumerate(self._config.scenarios):
+            vars_string = f'{{scenario: "{scenario.name}", country: "{self._config.country}", model_years: "({model_years})"}}'
+            cmd = [
+                "dbt",
+                "build",
+                "--vars",
+                vars_string,
+            ]
+            self._con.close()
+            try:
+                os.chdir(self._path / DBT_DIR)
+                subprocess.run(cmd, check=True)
+            finally:
+                os.chdir(orig)
+                self._con = self._connect()
 
-        compute_energy_projection(
-            self._con,
-            "energy_intensity",
-            "hdi",
-            "gdp",
-            "population",
-            "hourly_profiles",
-            "country",
-            "country_1",
-            table_name=self.ENERGY_PROJECTION,
-        )
-        ep_config = DatasetConfig(
-            dataset_id=self.ENERGY_PROJECTION,
-            dataset_type=DatasetType.ENERGY_BY_SECTOR,
-            time_type=TimeDimensionType.INDEX,
-            time_columns=["hour"],
-            dimension_columns={
-                "country": DimensionType.GEOGRAPHY,
-                "sector": DimensionType.SECTOR,
-                "year": DimensionType.MODEL_YEAR,
-            },
-        )
-        self._config.datasets.append(ep_config)
-
-    def deploy_to_dsgrid(self) -> None:
-        """Deploy the Stride project to a dsgrid registry."""
-        url = f"sqlite:///{self._path}/{self.REGISTRY_FILE}"
-        data_dir = self._path / self.REGISTRY_DATA_DIR
-        conn = DatabaseConnection(url=url)
-        mgr = RegistryManager.create(conn, data_dir, overwrite=True)
-        self._write_data_to_dsgrid_format()
-        self._generate_dsgrid_dataset_configs(mgr)
-
-    def _write_data_to_dsgrid_format(self):
-        datasets_dir = self._path / self.INPUT_DATASETS_DIR
-        datasets_dir.mkdir()
-        dataset_paths: dict[str, Path] = {}
-        datasets_to_skip = {"energy_intensity"}
-        for dataset in self._config.datasets:
-            if dataset.dataset_id in datasets_to_skip:
-                logger.debug(
-                    "Skipping {} dataset because it is not compatible with dsgrid.",
-                    dataset.dataset_id,
+            if i == 0:
+                self._con.sql(
+                    f"""
+                    CREATE OR REPLACE TABLE energy_projection_total
+                    AS
+                    SELECT * FROM {scenario.name}__energy_projection
+                """
                 )
-                continue
-            dataset_path = datasets_dir / dataset.dataset_id
-            dataset_path.mkdir()
-            dataset_paths[dataset.dataset_id] = dataset_path
-
-        for dataset in self.config.datasets:
-            if dataset.dataset_id in datasets_to_skip:
-                continue
-            rel = self._con.table(dataset.dataset_id)
-            expr: list[str] = dataset.time_columns + [dataset.value_column]
-            needs_rename = False
-            for column, dim_type in dataset.dimension_columns.items():
-                if column != dim_type.value:
-                    expr.append(f"{column} AS {dim_type.value}")
-                    needs_rename = True
-                else:
-                    expr.append(column)
-            if needs_rename:
-                cols = ",".join(expr)
-                rel = self._con.sql(f"SELECT {cols} FROM {rel.alias}")
-
-            dpath = dataset_paths[dataset.dataset_id]
-            rel.to_parquet(str(dpath / "table.parquet"))
-            logger.info("Wrote dataset {} to dsgrid format at {}", dataset.dataset_id, dpath)
-
-    def _generate_dsgrid_dataset_configs(self, mgr: RegistryManager) -> None:
-        datasets_dir = self._path / self.INPUT_CONFIGS_DIR / "datasets"
-        datasets_dir.mkdir(exist_ok=True, parents=True)
-        for dataset in self.config.datasets:
-            metric_type = (
-                "EnergyEndUse" if dataset.dataset_id == self.ENERGY_PROJECTION else "Stock"
-            )
-            input_dataset_dir = self._path / self.INPUT_DATASETS_DIR / dataset.dataset_id
-            if not input_dataset_dir.exists():
-                # We may have skipped it above.
-                continue
-            included_dimensions = [x for x in dataset.dimension_columns.values()]
-            if dataset.time_type is not None:
-                included_dimensions.append(DimensionType.TIME)
-            generate_config_from_dataset(
-                mgr,
-                dataset.dataset_id,
-                input_dataset_dir,
-                DataSchemaType.ONE_TABLE,
-                metric_type,
-                included_dimensions=included_dimensions,
-                time_type=dataset.time_type,
-                time_columns=set(dataset.time_columns),
-                output_directory=datasets_dir,
-                overwrite=True,
-                # no_prompts=True,
+            else:
+                self._con.sql(
+                    """
+                    INSERT INTO energy_projection_total
+                    SELECT * from energy_projection
+                """
+                )
+            logger.info(
+                "Added energy_projection from scenario {} to energy_projection_total.",
+                scenario.name,
             )

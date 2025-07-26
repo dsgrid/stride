@@ -24,6 +24,7 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
+    "click",
     "dsgrid @ git+https://github.com/dsgrid/dsgrid.git@main",
     "duckdb >= 1.1, < 2",
     "loguru",
@@ -54,6 +55,9 @@ dev = [
 Documentation = "https://github.com/dsgrid/stride#readme"
 Issues = "https://github.com/dsgrid/stride/issues"
 Source = "https://github.com/dsgrid/stride"
+
+[project.scripts]
+stride = "stride.cli.stride:cli"
 
 [tool.mypy]
 files = [

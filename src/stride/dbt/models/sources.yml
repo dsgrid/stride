@@ -1,0 +1,15 @@
+version: 2
+sources:
+  - name: default
+    schema: dsgrid_data
+    tables:
+      - name: energy_intensity
+        identifier: "{{ var('scenario', 'active_scenario') }}__energy_intensity__1_0_0"
+      - name: gdp
+        identifier: "{{ var('scenario', 'active_scenario') }}__gdp__1_0_0"
+      - name: hdi
+        identifier: "{{ var('scenario', 'active_scenario') }}__hdi__1_0_0"
+      - name: load_shapes
+        identifier: "{{ var('scenario', 'active_scenario') }}__load_shapes"
+      - name: population
+        identifier: "{{ var('scenario', 'active_scenario') }}__population__1_0_0"
