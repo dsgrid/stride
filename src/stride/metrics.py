@@ -37,11 +37,13 @@ def compute_total_electricity_consumption_time_series(
     if before_time is not None:
         pass
     if pivot_dimension is not None:
-        rel = con.sql(f"""
+        rel = con.sql(
+            f"""
             PIVOT {rel.alias}
             ON {pivot_dimension}
             USING SUM(value)
-        """)
+        """
+        )
     if sort_by is not None:
         rel = rel.sort(*sort_by)
     return rel.to_df()

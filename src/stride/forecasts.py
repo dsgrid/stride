@@ -13,9 +13,12 @@ def compute_energy_projection(
     profiles_name: str,
     geo_column: str,
     geo_value: str,
-    table_name: str = "energy_projection",
+    table_name: str,
 ) -> None:
     """Compute the energy intensity for each sector in the table and add it to the database."""
+    # TODO
+    msg = "This no longer works with the new test dataset"
+    raise Exception(msg)
     rel_cit = compute_energy_projection_com_ind_tra(
         con,
         ei_name,
@@ -52,7 +55,7 @@ def compute_energy_projection_com_ind_tra(
     )
     ei_piv = pivot_energy_intensity(con, filtered_ei)
     ei_gdp = ei_piv.join(r_gdp, geo_column).select(
-        f"{ei_piv.alias}.*, {r_gdp.alias}.year, {r_gdp.alias}.value"
+        f"{ei_piv.alias}.*, {r_gdp.alias}.model_year, {r_gdp.alias}.value"
     )
     ei_gdp_profiles = ei_gdp.join(
         filtered_profiles,
@@ -60,9 +63,10 @@ def compute_energy_projection_com_ind_tra(
             {ei_gdp.alias}.{geo_column} = {filtered_profiles.alias}.{geo_column} AND
             {ei_gdp.alias}.sector = {filtered_profiles.alias}.sector
         """,
-    ).select(f"""
+    ).select(
+        f"""
         {ei_gdp.alias}.{geo_column}
-        ,{ei_gdp.alias}.year
+        ,{ei_gdp.alias}.model_year
         ,{ei_gdp.alias}.sector
         ,{ei_gdp.alias}.model_type
         ,{ei_gdp.alias}.intercept
@@ -70,11 +74,13 @@ def compute_energy_projection_com_ind_tra(
         ,{ei_gdp.alias}.value AS gdp_value
         ,{filtered_profiles.alias}.hour
         ,{filtered_profiles.alias}.value
-    """)
+    """
+    )
     # TODO: refactor with CaseExpression?
-    return ei_gdp_profiles.select(f"""
+    return ei_gdp_profiles.select(
+        f"""
         hour
-        ,year
+        ,model_year
         ,{geo_column}
         ,sector
         ,CASE
@@ -83,7 +89,8 @@ def compute_energy_projection_com_ind_tra(
             WHEN model_type = 'lin'
                 THEN (intercept + slope) * gdp_value * value
         END AS value
-    """)
+    """
+    )
 
 
 def compute_energy_projection_res(
@@ -106,31 +113,36 @@ def compute_energy_projection_res(
     ei_hdi = (
         ei_piv.join(rel_hdi, geo_column)
         .join(rel_pop, geo_column)
-        .select(f"""
+        .select(
+            f"""
                 {ei_piv.alias}.*,
-                {rel_hdi.alias}.year,
+                {rel_hdi.alias}.model_year,
                 {rel_hdi.alias}.value AS hdi_value,
-            """)
+            """
+        )
     )
     ei_hdi_pop = ei_hdi.join(
         rel_pop,
         f"""
             {ei_hdi.alias}.{geo_column} = {rel_pop.alias}.{geo_column} AND
-            {ei_hdi.alias}.year = {rel_pop.alias}.year
+            {ei_hdi.alias}.model_year = {rel_pop.alias}.model_year
     """,
-    ).select(f"""
+    ).select(
+        f"""
         {ei_hdi.alias}.*,
         {rel_pop.alias}.value AS pop_value,
-    """)
+    """
+    )
     ei_hdi_pop_profiles = ei_hdi_pop.join(
         filtered_profiles,
         f"""
                 {ei_hdi_pop.alias}.{geo_column} = {filtered_profiles.alias}.{geo_column} AND
                 {ei_hdi_pop.alias}.sector = {filtered_profiles.alias}.sector
             """,
-    ).select(f"""
+    ).select(
+        f"""
          {ei_hdi_pop.alias}.{geo_column}
-        ,{ei_hdi_pop.alias}.year
+        ,{ei_hdi_pop.alias}.model_year
         ,{ei_hdi_pop.alias}.sector
         ,{ei_hdi_pop.alias}.model_type
         ,{ei_hdi_pop.alias}.intercept
@@ -139,17 +151,20 @@ def compute_energy_projection_res(
         ,{ei_hdi_pop.alias}.pop_value
         ,{filtered_profiles.alias}.hour
         ,{filtered_profiles.alias}.value
-    """)
-    return ei_hdi_pop_profiles.select(f"""
+    """
+    )
+    return ei_hdi_pop_profiles.select(
+        f"""
             hour
-            ,year
+            ,model_year
             ,{geo_column}
             ,sector
             ,CASE
                 WHEN model_type = 'exp' THEN EXP(intercept + slope) * hdi_value * pop_value * value
                 WHEN model_type = 'lin' THEN (intercept + slope) *  hdi_value * pop_value * value
             END AS value
-        """)
+        """
+    )
 
 
 def filter_by_com_ind_tra(rel: DuckDBPyRelation) -> DuckDBPyRelation:
@@ -174,9 +189,12 @@ def make_tmp_view_name() -> str:
 
 
 def pivot_energy_intensity(con: DuckDBPyConnection, rel: DuckDBPyRelation) -> DuckDBPyRelation:
-    return con.sql(f"""
+    # (SELECT * EXCLUDE unit FROM {rel.alias})
+    return con.sql(
+        """
         PIVOT
-            (SELECT * EXCLUDE unit FROM {rel.alias})
-        ON parameter
+            (SELECT * FROM rel)
+        ON metric
         USING SUM(value)
-    """)
+    """
+    )

@@ -39,16 +39,18 @@
                 year: "model_year",
             }
         },
-        // {
-        //     dataset_id: "hourly_profiles",
-        //     path: "tests/data/hourly_profiles.csv",
-        //     dataset_type: "energy_by_sector",
-        //     time_columns: ["hour"],
-        //     dimension_columns: {
-        //         country: "geography",
-        //         sector: "sector",
-        //     }
-        // },
+        {
+            dataset_id: "load_shapes",
+            path: "tests/data/load_shapes.csv",
+            // dataset_type: "energy_by_sector",
+            time_columns: ["month", "day_type", "hour"],
+            dimension_columns: {
+                country: "geography",
+                year: "model_year",
+                sector: "sector",
+                enduse: "metric",
+            }
+        },
     ],
     dimensions: {
         base_dimensions: [
@@ -166,8 +168,8 @@
                     {id: 'res_a1_exp', name: 'Residential Slope Exponential', regression_type: 'exponential', unit: 'TJ/HDI-person-yr'},
                     {id: 'nonres_a0_lin', name: 'Non-residential Intercept Linear', regression_type: 'linear', unit: 'TJ/billion USD-2024'},
                     {id: 'nonres_a1_lin', name: 'Non-residential Slope Linear', regression_type: 'linear', unit: 'TJ/billion USD-2024-yr'},
-                    {id: 'nonres_a0_lin', name: 'Non-residential Intercept Exponential', regression_type: 'exponential', unit: 'TJ/billion USD-2024'},
-                    {id: 'nonres_a1_lin', name: 'Non-residential Slope Exponential', regression_type:  'exponential', unit: 'TJ/billion USD-2024-yr'},
+                    {id: 'nonres_a0_exp', name: 'Non-residential Intercept Exponential', regression_type: 'exponential', unit: 'TJ/billion USD-2024'},
+                    {id: 'nonres_a1_exp', name: 'Non-residential Slope Exponential', regression_type:  'exponential', unit: 'TJ/billion USD-2024-yr'},
                 ],
                 module: 'dsgrid.dimension.standard'
             },

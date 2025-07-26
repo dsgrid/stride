@@ -1,6 +1,8 @@
 from enum import StrEnum
+from pathlib import Path
+from typing import Any
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 
 from dsgrid.data_models import DSGBaseModel
 from dsgrid.dimension.base_models import DimensionType
@@ -26,12 +28,16 @@ class DatasetConfig(DSGBaseModel):
     """Defines a Stride dataset."""
 
     dataset_id: str
-    path: str | None = None
-    dataset_type: DatasetType
-    projection_slice: ProjectionSliceType | None = None  # TODO
+    path: Path
+    # dataset_type: DatasetType
+    # projection_slice: ProjectionSliceType | None = None  # TODO
+    metric_class: str
+    metric_dimension_name: str
     time_type: TimeDimensionType | None = None
     time_columns: list[str] = []
     dimension_columns: dict[str, DimensionType] = {}
+    trivial_dimensions: list[DimensionType] = []
+    dimensions: list[dict[str, Any]]
     value_column: str = "value"
 
     @field_validator("dimension_columns")
@@ -48,16 +54,52 @@ class DatasetConfig(DSGBaseModel):
         return final
 
 
+class Scenario(DSGBaseModel):
+    """Allows the user to add custom tables to compare against the defaults."""
+
+    name: str = Field(description="Name of the scenario")
+    energy_intensity: str | None = Field(
+        default=None,
+        description="Optional path to a user-provided energy intensity table",
+    )
+    gdp: str | None = Field(
+        default=None,
+        description="Optional path to a user-provided GDP table",
+    )
+    hdi: str | None = Field(
+        default=None,
+        description="Optional path to a user-provided HDI table",
+    )
+    load_shapes: str | None = Field(
+        default=None,
+        description="Optional path to a user-provided load shapes table",
+    )
+    population: str | None = Field(
+        default=None,
+        description="Optional path to a user-provided population table",
+    )
+    # TODO: bait, ev_share, vmt_per_capita
+
+
 class ProjectConfig(DSGBaseModel):
     """Defines a Stride project."""
 
-    project_id: str
-    creator: str
-    description: str
-    country: str
-    start_year: int
-    end_year: int
-    datasets: list[DatasetConfig]
+    project_id: str = Field(description="Unique identifier for the project")
+    creator: str = Field(description="Creator of the project")
+    description: str = Field(description="Description of the project")
+    country: str = Field(description="Country upon which the data is based")
+    start_year: int = Field(description="Start year for the forecasted data")
+    end_year: int = Field(description="End year for the forecasted data")
+    step_year: int = Field(default=1, description="End year for the forecasted data")
+    weather_year: int = Field(description="Weather year upon which the data is based")
+    scenarios: list[Scenario] = Field(
+        default=[Scenario(name="default")],
+        description="Scenarios for the project. Users may add custom scenarios.",
+    )
+
+    def list_model_years(self) -> list[int]:
+        """List the model years in the project."""
+        return list(range(self.start_year, self.end_year + 1, self.step_year))
 
 
 """
