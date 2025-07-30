@@ -7,7 +7,7 @@ name = "stride"
 version = "0.0.1"
 description = ""
 readme = "README.md"
-requires-python = ">=3.11, <3.13"
+requires-python = ">=3.11, <3.14"
 license = "BSD-3-Clause"
 keywords = []
 authors = [
@@ -25,7 +25,9 @@ classifiers = [
 ]
 dependencies = [
     "click",
-    "dsgrid @ git+https://github.com/dsgrid/dsgrid.git@main",
+    "dbt-core >= 1.10.5, < 2",
+    "dbt-duckdb",
+    "dsgrid @ git+https://github.com/dsgrid/dsgrid.git@feat/stride-support",
     "duckdb >= 1.1, < 2",
     "loguru",
     "pandas >= 2.2, < 3",
