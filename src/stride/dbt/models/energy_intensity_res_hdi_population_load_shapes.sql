@@ -10,5 +10,5 @@ SELECT
     ,p.metric
     ,p.timestamp
     ,p.value
-FROM {{ ref('energy_intensity_res_hdi_population') }} e
-JOIN {{ ref('load_shapes_res') }} p ON e.geography = p.geography
+FROM {{ table_ref('energy_intensity_res_hdi_population') }} e
+JOIN {{ table_ref('load_shapes_res') }} p ON e.geography = p.geography

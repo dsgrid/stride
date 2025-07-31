@@ -124,6 +124,7 @@ class Project:
             self._con.close()
             try:
                 os.chdir(self._path / DBT_DIR)
+                logger.info("Build dbt models with '{}'", " ".join(cmd))
                 subprocess.run(cmd, check=True)
             finally:
                 os.chdir(orig)

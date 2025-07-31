@@ -1,3 +1,3 @@
 SELECT *
-FROM {{ ref('energy_intensity_parsed') }}
+FROM {{ table_ref('energy_intensity_parsed') }}
 WHERE sector = 'residential'

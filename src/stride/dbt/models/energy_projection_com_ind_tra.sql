@@ -9,4 +9,4 @@ SELECT
         WHEN regression_type = 'lin'
             THEN (a0 + a1) * gdp_value * value
     END AS value
-FROM {{ ref('energy_intensity_com_ind_tra_gdp_load_shapes') }} e
+FROM {{ table_ref('energy_intensity_com_ind_tra_gdp_load_shapes') }} e

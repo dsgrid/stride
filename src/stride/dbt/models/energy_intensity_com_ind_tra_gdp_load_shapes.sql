@@ -8,6 +8,6 @@ SELECT
     ,e.value as gdp_value
     ,p.timestamp
     ,p.value
-FROM {{ ref('energy_intensity_com_ind_tra_gdp') }} e
-JOIN {{ ref('load_shapes_com_ind_tra') }} p
+FROM {{ table_ref('energy_intensity_com_ind_tra_gdp') }} e
+JOIN {{ table_ref('load_shapes_com_ind_tra') }} p
     ON e.geography = p.geography AND e.sector = p.sector

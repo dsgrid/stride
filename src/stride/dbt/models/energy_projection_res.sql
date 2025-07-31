@@ -9,4 +9,4 @@ SELECT
         WHEN regression_type = 'lin'
             THEN (a0 + a1) * hdi_value * population_value * value
     END AS value
-FROM {{ ref('energy_intensity_res_hdi_population_load_shapes') }} e
+FROM {{ table_ref('energy_intensity_res_hdi_population_load_shapes') }} e
