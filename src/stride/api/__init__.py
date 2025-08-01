@@ -16,12 +16,11 @@ Key Features:
 
 
 Lingering Questions/Comments:
-1. We need some way of determining the valid model years. Preferably a fast lookup of the project config.
+1. We need some way of determining the valid model years. Preferably a fast lookup of the project config. (DONE)
 2. For secondary metrics, how do we handle different versions of table overrides (e.g. Two versions of GDP)
 3. What is "Absolute Value" in the Scenario Summary Stats? (Assuming total consumption (TWh))
 4. In the timeseries charts, It seems like Daily or Weekly mean should be in separate dropdown category.
 5. For Comparing two timeseries, we need to handle displaying the secondary axis weather variable for both model years
-6. It might be benificial to have Annual Consumption (Peak and Total) be merged under the same API.
 """
 
 import threading
@@ -44,23 +43,37 @@ TimeGroup = Literal["Seasonal", "Seasonal and Weekday/Weekend", "Weekday/Weekend
 TimeGroupAgg = Literal["Average Day", "Peak Day", "Minimum Day", "Median Day"]
 Season = Literal["Spring", "Summer", "Fall", "Winter"]
 
+
 # TODO remove hard coded value.
 ENERGY_PROJ_TABLE = "main.scenario_comparison"
 PROJECT_COUNTRY= "country_1"
 
-
+# Default Day of Year for equinoxes.
 SPRING_DAY_START=31+28+20  # Always falls on march 20 or 21 (19 for a leap year)
 SPRING_DAY_END=31+28+31+30+31 # Always falls on May 31st
 FALL_DAY_START=31+28+31+30+31+30+31+22 # Always on September 22nd or 23rd.
 FALL_DAY_END=31+28+31+30+31+30+31+30+31+30+21 # always on December 21st or 22nd
 
 
-# HOUR 0 == Monday at 12/1 am?
+# NOTE HOUR 0 == Monday at 12/1 am?
 DEFAULT_FIRST_SATURDAY_HOUR = 5*24
 HOURS_PER_WEEK = 168
 HOURS_PER_DAY = 24
 
 
+# NOTE
+# Go over naming scheme for override base tables (gdp, pop, etc.)
+# Does each projection year start on a different day of the week? Or is it an day of year aligned extrapolation of a base year?
+# It loks like timestamp is fixed (e.g. 2018-01-01), even for multiple model_years.
+
+# TODO
+# Convert to Tall table format.
+# Load duration curves for single scenario, multiple years.
+# Summary Statistics Query
+# Secondary metric queries (GDP per capita is slightly different.)
+# Weather (Temp and humidity). Waiting on what that schema looks like.
+# Verify seasonal load lines are valid. (Seems to be the same for multiple years).
+# Could verify with load duration curve for single scenario, multi years.
 
 def _generate_season_case_statement(hour_col: str = "hour") -> str:
     """
@@ -363,51 +376,40 @@ class APIClient:
         Returns
         -------
         pd.DataFrame
-            DataFrame with peak demand values.
+            DataFrame with consumption values in tall format.
 
             Columns:
             - scenario: str, scenario name
+            - year: int, projection year
             - sector/end_use: str, breakdown category (if group_by specified)
-            - {year}: float, peak demand for each year in MW
-
-            Structure varies based on group_by parameter:
-            - If group_by is None: scenario, year columns only
-            - If group_by="Sector": scenario, sector, year columns
-            - If group_by="End Use": scenario, end_use, year columns
+            - value: float, consumption value in TWh
 
         Examples
         --------
         >>> client = APIClient(path_or_conn)
         >>> # Get total consumption for all scenarios and years
         >>> df = client.get_annual_electricity_consumption()
-        >>>
+
+        | scenario    | year | value |
+        |-------------|------|-------|
+        | baseline    | 2025 | 5500  |
+        | baseline    | 2030 | 5900  |
+        | high_growth | 2025 | 6000  |
+        | high_growth | 2030 | 6500  |
+
         >>> # Get consumption by sector for specific scenarios
         >>> df = client.get_annual_electricity_consumption(
         ...     scenarios=["baseline", "high_growth"],
         ...     group_by="Sector"
         ... )
-        >>>
-        >>> # Get consumption for specific years only
-        >>> df = client.get_annual_electricity_consumption(
-        ...     years=[2025, 2030, 2035],
-        ...     group_by="End Use"
-        ... )
 
-        With sector breakdown:
-
-        | scenario    | sector      | 2025 | 2030 | ... |
-        |-------------|-------------|------|------| --- |
-        | baseline    | Commercial  | 1500 | 1650 | ... |
-        | baseline    | Industrial  | 2200 | 2400 | ... |
-        | baseline    | Residential | 1800 | 1950 | ... |
-        | high_growth | Commercial  | 1600 | 1800 | ... |
-
-        Without breakdown (total only):
-
-        | year        | baseline | high_growth |
-        |-------------|----------|-------------|
-        | 2025        | 5500     | 6000        |
-        | 2030        | 5900     | 6500        |
+        | scenario    | year | sector      | value |
+        |-------------|------|-------------|-------|
+        | baseline    | 2025 | Commercial  | 1500  |
+        | baseline    | 2025 | Industrial  | 2200  |
+        | baseline    | 2025 | Residential | 1800  |
+        | baseline    | 2030 | Commercial  | 1650  |
+        | high_growth | 2025 | Commercial  | 1600  |
         """
 
         if years is None:
@@ -419,49 +421,27 @@ class APIClient:
         self._validate_scenarios(scenarios)
         self._validate_years(years)
 
-        # If ConsumptionBreakdown is not none, group by Sector or end use.
+        # Build SQL query based on group_by parameter
         if group_by:
-            sql = """
-            SELECT scenario, {group_col}, {year_cols}
-            FROM (
-                SELECT scenario, {group_col}, year, value
-                FROM {energy_proj_table}
-                WHERE country = '{project_country}'
-                AND scenario IN ({scenarios})
-                AND year IN ({years})
-            )
-            PIVOT (
-                SUM(value) FOR year IN ({years})
-            )
-            """.format(
-                group_col=group_by.lower().replace(' ', '_'),
-                year_cols=','.join([f'"{year}"' for year in years]),
-                years=','.join(map(str, years)),
-                scenarios="'" + "','".join(scenarios) + "'",
-                energy_proj_table=ENERGY_PROJ_TABLE,
-                project_country=PROJECT_COUNTRY
-            )
+            group_col = group_by.lower().replace(' ', '_')
+            sql = f"""
+            SELECT scenario, year, {group_col}, value
+            FROM {ENERGY_PROJ_TABLE}
+            WHERE country = '{PROJECT_COUNTRY}'
+            AND scenario IN ('{"','".join(scenarios)}')
+            AND year IN ({','.join(map(str, years))})
+            ORDER BY scenario, year, {group_col}
+            """
         else:
-            sql = """
-            SELECT year, {scenario_cols}
-            FROM (
-                SELECT year, scenario, SUM(value) as total_value
-                FROM {energy_proj_table}
-                WHERE country = '{project_country}'
-                AND scenario IN ({scenarios})
-                AND year IN ({years})
-                GROUP BY year, scenario
-            )
-            PIVOT (
-                SUM(total_value) FOR scenario IN ({scenarios})
-            )
-            """.format(
-                scenario_cols=','.join([f'"{s}"' for s in scenarios]),
-                scenarios="'" + "','".join(scenarios) + "'",
-                years=','.join(map(str, years)),
-                energy_proj_table=ENERGY_PROJ_TABLE,
-                project_country=PROJECT_COUNTRY
-            )
+            sql = f"""
+            SELECT scenario, year, SUM(value) as value
+            FROM {ENERGY_PROJ_TABLE}
+            WHERE country = '{PROJECT_COUNTRY}'
+            AND scenario IN ('{"','".join(scenarios)}')
+            AND year IN ({','.join(map(str, years))})
+            GROUP BY scenario, year
+            ORDER BY scenario, year
+            """
 
         # Execute query and return DataFrame
         return self.db.execute(sql).df()
@@ -487,51 +467,40 @@ class APIClient:
         Returns
         -------
         pd.DataFrame
-            DataFrame with peak demand values.
+            DataFrame with peak demand values in tall format.
 
             Columns:
             - scenario: str, scenario name
+            - year: int, projection year
             - sector/end_use: str, breakdown category (if group_by specified)
-            - {year}: float, peak demand for each year in MW
-
-            Structure varies based on group_by parameter:
-            - If group_by is None: year column and scenario columns
-            - If group_by="Sector": scenario, sector, year columns
-            - If group_by="End Use": scenario, end_use, year columns
+            - value: float, peak demand value in MW
 
         Examples
         --------
         >>> client = APIClient(path_or_conn)
         >>> # Get peak demand for all scenarios and years (no breakdown)
         >>> df = client.get_annual_peak_demand()
-        >>>
+
+        | scenario    | year | value |
+        |-------------|------|-------|
+        | baseline    | 2025 | 5500  |
+        | baseline    | 2030 | 5900  |
+        | high_growth | 2025 | 6000  |
+        | high_growth | 2030 | 6500  |
+
         >>> # Get peak demand by sector for specific scenarios
         >>> df = client.get_annual_peak_demand(
         ...     scenarios=["baseline", "high_growth"],
         ...     group_by="Sector"
         ... )
-        >>>
-        >>> # Get peak demand for specific years with end use breakdown
-        >>> df = client.get_annual_peak_demand(
-        ...     years=[2025, 2030],
-        ...     group_by="End Use"
-        ... )
 
-        With sector breakdown:
-
-        | scenario    | sector      | 2025 | 2030 |
-        |-------------|-------------|------|------|
-        | baseline    | Commercial  | 1500 | 1650 |
-        | baseline    | Industrial  | 2200 | 2400 |
-        | baseline    | Residential | 1800 | 1950 |
-        | high_growth | Commercial  | 1600 | 1800 |
-
-        Without breakdown (peak only):
-
-        | year        | baseline | high_growth |
-        |-------------|----------|-------------|
-        | 2025        | 5500     | 6000        |
-        | 2030        | 5900     | 6500        |
+        | scenario    | year | sector      | value |
+        |-------------|------|-------------|-------|
+        | baseline    | 2025 | Commercial  | 1500  |
+        | baseline    | 2025 | Industrial  | 2200  |
+        | baseline    | 2025 | Residential | 1800  |
+        | baseline    | 2030 | Commercial  | 1650  |
+        | high_growth | 2025 | Commercial  | 1600  |
         """
         if years is None:
             years = self.years
@@ -543,8 +512,9 @@ class APIClient:
         self._validate_years(years)
 
         if group_by:
+            group_col = group_by.lower().replace(' ', '_')
             # Find peak hours and get breakdown values at those hours
-            sql = """
+            sql = f"""
             WITH peak_hours AS (
                 SELECT
                     scenario,
@@ -557,76 +527,51 @@ class APIClient:
                         year,
                         hour,
                         SUM(value) as total_demand
-                    FROM {energy_proj_table}
-                    WHERE country = '{project_country}'
-                    AND scenario IN ({scenarios})
-                    AND year IN ({years})
+                    FROM {ENERGY_PROJ_TABLE}
+                    WHERE country = '{PROJECT_COUNTRY}'
+                    AND scenario IN ('{"','".join(scenarios)}')
+                    AND year IN ({','.join(map(str, years))})
                     GROUP BY scenario, year, hour
                 ) totals
-            ),
-            breakdown_at_peak AS (
-                SELECT
-                    t.scenario,
-                    t.{group_col},
-                    t.year,
-                    t.value
-                FROM {energy_proj_table} t
-                INNER JOIN peak_hours p ON
-                    t.scenario = p.scenario
-                    AND t.year = p.year
-                    AND t.hour = p.hour
-                    AND p.rn = 1
-                WHERE t.country = '{project_country}'
-                AND t.scenario IN ({scenarios})
-                AND t.year IN ({years})
             )
-            SELECT scenario, {group_col}, {year_cols}
-            FROM breakdown_at_peak
-            PIVOT (
-                SUM(value) FOR year IN ({years})
-            )
-            """.format(
-                group_col=group_by.lower().replace(' ', '_'),
-                year_cols=','.join([f'"{year}"' for year in years]),
-                years=','.join(map(str, years)),
-                scenarios="'" + "','".join(scenarios) + "'",
-                energy_proj_table=ENERGY_PROJ_TABLE,
-                project_country=PROJECT_COUNTRY
-            )
+            SELECT
+                t.scenario,
+                t.year,
+                t.{group_col},
+                t.value
+            FROM {ENERGY_PROJ_TABLE} t
+            INNER JOIN peak_hours p ON
+                t.scenario = p.scenario
+                AND t.year = p.year
+                AND t.hour = p.hour
+                AND p.rn = 1
+            WHERE t.country = '{PROJECT_COUNTRY}'
+            AND t.scenario IN ('{"','".join(scenarios)}')
+            AND t.year IN ({','.join(map(str, years))})
+            ORDER BY t.scenario, t.year, t.{group_col}
+            """
         else:
             # Just get peak totals without breakdown
-            sql = """
-            WITH peak_demand AS (
+            sql = f"""
+            SELECT
+                scenario,
+                year,
+                MAX(total_demand) as value
+            FROM (
                 SELECT
                     scenario,
                     year,
-                    MAX(total_demand) as peak_value
-                FROM (
-                    SELECT
-                        scenario,
-                        year,
-                        hour,
-                        SUM(value) as total_demand
-                    FROM {energy_proj_table}
-                    WHERE country = '{project_country}'
-                    AND scenario IN ({scenarios})
-                    AND year IN ({years})
-                    GROUP BY scenario, year, hour
-                ) totals
-                GROUP BY scenario, year
-            )
-            SELECT year, {scenario_cols}
-            FROM peak_demand
-            PIVOT (
-                SUM(peak_value) FOR scenario IN ({scenarios})
-            )
-            """.format(
-                scenario_cols=','.join([f'"{s}"' for s in scenarios]),
-                scenarios="'" + "','".join(scenarios) + "'",
-                years=','.join(map(str, years)),
-                energy_proj_table=ENERGY_PROJ_TABLE,
-                project_country=PROJECT_COUNTRY
-            )
+                    hour,
+                    SUM(value) as total_demand
+                FROM {ENERGY_PROJ_TABLE}
+                WHERE country = '{PROJECT_COUNTRY}'
+                AND scenario IN ('{"','".join(scenarios)}')
+                AND year IN ({','.join(map(str, years))})
+                GROUP BY scenario, year, hour
+            ) totals
+            GROUP BY scenario, year
+            ORDER BY scenario, year
+            """
 
         # Execute query and return DataFrame
         return self.db.execute(sql).df()
@@ -867,7 +812,7 @@ class APIClient:
         resample: ResampleOptions = "Daily Mean",
     ) -> pd.DataFrame:
         """
-        User selects 1 or more than model years. Returns transposed data with columns for each time period.
+        User selects 1 or more than model years. Returns tall format data with time period information.
 
         Parameters
         ----------
@@ -883,36 +828,38 @@ class APIClient:
         Returns
         -------
         pd.DataFrame
-            DataFrame with electricity consumption timeseries data transposed by time period.
+            DataFrame with electricity consumption timeseries data in tall format.
 
-            When group_by is specified:
-            - Index: breakdown categories (e.g., Commercial, Industrial, etc.)
-            - Columns: {year}_{day/week_of_year} for each time period in each year
-
-            When group_by is None:
-            - Index: day/week of year
-            - Columns: one column for each year
+            Columns:
+            - scenario: str, scenario name
+            - year: int, projection year
+            - time_period: int, day/week of year (1-365 for daily, 1-52 for weekly)
+            - sector/end_use: str, breakdown category (if group_by specified)
+            - value: float, consumption value
 
         Examples
         --------
         >>> client = APIClient(path_or_conn)
-        >>> # With group_by specified - columns for each day of year per year
+        >>> # With group_by specified
         >>> df = client.get_timeseries_comparison("baseline", [2025, 2030], "Sector")
 
-        | {Sector/End Use} | year  | 1      | 2      | ... | 364    | 365    |
-        |------------------|-------|--------|--------|-----|--------|--------|
-        |    Commercial    | 2030  | 1250.5 | 1245.8 | ... | 1380.2 | 1375.5 |
-        |    Industrial    | 2030  | 2100.3 | 2095.1 | ... | 2350.8 | 2345.2 |
-        |    Residential   | 2030  | 1800.7 | 1795.3 | ... | 1950.4 | 1945.8 |
+        | scenario | year | time_period | sector      | value  |
+        |----------|------|-------------|-------------|--------|
+        | baseline | 2025 | 1           | Commercial  | 1250.5 |
+        | baseline | 2025 | 1           | Industrial  | 2100.3 |
+        | baseline | 2025 | 1           | Residential | 1800.7 |
+        | baseline | 2025 | 2           | Commercial  | 1245.8 |
+        | baseline | 2030 | 1           | Commercial  | 1380.2 |
 
-        >>> # Without group_by - columns for each year
+        >>> # Without group_by
         >>> df = client.get_timeseries_comparison("baseline", [2025, 2030])
 
-        | day_of_year | 2025   | 2030   |
-        |-------------|--------|--------|
-        | 1           | 5150.5 | 5675.4 |
-        | 2           | 5136.2 | 5666.5 |
-        | ...         | ...    | ...    |
+        | scenario | year | time_period | value  |
+        |----------|------|-------------|--------|
+        | baseline | 2025 | 1           | 5150.5 |
+        | baseline | 2025 | 2           | 5136.2 |
+        | baseline | 2030 | 1           | 5675.4 |
+        | baseline | 2030 | 2           | 5666.5 |
         """
 
         if isinstance(years, int):
@@ -925,96 +872,44 @@ class APIClient:
         # Determine time period calculation based on resample option
         if resample == "Daily Mean":
             time_period_calc = "FLOOR(hour / 24) + 1"
-            max_periods = 365
         elif resample == "Weekly Mean":
             time_period_calc = "FLOOR(hour / 168) + 1"
-            max_periods = 52
         else:
             raise ValueError(f"Invalid resample option: {resample}")
 
         if group_by:
-            # With breakdown by sector/end_use
             group_col = group_by.lower().replace(' ', '_')
-
-            if len(years) == 1:
-                # Single year - pivot time periods as columns
-                period_columns = ','.join([f'"{i}"' for i in range(1, max_periods + 1)])
-                period_values = ','.join([str(i) for i in range(1, max_periods + 1)])
-
-                sql = f"""
-                WITH aggregated AS (
-                    SELECT
-                        {group_col},
-                        {time_period_calc} as time_period,
-                        AVG(value) as avg_value
-                    FROM {ENERGY_PROJ_TABLE}
-                    WHERE country = '{PROJECT_COUNTRY}'
-                        AND scenario = '{scenario}'
-                        AND year = {years[0]}
-                    GROUP BY {group_col}, {time_period_calc}
-                )
-                SELECT {group_col}, {period_columns}
-                FROM aggregated
-                PIVOT (
-                    SUM(avg_value) FOR time_period IN ({period_values})
-                )
-                ORDER BY {group_col}
-                """
-            else:
-                # Two years - keep both group_col and year as index columns
-                period_columns = ','.join([f'"{i}"' for i in range(1, max_periods + 1)])
-                period_values = ','.join([str(i) for i in range(1, max_periods + 1)])
-
-                sql = f"""
-                WITH aggregated AS (
-                    SELECT
-                        {group_col},
-                        year,
-                        {time_period_calc} as time_period,
-                        AVG(value) as avg_value
-                    FROM {ENERGY_PROJ_TABLE}
-                    WHERE country = '{PROJECT_COUNTRY}'
-                        AND scenario = '{scenario}'
-                        AND year IN ({','.join(map(str, years))})
-                    GROUP BY {group_col}, year, {time_period_calc}
-                )
-                SELECT {group_col}, year, {period_columns}
-                FROM aggregated
-                PIVOT (
-                    SUM(avg_value) FOR time_period IN ({period_values})
-                )
-                ORDER BY {group_col}, year
-                """
-        else:
-            # No breakdown - total only, pivot years as columns
-            year_columns = ','.join([f'"{year}"' for year in years])
-            year_values = ','.join([str(year) for year in years])
-
             sql = f"""
-            WITH aggregated AS (
-                SELECT
-                    year,
-                    {time_period_calc} as time_period,
-                    SUM(value) as total_value
-                FROM {ENERGY_PROJ_TABLE}
-                WHERE country = '{PROJECT_COUNTRY}'
-                    AND scenario = '{scenario}'
-                    AND year IN ({','.join(map(str, years))})
-                GROUP BY year, {time_period_calc}
-            )
-            SELECT time_period, {year_columns}
-            FROM aggregated
-            PIVOT (
-                SUM(total_value) FOR year IN ({year_values})
-            )
-            ORDER BY time_period
+            SELECT
+                scenario,
+                year,
+                {time_period_calc} as time_period,
+                {group_col},
+                AVG(value) as value
+            FROM {ENERGY_PROJ_TABLE}
+            WHERE country = '{PROJECT_COUNTRY}'
+                AND scenario = '{scenario}'
+                AND year IN ({','.join(map(str, years))})
+            GROUP BY scenario, year, {time_period_calc}, {group_col}
+            ORDER BY scenario, year, time_period, {group_col}
+            """
+        else:
+            sql = f"""
+            SELECT
+                scenario,
+                year,
+                {time_period_calc} as time_period,
+                SUM(value) as value
+            FROM {ENERGY_PROJ_TABLE}
+            WHERE country = '{PROJECT_COUNTRY}'
+                AND scenario = '{scenario}'
+                AND year IN ({','.join(map(str, years))})
+            GROUP BY scenario, year, {time_period_calc}
+            ORDER BY scenario, year, time_period
             """
 
         return self.db.execute(sql).df()
 
-    # NOTE We need to define the hours/days of the year that fall into each season.
-    # TODO for weekday/weekend, we will need to convert to a datetime to determine if weekday or weekend.
-    # Alternatively, we can determine an offset of the first weekend depending on the year.
     def get_seasonal_load_lines(
         self,
         scenario: str,
@@ -1037,45 +932,39 @@ class APIClient:
         Returns
         -------
         pd.DataFrame
-            DataFrame with seasonal load line data.
+            DataFrame with seasonal load line data in tall format.
 
             Columns:
+            - scenario: str, scenario name
+            - year: int, projection year
             - season: str, season name (Winter, Spring, Summer, Fall) - if group_by includes "Seasonal"
             - day_type: str, day type (Weekday, Weekend) - if group_by includes "Weekday/Weekend"
-            - year: int, model year - if multiple years specified
-            - 0, 1, ..., 23: float, aggregated load values for each hour of the day
+            - hour_of_day: int, hour of day (0-23)
+            - value: float, aggregated load value
 
         Examples
         --------
         >>> client = APIClient(path_or_conn)
         >>> # Seasonal grouping only
-        >>> df = client.get_seasonal_load_lines("baseline", "Seasonal", "Average Day", [2025, 2030])
+        >>> df = client.get_seasonal_load_lines("baseline", [2025, 2030], "Seasonal", "Average Day")
 
-        | season | year | 0      | 1      | 2      | ... | 22     | 23     |
-        |--------|------|--------|--------|--------|-----|--------|--------|
-        | Winter | 2025 | 3200.5 | 3100.2 | 3050.8 | ... | 3180.4 | 3220.1 |
-        | Spring | 2025 | 2800.3 | 2750.8 | 2720.5 | ... | 2790.2 | 2810.6 |
-        | Summer | 2025 | 3500.1 | 3450.5 | 3420.2 | ... | 3480.8 | 3510.3 |
-        | Fall   | 2025 | 2900.7 | 2850.3 | 2820.9 | ... | 2880.5 | 2920.8 |
-        | Winter | 2030 | 3450.2 | 3380.5 | 3350.1 | ... | 3430.7 | 3470.4 |
-
-        >>> # Weekday/Weekend grouping only
-        >>> df = client.get_seasonal_load_lines("baseline", "Weekday/Weekend", "Average Day", 2030)
-
-        | day_type | year | 0      | 1      | 2      | ... | 22     | 23     |
-        |----------|------|--------|--------|--------|-----|--------|--------|
-        | Weekday  | 2025 | 3800.5 | 3750.2 | 3720.8 | ... | 3780.4 | 3820.1 |
-        | Weekend  | 2025 | 3200.3 | 3150.8 | 3120.5 | ... | 3180.2 | 3220.6 |
+        | scenario | year | season | hour_of_day | value  |
+        |----------|------|--------|-------------|--------|
+        | baseline | 2025 | Winter | 0           | 3200.5 |
+        | baseline | 2025 | Winter | 1           | 3100.2 |
+        | baseline | 2025 | Winter | 2           | 3050.8 |
+        | baseline | 2025 | Spring | 0           | 2800.3 |
+        | baseline | 2030 | Winter | 0           | 3450.2 |
 
         >>> # Both seasonal and weekday/weekend grouping
-        >>> df = client.get_seasonal_load_lines("baseline", "Seasonal and Weekday/Weekend", "Average Day", 2030)
+        >>> df = client.get_seasonal_load_lines("baseline", [2025], "Seasonal and Weekday/Weekend", "Average Day")
 
-        | season | day_type | year | 0      | 1      | 2      | ... | 22     | 23     |
-        |--------|----------|------|--------|--------|--------|-----|--------|--------|
-        | Winter | Weekday  | 2025 | 3400.5 | 3350.2 | 3320.8 | ... | 3380.4 | 3420.1 |
-        | Winter | Weekend  | 2025 | 3000.3 | 2950.8 | 2920.5 | ... | 2980.2 | 3020.6 |
-        | Spring | Weekday  | 2025 | 2900.7 | 2850.3 | 2820.9 | ... | 2880.5 | 2920.8 |
-        | Spring | Weekend  | 2025 | 2600.2 | 2550.5 | 2520.1 | ... | 2580.7 | 2620.4 |
+        | scenario | year | season | day_type | hour_of_day | value  |
+        |----------|------|--------|----------|-------------|--------|
+        | baseline | 2025 | Winter | Weekday  | 0           | 3400.5 |
+        | baseline | 2025 | Winter | Weekday  | 1           | 3350.2 |
+        | baseline | 2025 | Winter | Weekend  | 0           | 3000.3 |
+        | baseline | 2025 | Spring | Weekday  | 0           | 2900.7 |
         """
         if years is None:
             years = self.years
@@ -1086,24 +975,21 @@ class APIClient:
         self._validate_scenarios([scenario])
         self._validate_years(years)
 
-        # Build the CTE with time grouping calculations
-        select_cols = ["year", "hour % 24 as hour_of_day"]
-        group_by_cols = ["year", "hour_of_day"]
-        pivot_group_cols = []
+        # Build the select and group by clauses
+        select_cols = ["scenario", "year", "hour % 24 as hour_of_day"]
+        group_by_cols = ["scenario", "year", "hour % 24"]
 
         # Add seasonal grouping if needed
         if "Seasonal" in group_by:
             season_case = _generate_season_case_statement("hour")
             select_cols.append(f"({season_case}) as season")
-            group_by_cols.append("season")
-            pivot_group_cols.append("season")
+            group_by_cols.append(f"({season_case})")
 
         # Add weekday/weekend grouping if needed
         if "Weekday/Weekend" in group_by:
             weekday_case = _generate_weekday_weekend_case_statement("hour")
             select_cols.append(f"({weekday_case}) as day_type")
-            group_by_cols.append("day_type")
-            pivot_group_cols.append("day_type")
+            group_by_cols.append(f"({weekday_case})")
 
         # Determine aggregation function based on agg parameter
         if agg == "Average Day":
@@ -1117,49 +1003,31 @@ class APIClient:
         else:
             raise ValueError(f"Invalid aggregation option: {agg}")
 
-        # Build the SQL query
-        cte_select = ", ".join(select_cols)
-        cte_group_by = ", ".join(group_by_cols)
+        # Build the SQL query - simplified without CTE
+        select_clause = ", ".join(select_cols)
+        group_by_clause = ", ".join(group_by_cols)
 
-        # Hour columns for pivot
-        hour_columns = ','.join([f'"{h}"' for h in range(24)])
-        hour_values = ','.join([str(h) for h in range(24)])
-
-        # Final select columns (grouping columns + hour columns)
-        final_select_cols = pivot_group_cols.copy()
-        if len(years) > 1:
-            final_select_cols.append("year")
-        final_select_cols.append(hour_columns)
-        final_select = ", ".join(final_select_cols)
-
-        # Final group by columns (excluding hour columns)
-        final_group_by = ", ".join(pivot_group_cols + (["year"] if len(years) > 1 else []))
+        # Build ORDER BY clause using only the select column aliases/names
+        order_cols = ["scenario", "year"]
+        if "Seasonal" in group_by:
+            order_cols.append("season")
+        if "Weekday/Weekend" in group_by:
+            order_cols.append("day_type")
+        order_cols.append("hour_of_day")
+        order_by_clause = ", ".join(order_cols)
 
         sql = f"""
-        WITH time_grouped AS (
-            SELECT
-                {cte_select},
-                SUM(value) as total_demand
-            FROM {ENERGY_PROJ_TABLE}
-            WHERE country = '{PROJECT_COUNTRY}'
-                AND scenario = '{scenario}'
-                AND year IN ({','.join(map(str, years))})
-            GROUP BY {cte_group_by}
-        ),
-        aggregated AS (
-            SELECT
-                {", ".join(pivot_group_cols + (["year"] if len(years) > 1 else []))},
-                hour_of_day,
-                {agg_func}(total_demand) as agg_demand
-            FROM time_grouped
-            GROUP BY {", ".join(pivot_group_cols + (["year"] if len(years) > 1 else []) + ["hour_of_day"])}
-        )
-        SELECT {final_select}
-        FROM aggregated
-        PIVOT (
-            SUM(agg_demand) FOR hour_of_day IN ({hour_values})
-        )
-        {f"ORDER BY {final_group_by}" if final_group_by else ""}
+        SELECT
+            {select_clause},
+            {agg_func}(value) as value
+        FROM {ENERGY_PROJ_TABLE}
+        WHERE country = '{PROJECT_COUNTRY}'
+            AND scenario = '{scenario}'
+            AND year IN ({','.join(map(str, years))})
+        GROUP BY {group_by_clause}
+        ORDER BY {order_by_clause}
         """
 
+        breakpoint()
         return self.db.execute(sql).df()
+
