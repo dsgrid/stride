@@ -102,6 +102,7 @@ def make_mapped_datasets(
     con: duckdb.DuckDBPyConnection,
     base_path: Path,
     project_id: str,
+    scenario: str,
 ) -> None:
     url = _registry_url(base_path)
     mgr = RegistryManager.load(DatabaseConnection(url=url))
@@ -115,7 +116,7 @@ def make_mapped_datasets(
             version=time_dimension.model.version,
         ),
     ]
-    dataset_ids = ["default__load_shapes"]
+    dataset_ids = [f"{scenario}__load_shapes"]
     output_dir = base_path / "dsgrid_query_output"
     submitter = DatasetQuerySubmitter(output_dir)
     for dataset_id in dataset_ids:
@@ -124,6 +125,8 @@ def make_mapped_datasets(
             dataset_id=dataset_id,
             to_dimension_references=to_dimension_references,
         )
+        # This calls toPandas() because the duckdb connection inside dsgrid is
+        # different than this one. We need to extract it and then add it through this connection.
         df = submitter.submit(  # noqa F841
             query,
             mgr,
@@ -223,7 +226,6 @@ def generate_dsgrid_dataset_config_file(dataset: DatasetConfig, config_file: Pat
     # dsgrid has a function to do this, but there are too many dimension-specific things here.
     config = {
         "dataset_id": dataset.dataset_id,
-        "included_dimensions": [x["type"] for x in dataset.dimensions],
         "dimensions": dataset.dimensions,
         "trivial_dimensions": [x.value for x in dataset.trivial_dimensions],
         "dataset_type": "modeled",

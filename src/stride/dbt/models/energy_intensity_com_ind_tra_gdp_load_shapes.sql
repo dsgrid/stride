@@ -6,6 +6,7 @@ SELECT
     ,e.a0
     ,e.a1
     ,e.value as gdp_value
+    ,p.metric
     ,p.timestamp
     ,p.value
 FROM {{ table_ref('energy_intensity_com_ind_tra_gdp') }} e

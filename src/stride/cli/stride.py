@@ -9,7 +9,7 @@ from dsgrid.exceptions import DSGBaseException
 from dsgrid.cli.common import path_callback
 from loguru import logger
 
-from stride.project import Project
+from stride import Project, Scenario
 
 
 @click.group("stride")
@@ -40,13 +40,18 @@ def cli(ctx: click.Context, console_level: str, file_level: str, reraise_excepti
     """Stride comands"""
 
 
+@click.group()
+def projects() -> None:
+    """Project commands"""
+
+
 _create_epilog = """
 Examples:\n
 $ stride create-project my_project.json5\n
 """
 
 
-@click.command(epilog=_create_epilog)
+@click.command(name="create", epilog=_create_epilog)
 @click.argument("config_file", type=click.Path(exists=True), callback=path_callback)
 @click.option(
     "-d",
@@ -65,9 +70,7 @@ $ stride create-project my_project.json5\n
     help="Overwrite the output directory if it exists.",
 )
 @click.pass_context
-def create_project(
-    ctx: click.Context, config_file: Path, directory: Path, overwrite: bool
-) -> None:
+def create_project(ctx: click.Context, config_file: Path, directory: Path, overwrite: bool) -> Any:
     """Create a Stride project."""
     setup_logging(
         filename="stride.log",
@@ -79,24 +82,63 @@ def create_project(
         ctx, Project.create, config_file, base_dir=directory, overwrite=overwrite
     )
     if res[1] != 0:
-        return res[1]
+        ctx.exit(res[1])
 
 
-_add_scenario_epilog = """
-Examples:\n
-$ stride add-scenario new_scenario.json5 my_project_dir\n
-"""
+@click.group()
+def datasets() -> None:
+    """Dataset commands"""
 
 
-@click.command(epilog=_add_scenario_epilog)
-@click.argument("config_file", type=click.Path(exists=True), callback=path_callback)
-@click.argument("project_dir", type=click.Path(exists=True), callback=path_callback)
+@click.command(name="list")
+def list_datasets() -> None:
+    """List the datasets available in any project."""
+    names = [x for x in Scenario.model_fields if x != "name"]
+    print(" ".join(names))
+
+
+@click.command(name="show")
+@click.argument("project-path", type=click.Path(exists=True), callback=path_callback)
+@click.argument("dataset-id", type=str)
+@click.option(
+    "-s", "--scenario", type=str, default="baseline", show_default=True, help="Project scenario"
+)
+@click.option(
+    "-l",
+    "--limit",
+    type=int,
+    default=20,
+    show_default=True,
+    help="Max number of rows in the table to show.",
+)
+def show_dataset(project_path: Path, scenario: str, dataset_id: str, limit: int) -> None:
+    """List the datasets stored in the project."""
+    project = Project.load(project_path)
+    project.show_dataset(dataset_id, scenario=scenario, limit=limit)
+
+
+@click.group()
+def scenarios() -> None:
+    """Scenario commands"""
+
+
+@click.command(name="list")
+@click.argument("project-path", type=click.Path(exists=True), callback=path_callback)
 @click.pass_context
-def add_scenario(ctx: click.Context, config_file: Path, project_dir: Path) -> None:
-    """Add a scenario to an existing project."""
+def list_scenarios(ctx: click.Context, project_path: Path) -> None:
+    """List the scenarios stored in the project."""
+    res = handle_stride_exception(ctx, Project.load, project_path)
+    if res[1] != 0:
+        ctx.exit(res[1])
+    else:
+        project = res[0]
+        scenarios = project.list_scenarios()
+        print(" ".join(scenarios))
 
 
-def handle_stride_exception(ctx: click.Context, func: Callable, *args, **kwargs) -> Any:
+def handle_stride_exception(
+    ctx: click.Context, func: Callable[..., Any], *args: Any, **kwargs: Any
+) -> Any:
     """Handle any sparkctl exceptions as specified by the CLI parameters."""
     res = None
     try:
@@ -113,5 +155,10 @@ def handle_stride_exception(ctx: click.Context, func: Callable, *args, **kwargs)
         return res, 1
 
 
-cli.add_command(create_project)
-cli.add_command(add_scenario)
+cli.add_command(projects)
+cli.add_command(datasets)
+cli.add_command(scenarios)
+projects.add_command(create_project)
+datasets.add_command(list_datasets)
+datasets.add_command(show_dataset)
+scenarios.add_command(list_scenarios)

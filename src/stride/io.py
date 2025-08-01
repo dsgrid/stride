@@ -45,4 +45,5 @@ def _create_table_from_csv(
 
 
 def _create_table_from_parquet(con: DuckDBPyConnection, name: str, path: Path | str) -> None:
-    con.sql(f"CREATE TABLE {name} AS SELECT * from read_parquet('{path}/**/*.parquet')")
+    path_ = str(path) if Path(path).is_file() else f"{path}/**/*.parquet"
+    con.sql(f"CREATE TABLE {name} AS SELECT * from read_parquet('{path_}')")

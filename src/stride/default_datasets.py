@@ -59,7 +59,7 @@ def create_test_datasets(
                 # Also, no re-mapping of values.
                 filename = scenario_file
                 df = pd.read_csv(scenario_file)
-            dataset = val["func"](scenario.name, metrics_map, filename, df)
+            dataset = val["func"](scenario.name, metrics_map, filename, df)  # type: ignore
             datasets.append(dataset)
 
     return datasets
@@ -309,25 +309,11 @@ def load_shapes_dataset(
                 ],
             },
             {
-                "type": "scenario",
-                "class": "Scenario",
-                "name": "scenario",
-                "description": "Default scenario",
-                "records": [{"id": "default", "name": "Default"}],
-            },
-            {
                 "type": "sector",
                 "class": "Sector",
                 "name": "sector",
                 "description": "Load shapes sectors",
                 "records": [{"id": x, "name": x} for x in df["sector"].unique()],
-            },
-            {
-                "type": "subsector",
-                "class": "Subsector",
-                "name": "subsector",
-                "description": "Load shapes subsectors",
-                "records": [{"id": "unspecified", "name": "Unspecified"}],
             },
             {
                 "type": "weather_year",

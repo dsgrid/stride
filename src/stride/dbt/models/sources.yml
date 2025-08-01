@@ -1,6 +1,6 @@
 version: 2
 sources:
-  - name: default
+  - name: scenario
     schema: dsgrid_data
     tables:
       - name: energy_intensity

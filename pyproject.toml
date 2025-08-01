@@ -14,6 +14,7 @@ authors = [
     { name = "Daniel Thom", email = "daniel.thom@nrel.gov" },
     { name = "Elaine Hale", email = "elaine.hale@nrel.gov" },
     { name = "Zack Jensen", email = "zack.jensen@nrel.gov" },
+    { name = "Micah Webb", email = "micah.webb@nrel.gov" },
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -27,7 +28,7 @@ dependencies = [
     "click",
     "dbt-core >= 1.10.5, < 2",
     "dbt-duckdb",
-    "dsgrid @ git+https://github.com/dsgrid/dsgrid.git@feat/stride-support",
+    "dsgrid @ git+https://github.com/dsgrid/dsgrid.git@feat/dataset-support",
     "duckdb >= 1.1, < 2",
     "loguru",
     "pandas >= 2.2, < 3",
@@ -38,7 +39,7 @@ dependencies = [
 [project.optional-dependencies]
 
 dev = [
-    "mypy >= 1.15, < 2",
+    "mypy ~= 1.17.1",  # Sync with .pre-commit-config.yaml.
     "pandas-stubs",
     "pre-commit",
     "pytest",
@@ -66,6 +67,10 @@ files = [
   "src",
 ]
 strict = true
+
+[[tool.mypy.overrides]]
+ignore_missing_imports = true
+module = "dsgrid.*"
 
 [tool.pytest.ini_options]
 pythonpath = "src"

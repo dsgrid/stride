@@ -1,7 +1,3 @@
-# TODOs:
-# - The project needs to be rendered from a template.
-# - Country must be a template parameter.
-
 # Name your project! Project names should contain only lowercase characters
 # and underscores. A good package name should reflect your organization's
 # name or the intended use of these models
@@ -32,14 +28,8 @@ clean-targets:         # directories to be removed by `dbt clean`
 # Configuring models
 # Full documentation: https://docs.getdbt.com/docs/configuring-models
 
-# In this example config, we tell dbt to build all models in the example/
-# directory as views. These settings can be overridden in the individual model
-# files using the `{{ config(...) }}` macro.
-# models:
-#   stride:
-#     # Config indicated by + and applies to all files under models/example/
-#     example:
-#       +materialized: view
-
-vars:
-  scenario: 'active_scenario'
+models:
+  stride:
+    # Note: energy_projection for each scenario gets overriden as 'table'.
+    #   Refer to energy_projection_scenario_placeholder.sql
+    +materialized: view

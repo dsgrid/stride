@@ -3,6 +3,7 @@ SELECT
     ,timestamp
     ,model_year
     ,sector
+    ,metric
     ,CASE
         WHEN regression_type = 'exp'
             THEN EXP(a0 + a1) * gdp_value * value

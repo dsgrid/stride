@@ -5,7 +5,9 @@ from stride.models import ProjectConfig
 
 def create_dsgrid_project(config: ProjectConfig) -> dict[str, Any]:
     """Create a default dsgrid project config."""
-    project = {
+    # TODO: The only part of this project currently used is the time dimension.
+    # We are not yet sure if we will use a dsgrid project.
+    project: dict[str, Any] = {
         "project_id": config.project_id,
         "name": config.project_id,
         "description": config.description,
@@ -205,84 +207,68 @@ def create_dsgrid_project(config: ProjectConfig) -> dict[str, Any]:
                         },
                     ],
                 },
-                # {
-                #     "type": "time",
-                #     "class": "Time",
-                #     "time_type": "index",
-                #     "name": "hourly_indexes",
-                #     "description": "8760-indexed time",
-                #     "time_interval_type": "period_ending",
-                #     "str_format": "%Y-%m-%d %H:%M:%S",
-                #     "starting_timestamps": ["2018-01-01 00:00:00"],
-                #     "frequency": "P0DT1H0M0.000000S",
-                #     "measurement_type": "total",
-                #     "ranges": [
-                #         {
-                #             "start": 0,
-                #             "end": 8759,
-                #         },
-                #     ],
-                # },
             ],
             "supplemental_dimensions": [],
         },
     }
     for scenario in config.scenarios:
-        project["datasets"] += [
-            {
-                "dataset_id": f"{scenario.name}__energy_intensity",
-                "dataset_type": "modeled",
-                "version": "1.0.0",
-                "required_dimensions": {
-                    "single_dimensional": {
-                        "metric": {
-                            "base": {
-                                "record_ids": [],
-                                "dimension_name": "energy_intensity_regression",
+        project["datasets"].extend(
+            [
+                {
+                    "dataset_id": f"{scenario.name}__energy_intensity",
+                    "dataset_type": "modeled",
+                    "version": "1.0.0",
+                    "required_dimensions": {
+                        "single_dimensional": {
+                            "metric": {
+                                "base": {
+                                    "record_ids": [],
+                                    "dimension_name": "energy_intensity_regression",
+                                }
                             }
-                        }
+                        },
                     },
                 },
-            },
-            {
-                "dataset_id": f"{scenario.name}__gdp",
-                "dataset_type": "modeled",
-                "version": "1.0.0",
-                "required_dimensions": {
-                    "single_dimensional": {
-                        "metric": {"base": {"record_ids": [], "dimension_name": "gdp"}}
+                {
+                    "dataset_id": f"{scenario.name}__gdp",
+                    "dataset_type": "modeled",
+                    "version": "1.0.0",
+                    "required_dimensions": {
+                        "single_dimensional": {
+                            "metric": {"base": {"record_ids": [], "dimension_name": "gdp"}}
+                        },
                     },
                 },
-            },
-            {
-                "dataset_id": f"{scenario.name}__hdi",
-                "dataset_type": "modeled",
-                "version": "1.0.0",
-                "required_dimensions": {
-                    "single_dimensional": {
-                        "metric": {"base": {"record_ids": [], "dimension_name": "hdi"}}
+                {
+                    "dataset_id": f"{scenario.name}__hdi",
+                    "dataset_type": "modeled",
+                    "version": "1.0.0",
+                    "required_dimensions": {
+                        "single_dimensional": {
+                            "metric": {"base": {"record_ids": [], "dimension_name": "hdi"}}
+                        },
                     },
                 },
-            },
-            {
-                "dataset_id": f"{scenario.name}__population",
-                "dataset_type": "modeled",
-                "version": "1.0.0",
-                "required_dimensions": {
-                    "single_dimensional": {
-                        "metric": {"base": {"record_ids": [], "dimension_name": "population"}}
+                {
+                    "dataset_id": f"{scenario.name}__population",
+                    "dataset_type": "modeled",
+                    "version": "1.0.0",
+                    "required_dimensions": {
+                        "single_dimensional": {
+                            "metric": {"base": {"record_ids": [], "dimension_name": "population"}}
+                        },
                     },
                 },
-            },
-            {
-                "dataset_id": f"{scenario.name}__load_shapes",
-                "dataset_type": "modeled",
-                "version": "1.0.0",
-                "required_dimensions": {
-                    "single_dimensional": {
-                        "metric": {"base": {"record_ids": [], "dimension_name": "end_use"}}
+                {
+                    "dataset_id": f"{scenario.name}__load_shapes",
+                    "dataset_type": "modeled",
+                    "version": "1.0.0",
+                    "required_dimensions": {
+                        "single_dimensional": {
+                            "metric": {"base": {"record_ids": [], "dimension_name": "end_use"}}
+                        },
                     },
                 },
-            },
-        ]
+            ]
+        )
     return project

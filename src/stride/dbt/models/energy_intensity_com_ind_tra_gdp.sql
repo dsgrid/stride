@@ -7,4 +7,5 @@ SELECT
     ,g.model_year
     ,g.value
 FROM {{ table_ref('energy_intensity_com_ind_tra_pivoted') }} e
-CROSS JOIN {{ table_ref('gdp_country') }} g
+JOIN {{ table_ref('gdp_country') }} g
+    ON e.geography = g.geography

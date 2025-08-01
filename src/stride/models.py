@@ -1,6 +1,6 @@
 from enum import StrEnum
 from pathlib import Path
-from typing import Any
+from typing import Any, Self
 
 from pydantic import Field, field_validator
 
@@ -24,7 +24,7 @@ class ProjectionSliceType(StrEnum):
     HEAT_PUMPS = "heat_pumps"
 
 
-class DatasetConfig(DSGBaseModel):
+class DatasetConfig(DSGBaseModel):  # type: ignore
     """Defines a Stride dataset."""
 
     dataset_id: str
@@ -54,7 +54,7 @@ class DatasetConfig(DSGBaseModel):
         return final
 
 
-class Scenario(DSGBaseModel):
+class Scenario(DSGBaseModel):  # type: ignore
     """Allows the user to add custom tables to compare against the defaults."""
 
     name: str = Field(description="Name of the scenario")
@@ -80,8 +80,25 @@ class Scenario(DSGBaseModel):
     )
     # TODO: bait, ev_share, vmt_per_capita
 
+    @field_validator("name")
+    @classmethod
+    def check_name(cls, name: str) -> str:
+        if name in (
+            "dsgrid_data",
+            "dsgrid_lookup",
+            "dsgrid_missing_associations",
+            "stride",
+            "default",  # Not allowed by DuckDB
+        ):
+            msg = (
+                f"A scenario name cannot be {name} because it conflicts with existing "
+                "database schema names."
+            )
+            raise ValueError(msg)
+        return name
 
-class ProjectConfig(DSGBaseModel):
+
+class ProjectConfig(DSGBaseModel):  # type: ignore
     """Defines a Stride project."""
 
     project_id: str = Field(description="Unique identifier for the project")
@@ -93,9 +110,20 @@ class ProjectConfig(DSGBaseModel):
     step_year: int = Field(default=1, description="End year for the forecasted data")
     weather_year: int = Field(description="Weather year upon which the data is based")
     scenarios: list[Scenario] = Field(
-        default=[Scenario(name="default")],
+        default=[Scenario(name="baseline")],
         description="Scenarios for the project. Users may add custom scenarios.",
     )
+
+    @classmethod
+    def from_file(cls, filename: Path) -> Self:
+        config = super().from_file(filename)
+        for scenario in config.scenarios:
+            for field in Scenario.model_fields:
+                if field != "name":
+                    val = getattr(scenario, field)
+                    if val is not None and not Path(val).is_absolute():
+                        setattr(scenario, field, str(filename.parent / val))
+        return config  # type: ignore
 
     def list_model_years(self) -> list[int]:
         """List the model years in the project."""
