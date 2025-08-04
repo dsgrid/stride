@@ -131,17 +131,17 @@ class ProjectConfig(DSGBaseModel):  # type: ignore
         return list(range(self.start_year, self.end_year + 1, self.step_year))
 
 
-class IntermediateTableOverride(DSGBaseModel):  # type: ignore
-    """Defines an override for an intermediate tables in a scenario."""
+class CalculatedTableOverride(DSGBaseModel):  # type: ignore
+    """Defines an override for a calculated table in a scenario."""
 
     scenario: str = Field(description="Scenario name")
-    table_name: str = Field(description="Base name of intermediate table being overridden")
+    table_name: str = Field(description="Base name of calculated table being overridden")
 
 
-class IntermediateTableOverrides(DSGBaseModel):  # type: ignore
-    """Defines overrides for intermediate tables in a scenario."""
+class CalculatedTableOverrides(DSGBaseModel):  # type: ignore
+    """Defines overrides for calculated tables in a scenario."""
 
-    tables: list[IntermediateTableOverride] = []
+    tables: list[CalculatedTableOverride] = []
 
 
 """

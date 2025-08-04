@@ -83,7 +83,7 @@ def test_invalid_load(tmp_path: Path, default_project: Project) -> None:
     assert result.exit_code != 0
 
 
-def test_override_intermediate_table(
+def test_override_calculated_table(
     tmp_path_factory: TempPathFactory, default_project: Project
 ) -> None:
     project = default_project
@@ -100,7 +100,7 @@ def test_override_intermediate_table(
     data_file = tmp_path / "data.parquet"
     cmd = [
         "scenarios",
-        "export-intermediate-table",
+        "export-calculated-table",
         str(path),
         "-s",
         "baseline",
@@ -117,7 +117,7 @@ def test_override_intermediate_table(
     df.to_parquet(data_file)
     cmd = [
         "scenarios",
-        "override-intermediate-table",
+        "override-calculated-table",
         str(path),
         "-s",
         "alternate_gdp",

@@ -19,8 +19,8 @@ from stride.default_project import create_dsgrid_project
 from stride.dsgrid_integration import deploy_to_dsgrid_registry, make_mapped_datasets
 from stride.io import create_table_from_file, export_table
 from stride.models import (
-    IntermediateTableOverride,
-    IntermediateTableOverrides,
+    CalculatedTableOverride,
+    CalculatedTableOverrides,
     ProjectConfig,
 )
 
@@ -38,12 +38,12 @@ class Project:
         self,
         config: ProjectConfig,
         project_path: Path,
-        table_overrides: IntermediateTableOverrides | None = None,
+        table_overrides: CalculatedTableOverrides | None = None,
     ) -> None:
         self._config = config
         self._path = project_path
         self._con = self._connect()
-        self._table_overrides = table_overrides or IntermediateTableOverrides()
+        self._table_overrides = table_overrides or CalculatedTableOverrides()
 
     def _connect(self) -> DuckDBPyConnection:
         return duckdb.connect(self._path / REGISTRY_DATA_DIR / DATABASE_FILE)
@@ -100,12 +100,12 @@ class Project:
         """Return the project path."""
         return self._path
 
-    def override_intermediate_table(
+    def override_calculated_table(
         self, scenario_name: str, table_name: str, filename: Path
     ) -> None:
-        """Override an intermediate table for a scenario."""
+        """Override a calculated table for a scenario."""
         self._check_scenario_present(scenario_name)
-        self._check_intermediate_table_present(scenario_name, table_name)
+        self._check_calculated_table_present(scenario_name, table_name)
         existing_full_name = f"{scenario_name}.{table_name}"
         override_name = f"{table_name}_override_table"
         override_full_name = f"{scenario_name}.{override_name}"
@@ -124,7 +124,7 @@ class Project:
         override_file = self._path / DBT_DIR / "models" / f"{table_name}_override.sql"
         override_file.write_text(f"SELECT * FROM {override_full_name}")
         self._table_overrides.tables.append(
-            IntermediateTableOverride(scenario=scenario_name, table_name=table_name)
+            CalculatedTableOverride(scenario=scenario_name, table_name=table_name)
         )
         logger.info("Added override table {} to scenario {}", table_name, scenario_name)
         # TODO: we don't need to rebuild all scenarios, but dbt caching should help.
@@ -141,14 +141,14 @@ class Project:
         dst_file = self._path / DBT_DIR / "models" / "energy_projection.sql"
         shutil.copyfile(src_file, dst_file)
 
-    def export_intermediate_table(
+    def export_calculated_table(
         self, scenario_name: str, table_name: str, filename: Path, overwrite: bool = False
     ) -> None:
-        """Export the specified intermediate table to filename. Supports CSV and Parquet, inferred
+        """Export the specified calculated table to filename. Supports CSV and Parquet, inferred
         from the filename's suffix.
         """
         check_overwrite(filename, overwrite)
-        self._check_intermediate_table_present(scenario_name, table_name)
+        self._check_calculated_table_present(scenario_name, table_name)
         full_name = f"{scenario_name}.{table_name}"
         export_table(self._con, full_name, filename)
         logger.info("Exported scenario={} table={} to {}", scenario_name, table_name, filename)
@@ -172,8 +172,8 @@ class Project:
         ).fetchall()
         return [x[0] for x in result]
 
-    def list_intermediate_tables(self, scenario: str) -> list[str]:
-        """List all intermediate tables stored in the database the scenario."""
+    def list_calculated_tables(self, scenario: str) -> list[str]:
+        """List all calculated tables stored in the database for the scenario."""
         return self.list_tables(schema=scenario)
 
     def persist(self) -> None:
@@ -269,10 +269,10 @@ class Project:
             msg = f"{scenario_name=} is not stored in the project's scenarios"
             raise InvalidParameter(msg)
 
-    def _check_intermediate_table_present(self, scenario_name: str, table_name: str) -> None:
+    def _check_calculated_table_present(self, scenario_name: str, table_name: str) -> None:
         self._check_scenario_present(scenario_name)
-        if table_name not in self.list_intermediate_tables(scenario_name):
-            msg = f"{table_name=} is not an intermediate table in scenario={scenario_name}"
+        if table_name not in self.list_calculated_tables(scenario_name):
+            msg = f"{table_name=} is not a calculated table in scenario={scenario_name}"
             raise InvalidParameter(msg)
 
     def _get_table_schema_types(self, table_name: str) -> list[dict[str, str]]:
