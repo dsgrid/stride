@@ -112,6 +112,7 @@ class ProjectConfig(DSGBaseModel):  # type: ignore
     scenarios: list[Scenario] = Field(
         default=[Scenario(name="baseline")],
         description="Scenarios for the project. Users may add custom scenarios.",
+        min_length=1,
     )
 
     @classmethod
@@ -128,6 +129,19 @@ class ProjectConfig(DSGBaseModel):  # type: ignore
     def list_model_years(self) -> list[int]:
         """List the model years in the project."""
         return list(range(self.start_year, self.end_year + 1, self.step_year))
+
+
+class IntermediateTableOverride(DSGBaseModel):  # type: ignore
+    """Defines an override for an intermediate tables in a scenario."""
+
+    scenario: str = Field(description="Scenario name")
+    table_name: str = Field(description="Base name of intermediate table being overridden")
+
+
+class IntermediateTableOverrides(DSGBaseModel):  # type: ignore
+    """Defines overrides for intermediate tables in a scenario."""
+
+    tables: list[IntermediateTableOverride] = []
 
 
 """

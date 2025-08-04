@@ -1,3 +1,4 @@
+import pandas as pd
 import pytest
 import shutil
 from click.testing import CliRunner
@@ -33,7 +34,7 @@ def test_has_table(default_project: Project) -> None:
 
 def test_list_scenarios(default_project: Project) -> None:
     project = default_project
-    assert project.list_scenarios() == ["baseline", "alternate_gdp"]
+    assert project.list_scenario_names() == ["baseline", "alternate_gdp"]
 
 
 def test_show_dataset(default_project: Project) -> None:
@@ -77,3 +78,56 @@ def test_invalid_load(tmp_path, default_project: Project) -> None:
     runner = CliRunner()
     result = runner.invoke(cli, ["scenarios", "list", str(new_path)])
     assert result.exit_code != 0
+
+
+def test_override_intermediate_table(tmp_path_factory, default_project: Project) -> None:
+    project = default_project
+    path = project.path
+    orig_total = (
+        project.get_energy_projection()
+        .filter("sector = 'residential' and scenario = 'alternate_gdp'")
+        .to_df()["value"]
+        .sum()
+    )
+    project.con.close()
+
+    tmp_path = tmp_path_factory.mktemp("tmpdir")
+    data_file = tmp_path / "data.parquet"
+    cmd = [
+        "scenarios",
+        "export-intermediate-table",
+        str(path),
+        "-s",
+        "baseline",
+        "-t",
+        "energy_intensity_res_hdi_population_load_shapes",
+        "-f",
+        str(data_file),
+    ]
+    runner = CliRunner()
+    result = runner.invoke(cli, cmd)
+    assert result.exit_code == 0
+    df = pd.read_parquet(data_file)
+    df["value"] *= 4
+    df.to_parquet(data_file)
+    cmd = [
+        "scenarios",
+        "override-intermediate-table",
+        str(path),
+        "-s",
+        "alternate_gdp",
+        "-t",
+        "energy_intensity_res_hdi_population_load_shapes",
+        "-f",
+        str(data_file),
+    ]
+    result = runner.invoke(cli, cmd)
+    assert result.exit_code == 0
+    project2 = Project.load(path)
+    new_total = (
+        project2.get_energy_projection()
+        .filter("sector = 'residential' and scenario = 'alternate_gdp'")
+        .to_df()["value"]
+        .sum()
+    )
+    assert new_total == orig_total * 4

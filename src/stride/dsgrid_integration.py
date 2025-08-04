@@ -134,7 +134,7 @@ def make_mapped_datasets(
             overwrite=True,
         ).toPandas()
         # TODO: this should go into the stride schema.
-        # ... challengs with sources.yml
+        # ... challenges with sources.yml
         # table_name = f"stride.{dataset_id}"
         table_name = f"dsgrid_data.{dataset_id}"
         con.sql(f"CREATE TABLE {table_name} AS SELECT * FROM df")

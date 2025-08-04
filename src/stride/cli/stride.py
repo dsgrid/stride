@@ -47,7 +47,7 @@ def projects() -> None:
 
 _create_epilog = """
 Examples:\n
-$ stride create-project my_project.json5\n
+$ stride projects create my_project.json5\n
 """
 
 
@@ -111,9 +111,12 @@ def list_datasets() -> None:
     show_default=True,
     help="Max number of rows in the table to show.",
 )
-def show_dataset(project_path: Path, scenario: str, dataset_id: str, limit: int) -> None:
+@click.pass_context
+def show_dataset(
+    ctx: click.Context, project_path: Path, scenario: str, dataset_id: str, limit: int
+) -> None:
     """List the datasets stored in the project."""
-    project = Project.load(project_path)
+    project = safe_get_project_from_context(ctx, project_path)
     project.show_dataset(dataset_id, scenario=scenario, limit=limit)
 
 
@@ -122,18 +125,129 @@ def scenarios() -> None:
     """Scenario commands"""
 
 
+@click.command()
+@click.argument("project-path", type=click.Path(exists=True), callback=path_callback)
+@click.pass_context
+def list_intermediate_tables(ctx: click.Context, project_path: Path) -> None:
+    """List the intermediate tables in the project, including ones that are being overridden."""
+    project = safe_get_project_from_context(ctx, project_path)
+    scenarios = project.list_scenario_names()
+    print(f"Scenarios in project with project_id={project.config.project_id}:")
+    print(f"Intermediate tables per scenario with project_id={project.config.project_id}:")
+    for table in project.list_intermediate_tables(scenarios[0]):
+        print(f"  {table}")
+
+
+_add_from_intermediate_table_epilog = """
+Examples:\n
+$ stride scenarios override-intermediate-table my_project \\ \n
+    --scenario=custom_load_shapes \\ \n
+    --table-name=energy_intensity_res_hdi_population_load_shapes \\ \n
+    --filename=custom_load_shapes.csv \n
+"""
+
+
+@click.command(epilog=_add_from_intermediate_table_epilog)
+@click.argument("project-path", type=click.Path(exists=True), callback=path_callback)
+@click.option(
+    "-f",
+    "--filename",
+    type=click.Path(exists=True),
+    required=True,
+    help="Filename of the new table",
+    callback=path_callback,
+)
+@click.option("-s", "--scenario", type=str, required=True, help="Scenario name")
+@click.option("-t", "--table-name", type=str, required=True, help="Intermediate table name")
+@click.pass_context
+def override_intermediate_table(
+    ctx: click.Context, project_path: Path, filename: Path, scenario: str, table_name: str
+) -> None:
+    """Override a scenario's intermediate table."""
+    res = handle_stride_exception(
+        ctx, _override_intermediate_table, project_path, filename, scenario, table_name
+    )
+    if res[1] != 0:
+        ctx.exit(res[1])
+
+
+def _override_intermediate_table(
+    project_path: Path, filename: Path, scenario: str, table_name: str
+) -> None:
+    project = Project.load(project_path)
+    project.override_intermediate_table(scenario, table_name, filename)
+
+
+_export_intermediate_table_epilog = """
+Examples:\n
+$ stride scenarios export-intermediate-table my_project \\ \n
+    --scenario=baseline \\ \n
+    --table-name=energy_intensity_res_hdi_population_load_shapes \\ \n
+    --filename=custom_load_shapes.csv \n
+"""
+
+
+@click.command(epilog=_export_intermediate_table_epilog)
+@click.argument("project-path", type=click.Path(exists=True), callback=path_callback)
+@click.option(
+    "-f",
+    "--filename",
+    help="Filename to create. Defaults to a CSV in the current directory. Supports CSV and "
+    "Parquet, inferred from the file extension.",
+    callback=path_callback,
+)
+@click.option(
+    "--overwrite",
+    default=False,
+    show_default=True,
+    is_flag=True,
+    help="Overwrite the output directory if it exists.",
+)
+@click.option("-s", "--scenario", type=str, required=True, help="Scenario name")
+@click.option("-t", "--table-name", type=str, required=True, help="Intermediate table name")
+@click.pass_context
+def export_intermediate_table(
+    ctx: click.Context,
+    project_path: Path,
+    filename: Path | None,
+    overwrite: bool,
+    scenario: str,
+    table_name: str,
+) -> None:
+    """Export the specified intermediate table to filename. Supports CSV and Parquet, inferred
+    from the filename's suffix.
+    """
+    filename_ = Path(f"{table_name}.csv") if filename is None else filename
+    res = handle_stride_exception(
+        ctx,
+        _export_intermediate_table,
+        project_path,
+        scenario,
+        table_name,
+        filename_,
+        overwrite,
+    )
+    if res[1] != 0:
+        ctx.exit(res[1])
+
+
+def _export_intermediate_table(
+    project_path: Path, scenario: str, table_name: str, filename: Path, overwrite: bool
+) -> None:
+    project = Project.load(project_path)
+    project.export_intermediate_table(scenario, table_name, filename, overwrite=overwrite)
+
+
 @click.command(name="list")
 @click.argument("project-path", type=click.Path(exists=True), callback=path_callback)
 @click.pass_context
 def list_scenarios(ctx: click.Context, project_path: Path) -> None:
     """List the scenarios stored in the project."""
-    res = handle_stride_exception(ctx, Project.load, project_path)
-    if res[1] != 0:
-        ctx.exit(res[1])
-    else:
-        project = res[0]
-        scenarios = project.list_scenarios()
-        print(" ".join(scenarios))
+    project = safe_get_project_from_context(ctx, project_path)
+    scenarios = project.list_scenario_names()
+    print(f"Scenarios in project with project_id={project.config.project_id}:")
+    for scenario in scenarios:
+        print(f"  {scenario}")
 
 
 def handle_stride_exception(
@@ -155,10 +269,22 @@ def handle_stride_exception(
         return res, 1
 
 
+def safe_get_project_from_context(ctx: click.Context, project_path: Path) -> Project:
+    res = handle_stride_exception(ctx, Project.load, project_path)
+    if res[1] != 0:
+        ctx.exit(res[1])
+    project = res[0]
+    assert isinstance(project, Project)
+    return project
+
+
 cli.add_command(projects)
 cli.add_command(datasets)
 cli.add_command(scenarios)
 projects.add_command(create_project)
 datasets.add_command(list_datasets)
 datasets.add_command(show_dataset)
+scenarios.add_command(override_intermediate_table)
+scenarios.add_command(export_intermediate_table)
+scenarios.add_command(list_intermediate_tables)
 scenarios.add_command(list_scenarios)
