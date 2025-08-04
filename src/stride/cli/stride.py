@@ -12,11 +12,15 @@ from loguru import logger
 from stride import Project, Scenario
 
 
+LOGURU_LEVELS = ["TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"]
+
+
 @click.group("stride")
 @click.option(
     "-c",
     "--console-level",
     default="INFO",
+    type=click.Choice(LOGURU_LEVELS),
     show_default=True,
     help="Console log level",
 )
@@ -24,6 +28,7 @@ from stride import Project, Scenario
     "-f",
     "--file-level",
     default="INFO",
+    type=click.Choice(LOGURU_LEVELS),
     show_default=True,
     help="Console log level",
 )

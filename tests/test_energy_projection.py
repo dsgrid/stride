@@ -5,6 +5,7 @@ from duckdb import DuckDBPyConnection, DuckDBPyRelation
 from pandas.testing import assert_frame_equal
 
 from stride import Project
+from stride.db_interface import make_dsgrid_data_table_name
 
 
 def test_energy_projection(default_project: Project) -> None:
@@ -31,15 +32,17 @@ def compute_energy_projection(
     rel_cit = compute_energy_projection_com_ind_tra(
         filter_by_com_ind_tra(energy_intensity_parsed),
         filter_by_com_ind_tra(profiles),
-        con.table(f"dsgrid_data.{scenario}__gdp__1_0_0").filter(f"geography = '{country}'"),
+        con.table(make_dsgrid_data_table_name(scenario, "gdp")).filter(f"geography = '{country}'"),
         scenario,
     )
     rel_res = compute_energy_projection_res(
         con,
         filter_by_res(energy_intensity_parsed),
         filter_by_res(profiles),
-        con.table(f"dsgrid_data.{scenario}__hdi__1_0_0").filter(f"geography = '{country}'"),
-        con.table(f"dsgrid_data.{scenario}__population__1_0_0").filter(f"geography = '{country}'"),
+        con.table(make_dsgrid_data_table_name(scenario, "hdi")).filter(f"geography = '{country}'"),
+        con.table(make_dsgrid_data_table_name(scenario, "population")).filter(
+            f"geography = '{country}'"
+        ),
         scenario,
     )
     return rel_cit.union(rel_res)
@@ -165,16 +168,16 @@ def make_energy_intensity_parsed(
     con: DuckDBPyConnection, scenario: str, country: str
 ) -> DuckDBPyRelation:
     rel = (
-        con.table(f"dsgrid_data.{scenario}__energy_intensity__1_0_0")
+        con.table(make_dsgrid_data_table_name(scenario, "energy_intensity"))
         .filter(f"geography = '{country}'")
         .select(
             """
-       geography
-       ,sector
-       ,SPLIT_PART(metric, '_', 2) AS parameter
-       ,SPLIT_PART(metric, '_', 3) AS regression_type
-       ,value
-    """
+           geography
+           ,sector
+           ,SPLIT_PART(metric, '_', 2) AS parameter
+           ,SPLIT_PART(metric, '_', 3) AS regression_type
+           ,value
+        """
         )
     )
     pivoted = pivot_energy_intensity(con, rel)

@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
+from pytest import TempPathFactory
 
 from stride.cli.stride import cli
 from stride.project import Project
@@ -15,7 +16,7 @@ def project_config_file() -> Path:
 
 
 @pytest.fixture
-def default_project(tmp_path_factory) -> Project:
+def default_project(tmp_path_factory: TempPathFactory) -> Project:
     """Create the default test project.
     Callers must not mutate any data because this is a shared fixture.
     """

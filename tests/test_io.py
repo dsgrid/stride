@@ -13,7 +13,10 @@ def test_create_table_from_csv_file(tmp_path: Path) -> None:
     df.to_csv(filename, index=False)
     con = duckdb.connect()
     create_table_from_file(
-        con, "my_table", filename, dtypes={"a": duckdb.typing.VARCHAR, "b": duckdb.typing.DOUBLE}
+        con,
+        "my_table",
+        filename,
+        dtypes={"a": duckdb.typing.VARCHAR, "b": duckdb.typing.DOUBLE},  # type: ignore
     )
     df2 = con.table("my_table").to_df()
     assert_frame_equal(df, df2)

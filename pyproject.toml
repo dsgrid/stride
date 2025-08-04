@@ -65,6 +65,7 @@ stride = "stride.cli.stride:cli"
 [tool.mypy]
 files = [
   "src",
+  "tests",
 ]
 strict = true
 

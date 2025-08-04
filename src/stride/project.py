@@ -13,6 +13,7 @@ from duckdb import DuckDBPyConnection, DuckDBPyRelation
 from loguru import logger
 
 import stride
+from stride.db_interface import make_dsgrid_data_table_name
 from stride.default_datasets import create_test_datasets
 from stride.default_project import create_dsgrid_project
 from stride.dsgrid_integration import deploy_to_dsgrid_registry, make_mapped_datasets
@@ -185,7 +186,7 @@ class Project:
         )
 
     def compute_energy_projection(self) -> None:
-        """Compute the energy projection dataset from all scenarios."""
+        """Compute the energy projection dataset for all scenarios."""
         table_overrides = self._get_table_overrides()
         orig = os.getcwd()
         model_years = ",".join((str(x) for x in self._config.list_model_years()))
@@ -199,11 +200,12 @@ class Project:
                 f'"model_years": "({model_years})"'
                 f"{override_str}}}"
             )
-            cmd = ["dbt", "build", "--vars", vars_string]
+            # TODO: May want to run `build` instead of `run` if we add dbt tests.
+            cmd = ["dbt", "run", "--vars", vars_string]
             self._con.close()
             try:
                 os.chdir(self._path / DBT_DIR)
-                logger.info("Build scenario={} dbt models with '{}'", scenario.name, " ".join(cmd))
+                logger.info("Run scenario={} dbt models with '{}'", scenario.name, " ".join(cmd))
                 subprocess.run(cmd, check=True)
             finally:
                 os.chdir(orig)
@@ -252,7 +254,7 @@ class Project:
 
     def show_dataset(self, dataset_id: str, scenario: str = "baseline", limit: int = 20) -> None:
         """Return a list of scenario names in the project."""
-        table = f"dsgrid_data.{scenario}__{dataset_id}__1_0_0"
+        table = make_dsgrid_data_table_name(scenario, dataset_id)
         print(self._con.sql(f"SELECT * FROM {table} LIMIT {limit}"))
 
     def _get_table_overrides(self) -> dict[str, list[str]]:

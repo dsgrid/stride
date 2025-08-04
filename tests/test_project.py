@@ -1,7 +1,10 @@
+from pathlib import Path
+
 import pandas as pd
 import pytest
 import shutil
 from click.testing import CliRunner
+from pytest import TempPathFactory
 
 from stride import Project
 from stride.models import Scenario
@@ -10,7 +13,7 @@ from stride.cli.stride import cli
 
 
 @pytest.fixture(scope="module")
-def default_project(tmp_path_factory, project_config_file) -> Project:
+def default_project(tmp_path_factory: TempPathFactory, project_config_file: Path) -> Project:
     """Create the default test project.
     Callers must not mutate any data because this is a shared fixture.
     """
@@ -65,7 +68,7 @@ def test_scenario_name() -> None:
         Scenario(name="allowed")
 
 
-def test_invalid_load(tmp_path, default_project: Project) -> None:
+def test_invalid_load(tmp_path: Path, default_project: Project) -> None:
     project = default_project
     new_path = tmp_path / "project2"
     shutil.copytree(project.path, new_path)
@@ -80,7 +83,9 @@ def test_invalid_load(tmp_path, default_project: Project) -> None:
     assert result.exit_code != 0
 
 
-def test_override_intermediate_table(tmp_path_factory, default_project: Project) -> None:
+def test_override_intermediate_table(
+    tmp_path_factory: TempPathFactory, default_project: Project
+) -> None:
     project = default_project
     path = project.path
     orig_total = (
