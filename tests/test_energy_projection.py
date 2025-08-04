@@ -1,4 +1,4 @@
-from typing import Sequence
+from typing import Any, Sequence
 from uuid import uuid4
 
 from duckdb import DuckDBPyConnection, DuckDBPyRelation
@@ -47,7 +47,7 @@ def compute_energy_projection(
 
 def compute_energy_projection_com_ind_tra(
     ei: DuckDBPyRelation,
-    profiles: DuckDBPyRelation,
+    load_shapes: DuckDBPyRelation,
     gdp: DuckDBPyRelation,
     scenario: str,
 ) -> DuckDBPyRelation:
@@ -58,40 +58,35 @@ def compute_energy_projection_com_ind_tra(
         ,{gdp.alias}.value AS gdp_value
     """
     )
-    ei_gdp_profiles = ei_gdp.join(
-        profiles,
+    ei_gdp_regression = ei_gdp.select(
+        """
+        model_year
+        ,geography
+        ,sector
+        ,CASE
+            WHEN regression_type = 'exp'
+                THEN EXP(a0 + a1) * gdp_value
+            WHEN regression_type = 'lin'
+                THEN (a0 + a1) * gdp_value
+        END AS value
+    """
+    )
+
+    return load_shapes.join(
+        ei_gdp_regression,
         f"""
-            {ei_gdp.alias}.geography = {profiles.alias}.geography AND
-            {ei_gdp.alias}.sector = {profiles.alias}.sector
+            {load_shapes.alias}.geography = {ei_gdp_regression.alias}.geography AND
+            {load_shapes.alias}.sector = {ei_gdp_regression.alias}.sector
         """,
     ).select(
         f"""
-        {profiles.alias}.timestamp
-        ,{ei_gdp.alias}.model_year
-        ,{ei_gdp.alias}.geography
-        ,{profiles.alias}.metric
-        ,{ei_gdp.alias}.sector
-        ,{ei_gdp.alias}.regression_type
-        ,{ei_gdp.alias}.a0
-        ,{ei_gdp.alias}.a1
-        ,{ei_gdp.alias}.gdp_value
-        ,{profiles.alias}.value
-    """
-    )
-    return ei_gdp_profiles.select(
-        f"""
-        timestamp
-        ,model_year
+        {load_shapes.alias}.timestamp
+        ,{ei_gdp_regression.alias}.model_year
         ,'{scenario}' AS scenario
-        ,geography
-        ,sector
-        ,metric
-        ,CASE
-            WHEN regression_type = 'exp'
-                THEN EXP(a0 + a1) * gdp_value * value
-            WHEN regression_type = 'lin'
-                THEN (a0 + a1) * gdp_value * value
-        END AS value
+        ,{ei_gdp_regression.alias}.geography
+        ,{ei_gdp_regression.alias}.sector
+        ,{load_shapes.alias}.metric
+        ,{ei_gdp_regression.alias}.value * {load_shapes.alias}.value AS value
     """
     )
 
@@ -99,12 +94,11 @@ def compute_energy_projection_com_ind_tra(
 def compute_energy_projection_res(
     con: DuckDBPyConnection,
     ei: DuckDBPyRelation,
-    profiles: DuckDBPyRelation,
+    load_shapes: DuckDBPyRelation,
     hdi: DuckDBPyRelation,
     pop: DuckDBPyRelation,
     scenario: str,
 ) -> DuckDBPyRelation:
-    profiles.set_alias("res_profiles")
     hdi_pop = hdi.join(
         pop,
         f"""
@@ -119,38 +113,30 @@ def compute_energy_projection_res(
         ,{pop.alias}.value AS pop_value
     """
     )
-    ei_hdi_pop = ei.join(hdi_pop, "geography")  # noqa: F841
-    ei_hdi_pop_profiles = con.sql(
+    ei_hdi_pop_regression = ei.join(hdi_pop, "geography").select(  # noqa: F841
         """
+        model_year
+        ,geography
+        ,sector
+        ,CASE
+            WHEN regression_type = 'exp' THEN EXP(a0 + a1) * hdi_value * pop_value
+            WHEN regression_type = 'lin' THEN (a0 + a1) *  hdi_value * pop_value
+        END AS value
+    """
+    )
+    return con.sql(
+        f"""
         SELECT
-            p.timestamp
+            ls.timestamp
             ,e.model_year
+            ,'{scenario}' AS scenario
             ,e.geography
             ,e.sector
-            ,p.metric
-            ,e.regression_type
-            ,e.a0
-            ,e.a1
-            ,e.hdi_value
-            ,e.pop_value
-            ,p.value
-        FROM ei_hdi_pop e
-        JOIN profiles p
-            ON e.geography = p.geography AND e.sector = p.sector
-        """
-    )
-    return ei_hdi_pop_profiles.select(
-        f"""
-            timestamp
-            ,model_year
-            ,'{scenario}' AS scenario
-            ,geography
-            ,sector
-            ,metric
-            ,CASE
-                WHEN regression_type = 'exp' THEN EXP(a0 + a1) * hdi_value * pop_value * value
-                WHEN regression_type = 'lin' THEN (a0 + a1) *  hdi_value * pop_value * value
-            END AS value
+            ,ls.metric
+            ,ls.value * e.value AS value
+        FROM load_shapes ls
+        JOIN ei_hdi_pop_regression e
+            ON e.geography = ls.geography AND e.sector = ls.sector
         """
     )
 
@@ -164,7 +150,7 @@ def filter_by_res(rel: DuckDBPyRelation) -> DuckDBPyRelation:
     return rel.filter("sector = 'residential'")
 
 
-def make_is_in_clause(values: Sequence) -> str:
+def make_is_in_clause(values: Sequence[Any]) -> str:
     if isinstance(values[0], str):
         vals = (f"'{x}'" for x in values)
         return "(" + ",".join(vals) + ")"

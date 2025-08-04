@@ -1,11 +1,14 @@
-Welcome to your new dbt project!
+This is stride's internal dbt project.
 
-### Using the starter project
+### Using the project
 
-Try running the following commands:
-- dbt run
-- dbt test
+Stride builds the dbt project at runtime with a command in the following format:
+```
+$ dbt run --vars '{"scenario": "baseline", "country": "country_1", "model_years": "(2025,2030,2035,2040,2045)"}'
+```
 
+When debugging problems it can be used to inspect the actual SQL queries used in
+`<your-project-path>/dbt/target/compiled/stride/models/`.
 
 ### Resources:
 - Learn more about dbt [in the docs](https://docs.getdbt.com/docs/introduction)

@@ -100,7 +100,7 @@ def test_override_intermediate_table(tmp_path_factory, default_project: Project)
         "-s",
         "baseline",
         "-t",
-        "energy_intensity_res_hdi_population_load_shapes",
+        "energy_intensity_res_hdi_population_applied_regression",
         "-f",
         str(data_file),
     ]
@@ -108,7 +108,7 @@ def test_override_intermediate_table(tmp_path_factory, default_project: Project)
     result = runner.invoke(cli, cmd)
     assert result.exit_code == 0
     df = pd.read_parquet(data_file)
-    df["value"] *= 4
+    df["value"] *= 3
     df.to_parquet(data_file)
     cmd = [
         "scenarios",
@@ -117,7 +117,7 @@ def test_override_intermediate_table(tmp_path_factory, default_project: Project)
         "-s",
         "alternate_gdp",
         "-t",
-        "energy_intensity_res_hdi_population_load_shapes",
+        "energy_intensity_res_hdi_population_applied_regression",
         "-f",
         str(data_file),
     ]
@@ -130,4 +130,4 @@ def test_override_intermediate_table(tmp_path_factory, default_project: Project)
         .to_df()["value"]
         .sum()
     )
-    assert new_total == orig_total * 4
+    assert new_total == orig_total * 3
