@@ -16,9 +16,7 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.12"]
-        os: [ubuntu-latest]
-          # Windows is failing because dsgrid submodule file paths are too long.
-          # os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest]
 
     steps:
     - uses: actions/checkout@v4
