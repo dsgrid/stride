@@ -22,6 +22,7 @@ from stride.models import (
     CalculatedTableOverride,
     CalculatedTableOverrides,
     ProjectConfig,
+    Scenario,
 )
 
 CONFIG_FILE = "project.json5"
@@ -78,7 +79,9 @@ class Project:
             msg = f"{path} does not contain a Stride project"
             raise InvalidParameter(msg)
         config = ProjectConfig.from_file(config_file)
-        return cls(config, path)
+        overrides_file = path / TABLE_OVERRIDES_FILE
+        overrides = CalculatedTableOverrides.from_file(overrides_file)
+        return cls(config, path, table_overrides=overrides)
 
     @property
     def con(self) -> DuckDBPyConnection:
@@ -172,9 +175,15 @@ class Project:
         ).fetchall()
         return [x[0] for x in result]
 
-    def list_calculated_tables(self, scenario: str) -> list[str]:
-        """List all calculated tables stored in the database for the scenario."""
-        return self.list_tables(schema=scenario)
+    def list_calculated_tables(self) -> list[str]:
+        """List all calculated tables stored in the database. They apply to each scenario."""
+        dbt_dir = self._path / DBT_DIR / "models"
+        return sorted([x.stem for x in dbt_dir.glob("*.sql")])
+
+    @staticmethod
+    def list_datasets() -> list[str]:
+        """List the datasets available in any project."""
+        return [x for x in Scenario.model_fields if x != "name"]
 
     def persist(self) -> None:
         """Persist the project config to the project directory."""
@@ -187,7 +196,7 @@ class Project:
 
     def compute_energy_projection(self) -> None:
         """Compute the energy projection dataset for all scenarios."""
-        table_overrides = self._get_table_overrides()
+        table_overrides = self.get_table_overrides()
         orig = os.getcwd()
         model_years = ",".join((str(x) for x in self._config.list_model_years()))
         for i, scenario in enumerate(self._config.scenarios):
@@ -257,7 +266,8 @@ class Project:
         table = make_dsgrid_data_table_name(scenario, dataset_id)
         print(self._con.sql(f"SELECT * FROM {table} LIMIT {limit}"))
 
-    def _get_table_overrides(self) -> dict[str, list[str]]:
+    def get_table_overrides(self) -> dict[str, list[str]]:
+        """Return a dictionary of tables being overridden for each scenario."""
         overrides: dict[str, list[str]] = defaultdict(list)
         for override in self._table_overrides.tables:
             overrides[override.scenario].append(override.table_name)
@@ -271,7 +281,7 @@ class Project:
 
     def _check_calculated_table_present(self, scenario_name: str, table_name: str) -> None:
         self._check_scenario_present(scenario_name)
-        if table_name not in self.list_calculated_tables(scenario_name):
+        if table_name not in self.list_calculated_tables():
             msg = f"{table_name=} is not a calculated table in scenario={scenario_name}"
             raise InvalidParameter(msg)
 

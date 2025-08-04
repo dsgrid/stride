@@ -8,8 +8,10 @@ from chronify.loggers import setup_logging
 from dsgrid.exceptions import DSGBaseException
 from dsgrid.cli.common import path_callback
 from loguru import logger
+from rich.console import Console
+from rich.table import Table
 
-from stride import Project, Scenario
+from stride import Project
 
 
 LOGURU_LEVELS = ["TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"]
@@ -98,7 +100,7 @@ def datasets() -> None:
 @click.command(name="list")
 def list_datasets() -> None:
     """List the datasets available in any project."""
-    names = [x for x in Scenario.model_fields if x != "name"]
+    names = Project.list_datasets()
     print(" ".join(names))
 
 
@@ -130,28 +132,67 @@ def scenarios() -> None:
     """Scenario commands"""
 
 
-@click.command()
+@click.command(name="list")
 @click.argument("project-path", type=click.Path(exists=True), callback=path_callback)
 @click.pass_context
-def list_calculated_tables(ctx: click.Context, project_path: Path) -> None:
-    """List the calculated tables in the project, including ones that are being overridden."""
+def list_scenarios(ctx: click.Context, project_path: Path) -> None:
+    """List the scenarios stored in the project."""
     project = safe_get_project_from_context(ctx, project_path)
     scenarios = project.list_scenario_names()
-    print(f"Calculated tables per scenario with project_id={project.config.project_id}:")
-    for table in project.list_calculated_tables(scenarios[0]):
-        print(f"  {table}")
+    print(f"Scenarios in project with project_id={project.config.project_id}:")
+    for scenario in scenarios:
+        print(f"  {scenario}")
+
+
+@click.group()
+def calculated_tables():
+    """Calculated table commands"""
+
+
+@click.command(name="list")
+@click.argument("project-path", type=click.Path(exists=True), callback=path_callback)
+@click.option(
+    "-s",
+    "--scenario",
+    type=str,
+    help="List tables for only this scenario. Defaults to all scenarios.",
+)
+@click.pass_context
+def list_calculated_tables(ctx: click.Context, project_path: Path, scenario: str | None) -> None:
+    """List the calculated tables in the project and whether they are being overridden."""
+    project = safe_get_project_from_context(ctx, project_path)
+    scenarios = project.list_scenario_names() if scenario is None else [scenario]
+    table_overrides = project.get_table_overrides()
+    table_override_map: dict[tuple[str, str], bool] = {}
+    tables: list[str] = sorted(project.list_calculated_tables())
+
+    console_table = Table(show_header=True, title="Calculated table overrides by scenario")
+    console_table.add_column("table")
+    for scenario in scenarios:
+        console_table.add_column(scenario)
+        overrides = set(table_overrides.get(scenario, []))
+        for table in tables:
+            table_override_map[(scenario, table)] = table in overrides
+
+    for table in tables:
+        row = [str(table_override_map[(x, table)]).lower() for x in scenarios]
+        console_table.add_row(table, *row)
+
+    console = Console()
+    print()
+    console.print(console_table)
 
 
 _add_from_calculated_table_epilog = """
 Examples:\n
-$ stride scenarios override-calculated-table my_project \\ \n
+$ stride calculated-tables override my_project \\ \n
     --scenario=custom_load_shapes \\ \n
     --table-name=energy_intensity_res_hdi_population_load_shapes \\ \n
     --filename=custom_load_shapes.csv \n
 """
 
 
-@click.command(epilog=_add_from_calculated_table_epilog)
+@click.command(name="override", epilog=_add_from_calculated_table_epilog)
 @click.argument("project-path", type=click.Path(exists=True), callback=path_callback)
 @click.option(
     "-f",
@@ -184,14 +225,14 @@ def _override_calculated_table(
 
 _export_calculated_table_epilog = """
 Examples:\n
-$ stride scenarios export-calculated-table my_project \\ \n
+$ stride calculated-tables export my_project \\ \n
     --scenario=baseline \\ \n
     --table-name=energy_intensity_res_hdi_population_load_shapes \\ \n
     --filename=custom_load_shapes.csv \n
 """
 
 
-@click.command(epilog=_export_calculated_table_epilog)
+@click.command(name="export", epilog=_export_calculated_table_epilog)
 @click.argument("project-path", type=click.Path(exists=True), callback=path_callback)
 @click.option(
     "-f",
@@ -242,18 +283,6 @@ def _export_calculated_table(
     project.export_calculated_table(scenario, table_name, filename, overwrite=overwrite)
 
 
-@click.command(name="list")
-@click.argument("project-path", type=click.Path(exists=True), callback=path_callback)
-@click.pass_context
-def list_scenarios(ctx: click.Context, project_path: Path) -> None:
-    """List the scenarios stored in the project."""
-    project = safe_get_project_from_context(ctx, project_path)
-    scenarios = project.list_scenario_names()
-    print(f"Scenarios in project with project_id={project.config.project_id}:")
-    for scenario in scenarios:
-        print(f"  {scenario}")
-
-
 def handle_stride_exception(
     ctx: click.Context, func: Callable[..., Any], *args: Any, **kwargs: Any
 ) -> Any:
@@ -285,10 +314,11 @@ def safe_get_project_from_context(ctx: click.Context, project_path: Path) -> Pro
 cli.add_command(projects)
 cli.add_command(datasets)
 cli.add_command(scenarios)
+cli.add_command(calculated_tables)
 projects.add_command(create_project)
 datasets.add_command(list_datasets)
 datasets.add_command(show_dataset)
-scenarios.add_command(override_calculated_table)
-scenarios.add_command(export_calculated_table)
-scenarios.add_command(list_calculated_tables)
 scenarios.add_command(list_scenarios)
+calculated_tables.add_command(list_calculated_tables)
+calculated_tables.add_command(override_calculated_table)
+calculated_tables.add_command(export_calculated_table)

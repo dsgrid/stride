@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 import pandas as pd
 import pytest
@@ -99,8 +100,8 @@ def test_override_calculated_table(
     tmp_path = tmp_path_factory.mktemp("tmpdir")
     data_file = tmp_path / "data.parquet"
     cmd = [
-        "scenarios",
-        "export-calculated-table",
+        "calculated-tables",
+        "export",
         str(path),
         "-s",
         "baseline",
@@ -112,12 +113,18 @@ def test_override_calculated_table(
     runner = CliRunner()
     result = runner.invoke(cli, cmd)
     assert result.exit_code == 0
+
+    cmd = ["calculated-tables", "list", str(path)]
+    result = runner.invoke(cli, cmd)
+    assert result.exit_code == 0
+    assert "true" not in result.stdout
+
     df = pd.read_parquet(data_file)
     df["value"] *= 3
     df.to_parquet(data_file)
     cmd = [
-        "scenarios",
-        "override-calculated-table",
+        "calculated-tables",
+        "override",
         str(path),
         "-s",
         "alternate_gdp",
@@ -136,3 +143,13 @@ def test_override_calculated_table(
         .sum()
     )
     assert new_total == orig_total * 3
+
+    cmd = ["calculated-tables", "list", str(project2.path)]
+    result = runner.invoke(cli, cmd)
+    assert result.exit_code == 0
+    found = False
+    regex = re.compile(r"energy_intensity_res_hdi_population_applied.*true")
+    for line in result.stdout.splitlines():
+        if regex.search(line) is not None:
+            found = True
+    assert found
