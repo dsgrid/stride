@@ -30,6 +30,4 @@ clean-targets:         # directories to be removed by `dbt clean`
 
 models:
   stride:
-    # Note: energy_projection for each scenario gets overriden as 'table'.
-    #   Refer to energy_projection_scenario_placeholder.sql
     +materialized: view

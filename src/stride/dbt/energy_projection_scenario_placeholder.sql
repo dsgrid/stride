@@ -1,5 +1,3 @@
-{{ config(materialized='table') }}
-
 WITH tmp AS (
     SELECT * FROM {{ table_ref('energy_projection_com_ind_tra_load_shapes') }}
     UNION ALL
