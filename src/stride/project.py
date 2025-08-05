@@ -3,9 +3,9 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Self
+from typing import Any, Self
 
-from chronify.exceptions import InvalidParameter
+from chronify.exceptions import InvalidParameter, InvalidOperation
 import duckdb
 from chronify.utils.path_utils import check_overwrite
 from dsgrid.utils.files import dump_json_file
@@ -107,23 +107,19 @@ class Project:
         self, scenario_name: str, table_name: str, filename: Path
     ) -> None:
         """Override a calculated table for a scenario."""
+        if "_override" in table_name:
+            msg = f"Overriding an override table is not supported: {table_name=}"
+            raise InvalidOperation(msg)
         self._check_scenario_present(scenario_name)
         self._check_calculated_table_present(scenario_name, table_name)
         existing_full_name = f"{scenario_name}.{table_name}"
         override_name = f"{table_name}_override_table"
         override_full_name = f"{scenario_name}.{override_name}"
-        create_table_from_file(self._con, override_full_name, filename, replace=True)  # noqa: F841
-        new_schema = self._get_table_schema_types(override_full_name)
-        new_schema.sort(key=lambda x: x["column_name"])
-        existing_schema = self._get_table_schema_types(existing_full_name)
-        existing_schema.sort(key=lambda x: x["column_name"])
-        if new_schema != existing_schema:
-            self._con.sql(f"DROP TABLE {override_full_name}")
-            msg = (
-                f"The schema for the override table, {new_schema}, "
-                f"must match the existing schema, {existing_schema}"
-            )
-            raise InvalidParameter(msg)
+        dtypes = self._get_dtypes(filename)
+        create_table_from_file(
+            self._con, override_full_name, filename, replace=True, dtypes=dtypes
+        )  # noqa: F841
+        self._check_schemas(override_full_name, existing_full_name)
         override_file = self._path / DBT_DIR / "models" / f"{table_name}_override.sql"
         override_file.write_text(f"SELECT * FROM {override_full_name}")
         self._table_overrides.tables.append(
@@ -273,6 +269,32 @@ class Project:
             overrides[override.scenario].append(override.table_name)
         return overrides
 
+    def _check_schemas(self, override_full_name: str, existing_full_name: str) -> None:
+        new_schema = self._get_table_schema_types(override_full_name)
+        new_schema.sort(key=lambda x: x["column_name"])
+        existing_schema = self._get_table_schema_types(existing_full_name)
+        existing_schema.sort(key=lambda x: x["column_name"])
+        if new_schema != existing_schema:
+            self._con.sql(f"DROP TABLE {override_full_name}")
+            if len(new_schema) != len(existing_schema):
+                override_columns = [x["column_name"] for x in new_schema]
+                existing_columns = [x["column_name"] for x in existing_schema]
+                msg = (
+                    "The columns in the override table do not match the existing table. \n"
+                    f"{override_columns=} {existing_columns=}"
+                )
+                raise InvalidParameter(msg)
+            else:
+                for i in range(len(new_schema)):
+                    if new_schema[i] != existing_schema[i]:
+                        msg = (
+                            f"The schema for the override table, {new_schema[i]}, "
+                            f"must match the existing schema, {existing_schema[i]}"
+                        )
+                        raise InvalidParameter(msg)
+            msg = "Bug: unexpectedly did not find a mismatch {new_schema=} {existing_schema=}"
+            raise Exception(msg)
+
     def _check_scenario_present(self, scenario_name: str) -> None:
         scenarios = self.list_scenario_names()
         if scenario_name not in scenarios:
@@ -284,6 +306,21 @@ class Project:
         if table_name not in self.list_calculated_tables():
             msg = f"{table_name=} is not a calculated table in scenario={scenario_name}"
             raise InvalidParameter(msg)
+
+    @staticmethod
+    def _get_dtypes(filename: Path) -> dict[str, Any] | None:
+        """Should only be used when we know it's safe."""
+        dtypes: dict[str, str] | None = None
+        if filename.suffix == ".csv":
+            has_timestamp = False
+            with open(filename, "r", encoding="utf-8") as f_in:
+                for line in f_in:
+                    if "timestamp" in line:
+                        has_timestamp = True
+                    break
+            if has_timestamp:
+                dtypes = {"timestamp": "timestamp with time zone"}
+        return dtypes
 
     def _get_table_schema_types(self, table_name: str) -> list[dict[str, str]]:
         """Return the types of each column in the table."""

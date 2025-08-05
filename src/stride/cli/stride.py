@@ -145,7 +145,7 @@ def list_scenarios(ctx: click.Context, project_path: Path) -> None:
 
 
 @click.group()
-def calculated_tables():
+def calculated_tables() -> None:
     """Calculated table commands"""
 
 
@@ -166,7 +166,7 @@ def list_calculated_tables(ctx: click.Context, project_path: Path, scenario: str
     table_override_map: dict[tuple[str, str], bool] = {}
     tables: list[str] = sorted(project.list_calculated_tables())
 
-    console_table = Table(show_header=True, title="Calculated table overrides by scenario")
+    console_table = Table(show_header=True, title="Calculated tables, with overrides by scenario")
     console_table.add_column("table")
     for scenario in scenarios:
         console_table.add_column(scenario)
@@ -187,7 +187,7 @@ _add_from_calculated_table_epilog = """
 Examples:\n
 $ stride calculated-tables override my_project \\ \n
     --scenario=custom_load_shapes \\ \n
-    --table-name=energy_intensity_res_hdi_population_load_shapes \\ \n
+    --table-name=energy_projection_res_load_shapes \\ \n
     --filename=custom_load_shapes.csv \n
 """
 
@@ -286,7 +286,7 @@ def _export_calculated_table(
 def handle_stride_exception(
     ctx: click.Context, func: Callable[..., Any], *args: Any, **kwargs: Any
 ) -> Any:
-    """Handle any sparkctl exceptions as specified by the CLI parameters."""
+    """Handle any stride exceptions as specified by the CLI parameters."""
     res = None
     try:
         res = func(*args, **kwargs)

@@ -84,11 +84,14 @@ def test_invalid_load(tmp_path: Path, default_project: Project) -> None:
     assert result.exit_code != 0
 
 
+@pytest.mark.parametrize("file_ext", [".csv", ".parquet"])
 def test_override_calculated_table(
-    tmp_path_factory: TempPathFactory, default_project: Project
+    tmp_path_factory: TempPathFactory, default_project: Project, file_ext: str
 ) -> None:
-    project = default_project
-    path = project.path
+    tmp_path = tmp_path_factory.mktemp("tmpdir")
+    new_path = tmp_path / "project2"
+    shutil.copytree(default_project.path, new_path)
+    project = Project.load(new_path)
     orig_total = (
         project.get_energy_projection()
         .filter("sector = 'residential' and scenario = 'alternate_gdp'")
@@ -97,16 +100,15 @@ def test_override_calculated_table(
     )
     project.con.close()
 
-    tmp_path = tmp_path_factory.mktemp("tmpdir")
     data_file = tmp_path / "data.parquet"
     cmd = [
         "calculated-tables",
         "export",
-        str(path),
+        str(new_path),
         "-s",
         "baseline",
         "-t",
-        "energy_intensity_res_hdi_population_applied_regression",
+        "energy_projection_res_load_shapes",
         "-f",
         str(data_file),
     ]
@@ -114,28 +116,33 @@ def test_override_calculated_table(
     result = runner.invoke(cli, cmd)
     assert result.exit_code == 0
 
-    cmd = ["calculated-tables", "list", str(path)]
+    cmd = ["calculated-tables", "list", str(new_path)]
     result = runner.invoke(cli, cmd)
     assert result.exit_code == 0
     assert "true" not in result.stdout
 
     df = pd.read_parquet(data_file)
     df["value"] *= 3
-    df.to_parquet(data_file)
+    if file_ext == ".csv":
+        out_file = data_file.with_suffix(".csv")
+        df.to_csv(out_file, header=True, index=False)
+    else:
+        out_file = data_file
+        df.to_parquet(data_file)
     cmd = [
         "calculated-tables",
         "override",
-        str(path),
+        str(new_path),
         "-s",
         "alternate_gdp",
         "-t",
-        "energy_intensity_res_hdi_population_applied_regression",
+        "energy_projection_res_load_shapes",
         "-f",
-        str(data_file),
+        str(out_file),
     ]
     result = runner.invoke(cli, cmd)
     assert result.exit_code == 0
-    project2 = Project.load(path)
+    project2 = Project.load(new_path)
     new_total = (
         project2.get_energy_projection()
         .filter("sector = 'residential' and scenario = 'alternate_gdp'")
@@ -148,8 +155,51 @@ def test_override_calculated_table(
     result = runner.invoke(cli, cmd)
     assert result.exit_code == 0
     found = False
-    regex = re.compile(r"energy_intensity_res_hdi_population_applied.*true")
+    regex = re.compile(r"energy_projection_res_load_shapes.*true")
     for line in result.stdout.splitlines():
         if regex.search(line) is not None:
             found = True
     assert found
+
+
+def test_override_calculated_table_invalid(
+    tmp_path_factory: TempPathFactory, default_project: Project
+) -> None:
+    tmp_path = tmp_path_factory.mktemp("tmpdir")
+    new_path = tmp_path / "project2"
+    shutil.copytree(default_project.path, new_path)
+    project = Project.load(new_path)
+    project.con.close()
+
+    data_file = tmp_path / "data.parquet"
+    cmd = [
+        "calculated-tables",
+        "export",
+        str(new_path),
+        "-s",
+        "baseline",
+        "-t",
+        "energy_projection_res_load_shapes",
+        "-f",
+        str(data_file),
+    ]
+    runner = CliRunner()
+    result = runner.invoke(cli, cmd)
+    assert result.exit_code == 0
+
+    df = pd.read_parquet(data_file)
+    out_file = data_file.with_suffix(".csv")
+    df.to_csv(out_file, header=True, index=True)
+    cmd = [
+        "calculated-tables",
+        "override",
+        str(new_path),
+        "-s",
+        "alternate_gdp",
+        "-t",
+        "energy_projection_res_load_shapes",
+        "-f",
+        str(out_file),
+    ]
+    result = runner.invoke(cli, cmd)
+    assert result.exit_code == 1
