@@ -25,7 +25,7 @@ Lingering Questions/Comments:
 
 import threading
 from pathlib import Path
-from typing import  Literal, TYPE_CHECKING
+from typing import  Literal, TYPE_CHECKING, get_args
 import pandas as pd
 
 if TYPE_CHECKING:
@@ -43,6 +43,17 @@ TimeGroup = Literal["Seasonal", "Seasonal and Weekday/Weekend", "Weekday/Weekend
 TimeGroupAgg = Literal["Average Day", "Peak Day", "Minimum Day", "Median Day"]
 Season = Literal["Spring", "Summer", "Fall", "Winter"]
 
+
+def literal_to_list(literal, include_none_str=False, prefix=None) -> list[str]:
+    """Converts a Literal to a list."""
+    result = list(get_args(literal)) if hasattr(literal, '__args__') else list(get_args(literal))
+
+    if prefix:
+        result = [f"{prefix}{r}" for r in result]
+    if include_none_str:
+        result.insert(0, "None")
+
+    return result
 
 # TODO remove hard coded value.
 ENERGY_PROJ_TABLE = "main.scenario_comparison"
@@ -199,65 +210,86 @@ class APIClient:
     _lock = threading.Lock()
 
     def __new__(cls, path_or_conn: str | Path | 'duckdb.DuckDBPyConnection' | None = None):
-        if cls._instance is None:
-            with cls._lock:
-                if cls._instance is None:
-                    cls._instance = super().__new__(cls)
-        return cls._instance
+        # Always create a new instance instead of singleton for development
+        return super().__new__(cls)
 
     def __init__(self, path_or_conn: str | Path | 'duckdb.DuckDBPyConnection' | None = None):
-        if not hasattr(self, '_initialized'):
-            if path_or_conn is None:
-                raise ValueError("Database connection, path, or connection string must be provided on first initialization")
+        # Remove singleton behavior during development
+        self._initialize_connection(path_or_conn)
 
-            # Handle different input types
-            if isinstance(path_or_conn, str):
-                # Convert string to Path and validate
-                db_path = Path(path_or_conn)
-                if not db_path.exists():
-                    raise FileNotFoundError(f"Database file not found: {db_path}")
-                if not db_path.is_file():
-                    raise ValueError(f"Path is not a file: {db_path}")
+    def _close_existing_connection(self):
+        """Close the existing database connection if it exists."""
+        if hasattr(self, "db") and self.db:
+            try:
+                self.db.close()
+                print("Database connection closed")
+            except Exception as e:
+                print(f"Error closing connection: {e}")
+                pass
 
-                # Create DuckDB connection
-                try:
-                    import duckdb
-                    self.db = duckdb.connect(str(db_path))
-                except ImportError:
-                    raise ImportError("duckdb package is required but not installed")
-                except Exception as e:
+    def _initialize_connection(self, path_or_conn):
+        """Initialize the database connection"""
+        if path_or_conn is None:
+            raise ValueError("Database connection, path, or connection string must be provided.")
+
+        # Close any existing connection first
+        self._close_existing_connection()
+
+        if isinstance(path_or_conn, str):
+            db_path = Path(path_or_conn)
+            if not db_path.exists():
+                raise FileNotFoundError(f"Database file not found: {db_path}")
+            if not db_path.is_file():
+                raise ValueError(f"Path is not a file: {db_path}")
+
+            try:
+                import duckdb
+                # Try read-only connection first to avoid locks
+                print(f"Attempting read-only connection to: {db_path}")
+                self.db = duckdb.connect(str(db_path), read_only=True)
+                print(f"Successfully connected to database: {db_path}")
+            except duckdb.IOException as e:
+                if "lock" in str(e).lower():
+                    print(f"Database is locked. Error: {e}")
+                    print("Try killing the process mentioned in the error or use 'pkill -f python'")
+                    raise ConnectionError(f"Database is locked by another process. {e}")
+                else:
                     raise ConnectionError(f"Failed to connect to database at {db_path}: {e}")
+            except ImportError:
+                raise ImportError("duckdb package is required but not installed")
+            except Exception as e:
+                raise ConnectionError(f"Failed to connect to database at {db_path}: {e}")
 
-            elif isinstance(path_or_conn, Path):
-                # Validate Path object
-                if not path_or_conn.exists():
-                    raise FileNotFoundError(f"Database file not found: {path_or_conn}")
-                if not path_or_conn.is_file():
-                    raise ValueError(f"Path is not a file: {path_or_conn}")
+        elif isinstance(path_or_conn, Path):
+            # Validate Path object
+            if not path_or_conn.exists():
+                raise FileNotFoundError(f"Database file not found: {path_or_conn}")
+            if not path_or_conn.is_file():
+                raise ValueError(f"Path is not a file: {path_or_conn}")
+            # Create DuckDB connection
+            try:
+                import duckdb
+                self.db = duckdb.connect(str(path_or_conn), read_only=True)
+            except ImportError:
+                raise ImportError("duckdb package is required but not installed")
+            except Exception as e:
+                raise ConnectionError(f"Failed to connect to database at {path_or_conn}: {e}")
+        else:
+            # Assume it's a DuckDB connection object
+            try:
+                # Basic validation - check if it has execute method
+                if not hasattr(path_or_conn, 'execute'):
+                    raise ValueError("Invalid database connection object - missing execute method")
+                self.db = path_or_conn
+            except Exception as e:
+                raise ValueError(f"Invalid database connection: {e}")
 
-                # Create DuckDB connection
-                try:
-                    import duckdb
-                    self.db = duckdb.connect(str(path_or_conn))
-                except ImportError:
-                    raise ImportError("duckdb package is required but not installed")
-                except Exception as e:
-                    raise ConnectionError(f"Failed to connect to database at {path_or_conn}: {e}")
+        self._years = None
+        self._scenarios = None
 
-            else:
-                # Assume it's a DuckDB connection object
-                try:
-                    # Basic validation - check if it has execute method
-                    if not hasattr(path_or_conn, 'execute'):
-                        raise ValueError("Invalid database connection object - missing execute method")
-                    self.db = path_or_conn
-                except Exception as e:
-                    raise ValueError(f"Invalid database connection: {e}")
-
-            self._initialized = True
-            # Initialize cached properties
-            self._years = None
-            self._scenarios = None
+    def __del__(self):
+        """Cleanup on object destruction."""
+        self._close_existing_connection()
 
     @property
     def years(self) -> list[int]:
@@ -272,6 +304,12 @@ class APIClient:
         if self._years is None:
             self._years = self._fetch_years()
         return self._years
+
+    @property
+    def end_uses(self):
+        """TODO Need end use data"""
+        return []
+
 
     @property
     def scenarios(self) -> list[str]:
@@ -425,11 +463,12 @@ class APIClient:
         if group_by:
             group_col = group_by.lower().replace(' ', '_')
             sql = f"""
-            SELECT scenario, year, {group_col}, value
+            SELECT scenario, year, {group_col}, SUM(value) as value
             FROM {ENERGY_PROJ_TABLE}
             WHERE country = '{PROJECT_COUNTRY}'
             AND scenario IN ('{"','".join(scenarios)}')
             AND year IN ({','.join(map(str, years))})
+            GROUP BY scenario, year, {group_col}
             ORDER BY scenario, year, {group_col}
             """
         else:
@@ -442,7 +481,6 @@ class APIClient:
             GROUP BY scenario, year
             ORDER BY scenario, year
             """
-
         # Execute query and return DataFrame
         return self.db.execute(sql).df()
 
@@ -630,17 +668,17 @@ class APIClient:
 
     def get_load_duration_curve(
             self,
-            year: int,
+            years: int | list[int] | None = None,
             scenarios: list[str] | None = None,
     ) -> pd.DataFrame:
-        """Gets the load duration curve for each scenario
+        """Gets the load duration curve for each scenario or year
 
         Parameters
         ----------
-        year : int
-            A valid year for the given project.
+        years : int | list[int], optional
+            A valid year or list of years for the given project. If None, uses first year.
         scenarios : list[str], optional
-            List of scenarios to filter by
+            List of scenarios to filter by. If None, uses all scenarios.
 
         Returns
         -------
@@ -648,56 +686,89 @@ class APIClient:
             DataFrame with load duration curve data.
 
             Columns:
-            - {scenario_name}: float, demand values sorted from highest to lowest for each scenario
+            - {scenario_name} or {year}: float, demand values sorted from highest to lowest
+              for each scenario (if multiple scenarios) or year (if multiple years)
 
             Index: row number (0 to 8759 for hourly data)
+
+        Raises
+        ------
+        ValueError
+            If both years and scenarios are lists with more than one item
 
         Examples
         --------
         >>> client = APIClient(path_or_conn)
+        >>> # Single year, multiple scenarios
         >>> df = client.get_load_duration_curve(2030, ["baseline", "high_growth"])
-
-        |      | baseline | high_growth |
-        |------|----------|-------------|
-        | 0    | 5500.2   | 5890.1      |
-        | 1    | 5495.8   | 5885.3      |
-        | 2    | 5490.1   | 5880.7      |
-        | ...  | ...      | ...         |
+        >>> # Multiple years, single scenario
+        >>> df = client.get_load_duration_curve([2025, 2030], ["baseline"])
+        >>> # Single year, single scenario
+        >>> df = client.get_load_duration_curve(2030, ["baseline"])
         """
+        # Handle defaults
+        if years is None:
+            years = [self.years[0]]  # Use first year as default
+        elif isinstance(years, int):
+            years = [years]
+
         if scenarios is None:
             scenarios = self.scenarios
 
+        # Validate that we don't have multiple years AND multiple scenarios
+        if len(years) > 1 and len(scenarios) > 1:
+            raise ValueError("Cannot specify multiple years and multiple scenarios simultaneously. "
+                           "Please specify either multiple years with a single scenario, "
+                           "or multiple scenarios with a single year.")
+
         # Validate inputs
         self._validate_scenarios(scenarios)
-        self._validate_years([year])
+        self._validate_years(years)
 
-        sql = """
-        SELECT {scenario_cols}
-        FROM (
-            SELECT scenario, hour, SUM(value) as total_demand
-            FROM {energy_proj_table}
-            WHERE country = '{project_country}'
-            AND year = {year}
-            AND scenario IN ({scenarios})
-            GROUP BY scenario, hour
-        )
-        PIVOT (
-            SUM(total_demand) FOR scenario IN ({scenarios})
-        )
-        """.format(
-            scenario_cols=','.join([f'"{scenario}"' for scenario in scenarios]),
-            year=year,
-            scenarios="'" + "','".join(scenarios) + "'",
-            energy_proj_table=ENERGY_PROJ_TABLE,
-            project_country=PROJECT_COUNTRY
-        )
-
+        # Determine what we're pivoting on
+        if len(years) > 1:
+            # Multiple years, single scenario - pivot on year
+            pivot_cols = [str(year) for year in years]
+            sql = f"""
+            WITH hourly_totals AS (
+                SELECT year, hour, SUM(value) as total_demand
+                FROM {ENERGY_PROJ_TABLE}
+                WHERE country = '{PROJECT_COUNTRY}'
+                AND year IN ({','.join(map(str, years))})
+                AND scenario = '{scenarios[0]}'
+                GROUP BY year, hour
+            )
+            SELECT {', '.join([f'"{col}"' for col in pivot_cols])}
+            FROM hourly_totals
+            PIVOT (
+                SUM(total_demand) FOR year IN ({', '.join(map(str, years))})
+            )
+            """
+        else:
+            # Single year, multiple scenarios - pivot on scenario
+            pivot_cols = scenarios
+            sql = f"""
+            WITH hourly_totals AS (
+                SELECT scenario, hour, SUM(value) as total_demand
+                FROM {ENERGY_PROJ_TABLE}
+                WHERE country = '{PROJECT_COUNTRY}'
+                AND year = {years[0]}
+                AND scenario IN ('{"','".join(scenarios)}')
+                GROUP BY scenario, hour
+            )
+            SELECT {', '.join([f'"{col}"' for col in pivot_cols])}
+            FROM hourly_totals
+            PIVOT (
+                SUM(total_demand) FOR scenario IN ('{"','".join(scenarios)}')
+            )
+            """
 
         df = self.db.execute(sql).df()
 
-        for scenario in scenarios:
-            if scenario in df.columns:
-                df[scenario] = df[scenario].sort_values(ascending=False).values
+        # Sort each column from highest to lowest
+        for col in pivot_cols:
+            if col in df.columns:
+                df[col] = df[col].sort_values(ascending=False).values
 
         # Reset index to get row numbers starting from 0
         result_df = df.reset_index(drop=True)
@@ -1028,6 +1099,132 @@ class APIClient:
         ORDER BY {order_by_clause}
         """
 
-        breakpoint()
+        return self.db.execute(sql).df()
+
+    def get_seasonal_load_area(
+        self,
+        scenario: str,
+        year: int,
+        group_by: TimeGroup = "Seasonal",
+        agg: TimeGroupAgg = "Average Day",
+        breakdown: ConsumptionBreakdown | None = None
+    ) -> pd.DataFrame:
+        """
+        Get seasonal load area data for a single year with optional breakdown by sector/end_use.
+
+        Parameters
+        ----------
+        scenario : str
+            A valid scenario within the project.
+        year : int
+            A single valid model year.
+        group_by : TimeGroup
+            Seasonal, Weekday/Weekend, or Both.
+        agg : TimeGroupAgg
+            How to aggregate each hour of the day.
+        breakdown : ConsumptionBreakdown, optional
+            Optional breakdown by Sector or End Use.
+
+        Returns
+        -------
+        pd.DataFrame
+            DataFrame with seasonal load area data in tall format.
+
+            Columns:
+            - scenario: str, scenario name
+            - year: int, projection year
+            - season: str, season name (Winter, Spring, Summer, Fall) - if group_by includes "Seasonal"
+            - day_type: str, day type (Weekday, Weekend) - if group_by includes "Weekday/Weekend"
+            - hour_of_day: int, hour of day (0-23)
+            - sector/end_use: str, breakdown category (if breakdown specified)
+            - value: float, aggregated load value
+
+        Examples
+        --------
+        >>> client = APIClient(path_or_conn)
+        >>> df = client.get_seasonal_load_area("baseline", 2030)
+
+        | scenario    | year | season | hour_of_day | value |
+        |-------------|------|--------|-------------|-------|
+        | baseline    | 2030 | Winter | 0           | 3400.5|
+        | baseline    | 2030 | Winter | 1           | 3350.2|
+        | baseline    | 2030 | Spring | 0           | 2900.7|
+        | baseline    | 2030 | Spring | 1           | 2850.3|
+
+        >>> df = client.get_seasonal_load_area("baseline", 2030, breakdown="Sector")
+
+        | scenario    | year | season | hour_of_day | sector      | value |
+        |-------------|------|--------|-------------|-------------|-------|
+        | baseline    | 2030 | Winter | 0           | Commercial  | 1200.5|
+        | baseline    | 2030 | Winter | 0           | Industrial  | 1500.2|
+        | baseline    | 2030 | Winter | 0           | Residential | 1700.8|
+        | baseline    | 2030 | Spring | 0           | Commercial  | 1300.7|
+        | baseline    | 2030 | Spring | 0           | Industrial  | 1600.3|
+        """
+        # Validate inputs
+        self._validate_scenarios([scenario])
+        self._validate_years([year])
+
+        # Build the select and group by clauses
+        select_cols = ["scenario", "year", "hour % 24 as hour_of_day"]
+        group_by_cols = ["scenario", "year", "hour % 24"]
+
+        # Add breakdown column if specified
+        if breakdown:
+            breakdown_col = breakdown.lower().replace(' ', '_')
+            select_cols.append(breakdown_col)
+            group_by_cols.append(breakdown_col)
+
+        # Add seasonal grouping if needed
+        if "Seasonal" in group_by:
+            season_case = _generate_season_case_statement("hour")
+            select_cols.append(f"({season_case}) as season")
+            group_by_cols.append(f"({season_case})")
+
+        # Add weekday/weekend grouping if needed
+        if "Weekday/Weekend" in group_by:
+            weekday_case = _generate_weekday_weekend_case_statement("hour")
+            select_cols.append(f"({weekday_case}) as day_type")
+            group_by_cols.append(f"({weekday_case})")
+
+        # Determine aggregation function based on agg parameter
+        if agg == "Average Day":
+            agg_func = "AVG"
+        elif agg == "Peak Day":
+            agg_func = "MAX"
+        elif agg == "Minimum Day":
+            agg_func = "MIN"
+        elif agg == "Median Day":
+            agg_func = "MEDIAN"
+        else:
+            raise ValueError(f"Invalid aggregation option: {agg}")
+
+        # Build the SQL query
+        select_clause = ", ".join(select_cols)
+        group_by_clause = ", ".join(group_by_cols)
+
+        # Build ORDER BY clause
+        order_cols = ["scenario", "year"]
+        if "Seasonal" in group_by:
+            order_cols.append("season")
+        if "Weekday/Weekend" in group_by:
+            order_cols.append("day_type")
+        order_cols.append("hour_of_day")
+        if breakdown:
+            order_cols.append(breakdown_col)
+        order_by_clause = ", ".join(order_cols)
+
+        sql = f"""
+        SELECT
+            {select_clause},
+            {agg_func}(value) as value
+        FROM {ENERGY_PROJ_TABLE}
+        WHERE country = '{PROJECT_COUNTRY}'
+            AND scenario = '{scenario}'
+            AND year = {year}
+        GROUP BY {group_by_clause}
+        ORDER BY {order_by_clause}
+        """
+
         return self.db.execute(sql).df()
 

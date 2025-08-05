@@ -195,6 +195,7 @@ class TestAPIClient:
     def test_get_annual_electricity_consumption_no_breakdown(self, api_client):
         """Test annual consumption without breakdown."""
         df = api_client.get_annual_electricity_consumption()
+
         assert isinstance(df, pd.DataFrame)
         assert not df.empty
         assert 'year' in df.columns
@@ -202,12 +203,14 @@ class TestAPIClient:
     def test_get_annual_electricity_consumption_with_breakdown(self, api_client):
         """Test annual consumption with sector breakdown."""
         df = api_client.get_annual_electricity_consumption(group_by="Sector")
+        breakpoint()
         assert isinstance(df, pd.DataFrame)
         # May be empty due to placeholder SQL, but should not error
 
     def test_get_annual_peak_demand(self, api_client):
         """Test peak demand method executes."""
         df = api_client.get_annual_peak_demand()
+
         assert isinstance(df, pd.DataFrame)
         assert not df.empty
         assert 'year' in df.columns
@@ -232,11 +235,42 @@ class TestAPIClient:
 
     def test_get_load_duration_curve(self, api_client):
         """Test load duration curve method executes."""
-        valid_scenario = api_client.scenarios[0]
         valid_year = api_client.years[0]
-        df = api_client.get_load_duration_curve(valid_year)
+        df = api_client.get_load_duration_curve([valid_year])
+
+        breakpoint()
         assert isinstance(df, pd.DataFrame)
         assert not df.empty
+
+    def test_get_load_duration_curve_multiple_years_single_scenario(self, api_client):
+        """Test load duration curve with multiple years and single scenario."""
+        valid_years = api_client.years[:2] if len(api_client.years) >= 2 else [api_client.years[0]]
+        valid_scenario = [api_client.scenarios[0]]
+
+        df = api_client.get_load_duration_curve(valid_years, valid_scenario)
+        assert isinstance(df, pd.DataFrame)
+        assert not df.empty
+
+    def test_get_load_duration_curve_single_year_multiple_scenarios(self, api_client):
+        """Test load duration curve with single year and multiple scenarios."""
+        valid_year = [api_client.years[0]]
+        valid_scenarios = api_client.scenarios[:2] if len(api_client.scenarios) >= 2 else api_client.scenarios
+
+        df = api_client.get_load_duration_curve(valid_year, valid_scenarios)
+        assert isinstance(df, pd.DataFrame)
+        assert not df.empty
+
+    def test_get_load_duration_curve_multiple_years_and_scenarios_error(self, api_client):
+        """Test that specifying multiple years and scenarios raises error."""
+        valid_years = api_client.years[:2] if len(api_client.years) >= 2 else [api_client.years[0], api_client.years[0]]
+        valid_scenarios = api_client.scenarios[:2] if len(api_client.scenarios) >= 2 else [api_client.scenarios[0], api_client.scenarios[0]]
+
+        # Skip test if we don't have enough data for multiple items
+        if len(valid_years) < 2 or len(valid_scenarios) < 2:
+            pytest.skip("Insufficient test data for multiple years and scenarios")
+
+        with pytest.raises(ValueError, match="Cannot specify multiple years and multiple scenarios"):
+            api_client.get_load_duration_curve(valid_years, valid_scenarios)
 
     def test_get_scenario_summary(self, api_client):
         """Test scenario summary method executes."""
@@ -263,6 +297,7 @@ class TestAPIClient:
         valid_scenario = api_client.scenarios[0]
         valid_years = api_client.years[:2] if len(api_client.years) >= 2 else [api_client.years[0]]
         df = api_client.get_timeseries_comparison(valid_scenario, valid_years)
+
         assert isinstance(df, pd.DataFrame)
         assert not df.empty
 
@@ -270,7 +305,6 @@ class TestAPIClient:
         """Test seasonal load lines method executes."""
         valid_scenario = api_client.scenarios[0]
         df = api_client.get_seasonal_load_lines(valid_scenario)
-
         breakpoint()
         assert isinstance(df, pd.DataFrame)
         assert not df.empty

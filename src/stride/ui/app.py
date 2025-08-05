@@ -2,35 +2,34 @@ from dash import Dash, html
 import dash_bootstrap_components as dbc
 from pathlib import Path
 
-from components import Components
-from data_handler import DataHandler
-from layouts import home_page_layout
-from utils import create_color_generator
-from plotting import StridePlots
-
+from stride.ui.layouts import create_layout
+from stride.ui.color_manager import get_color_manager
+from stride.ui.plotting import StridePlots
+from stride.api import APIClient, Sectors, literal_to_list
 
 assets_path = Path(__file__).parent.absolute() / "assets"
-app = Dash("STRIDE", external_stylesheets=[dbc.themes.BOOTSTRAP], assets_folder=str(assets_path))
-
-data_handler = DataHandler()
-
-color_generator = create_color_generator(data_handler.scenarios + data_handler.end_uses)
-
-plotter = StridePlots(color_generator)
-
-components = Components(data_handler.scenarios, color_generator)
-header = components.create_navbar()
-home_page = home_page_layout(components, data_handler, plotter)
-
-# TODO create H2 style
-app.layout = [
-    html.H1(children="STRIDE", style={"textAlign": "left", "padding": "5px"}),
-    header,
-    home_page,
-]
+app = Dash("STRIDE", external_stylesheets=[dbc.themes.BOOTSTRAP], assets_folder=str(assets_path), suppress_callback_exceptions=True)
 
 
+def create_app():
+    # TODO route command argument for duckdb instance here.
+    data_handler = APIClient("/home/mwebb-wsl/code/stride/stride.duckdb")
+
+    # Initialize color manager with all entities
+    color_manager = get_color_manager()
+    color_manager.initialize_colors(
+        scenarios=data_handler.scenarios,
+        sectors=literal_to_list(Sectors),
+        end_uses=[]  # Add end uses here if available
+    )
+
+    plotter = StridePlots(color_manager)
+
+    app.layout = create_layout(data_handler, plotter, color_manager)
+
+    return app
 
 
 if __name__ == "__main__":
+    app = create_app()
     app.run(debug=True)
