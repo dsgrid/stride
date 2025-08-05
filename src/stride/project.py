@@ -88,11 +88,6 @@ class Project:
         """Return the connection to the database."""
         return self._con
 
-    @con.setter
-    def con(self, con: DuckDBPyConnection) -> None:
-        """Set the database connection."""
-        self._con = con
-
     @property
     def config(self) -> ProjectConfig:
         """Return the project configuration."""

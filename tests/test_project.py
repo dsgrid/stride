@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 import shutil
 from click.testing import CliRunner
+from chronify.exceptions import InvalidOperation, InvalidParameter
 from pytest import TempPathFactory
 
 from stride import Project
@@ -161,8 +162,40 @@ def test_override_calculated_table(
             found = True
     assert found
 
+    # Try to override an override table, which isn't allowed.
+    data_file = tmp_path / "data.parquet"
+    cmd = [
+        "calculated-tables",
+        "export",
+        str(new_path),
+        "-s",
+        "baseline",
+        "-t",
+        "energy_projection_res_load_shapes_override",
+        "-f",
+        str(data_file),
+        "--overwrite",
+    ]
+    result = runner.invoke(cli, cmd)
+    assert result.exit_code == 0
+    project3 = Project.load(new_path)
+    with pytest.raises(InvalidOperation):
+        project3.override_calculated_table(
+            "alternate_gdp",
+            "energy_projection_res_load_shapes_override",
+            data_file,
+        )
+    with pytest.raises(InvalidParameter):
+        project3.override_calculated_table(
+            "invalid_scenario",
+            "energy_projection_res_load_shapes",
+            data_file,
+        )
+    with pytest.raises(InvalidParameter):
+        project3.override_calculated_table("alternate_gdp", "invalid_calc_table", data_file)
 
-def test_override_calculated_table_invalid(
+
+def test_override_calculated_table_extra_column(
     tmp_path_factory: TempPathFactory, default_project: Project
 ) -> None:
     tmp_path = tmp_path_factory.mktemp("tmpdir")
@@ -189,17 +222,49 @@ def test_override_calculated_table_invalid(
 
     df = pd.read_parquet(data_file)
     out_file = data_file.with_suffix(".csv")
+    # The index columns makes this operation invalid.
     df.to_csv(out_file, header=True, index=True)
+    project2 = Project.load(new_path)
+    with pytest.raises(InvalidParameter):
+        project2.override_calculated_table(
+            "alternate_gdp",
+            "energy_projection_res_load_shapes",
+            out_file,
+        )
+
+
+def test_override_calculated_table_mismatched_column(
+    tmp_path_factory: TempPathFactory, default_project: Project
+) -> None:
+    tmp_path = tmp_path_factory.mktemp("tmpdir")
+    new_path = tmp_path / "project2"
+    shutil.copytree(default_project.path, new_path)
+    project = Project.load(new_path)
+    project.con.close()
+
+    data_file = tmp_path / "data.parquet"
     cmd = [
         "calculated-tables",
-        "override",
+        "export",
         str(new_path),
         "-s",
-        "alternate_gdp",
+        "baseline",
         "-t",
         "energy_projection_res_load_shapes",
         "-f",
-        str(out_file),
+        str(data_file),
     ]
+    runner = CliRunner()
     result = runner.invoke(cli, cmd)
-    assert result.exit_code == 1
+    assert result.exit_code == 0
+
+    df = pd.read_parquet(data_file)
+    df.rename(columns={"timestamp": "timestamp2"}, inplace=True)
+    df.to_parquet(data_file, index=False)
+    project2 = Project.load(new_path)
+    with pytest.raises(InvalidParameter):
+        project2.override_calculated_table(
+            "alternate_gdp",
+            "energy_projection_res_load_shapes",
+            data_file,
+        )

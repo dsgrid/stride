@@ -22,6 +22,13 @@ def test_energy_projection(default_project: Project) -> None:
     assert_frame_equal(actual_df, expected_df)
 
 
+def test_energy_projection_by_scenario(default_project: Project) -> None:
+    project = default_project
+    expected = project.get_energy_projection().filter("scenario = 'baseline'").to_df()
+    actual = project.get_energy_projection(scenario="baseline").to_df()
+    assert_frame_equal(actual[expected.columns], expected)
+
+
 def compute_energy_projection(
     con: DuckDBPyConnection,
     scenario: str,
