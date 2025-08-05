@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Dash App",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/stride/ui/app.py",
+            "console": "integratedTerminal",
+            "env": {
+                "FLASK_ENV": "development"
+            },
+            "args": [],
+            "justMyCode": false
+        }
+    ]
+}

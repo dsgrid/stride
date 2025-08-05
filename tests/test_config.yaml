@@ -1,0 +1,18 @@
+database:
+  path: "/home/mwebb-wsl/code/stride/stride.duckdb"
+
+project:
+  energy_proj_table: "main.scenario_comparison"
+  country: "country_1"
+
+# Optional: Different configs for different test scenarios
+test_scenarios:
+  default:
+    database_path: "/home/mwebb-wsl/code/stride/stride.duckdb"
+    energy_proj_table: "main.scenario_comparison"
+    country: "country_1"
+
+  integration:
+    database_path: "/home/mwebb-wsl/code/stride/stride.duckdb"
+    energy_proj_table: "main.production_data"
+    country: "test_country"
