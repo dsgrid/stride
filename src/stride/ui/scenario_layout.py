@@ -1,4 +1,4 @@
-from dash import html, dcc, Input, Output, callback
+from dash import html, dcc, Input, Output, callback, State, no_update
 import dash_bootstrap_components as dbc
 from stride.ui.plotting import StridePlots
 from stride.api import (
@@ -14,14 +14,12 @@ from stride.api import (
 from stride.ui.color_manager import ColorManager
 
 
-def create_scenario_layout(scenario: str, years: list[int], data_handler: APIClient, color_manager: ColorManager, stored_state: dict = None):
+def create_scenario_layout(years: list[int], data_handler: APIClient, color_manager: ColorManager, stored_state: dict = None):
     """
-    Create the layout for an individual scenario tab based on scenario_tab_design.md.
+    Create the layout for the individual scenario view based on scenario_tab_design.md.
 
     Parameters
     ----------
-    scenario : str
-        The scenario name
     years : list[int]
         Available years in the project
     data_handler : APIClient
@@ -78,7 +76,7 @@ def create_scenario_layout(scenario: str, years: list[int], data_handler: APICli
 
     return html.Div([
         # Header
-        html.H2(f"{scenario}", className="mb-4 scenario-title"),
+        html.H2(id="scenario-title", className="mb-4 scenario-title"),
 
         # Summary Stats Section
         dbc.Card([
@@ -90,9 +88,9 @@ def create_scenario_layout(scenario: str, years: list[int], data_handler: APICli
                     dbc.Col([
                         html.Label("Year:", style={"fontWeight": "bold", "fontSize": "0.9em"}),
                         dcc.Dropdown(
-                            id=f"scenario-{scenario}-summary-year",
+                            id="scenario-summary-year",
                             options=[{"label": str(year), "value": year} for year in years],
-                            value=stored_state.get(f"scenario-{scenario}-summary-year", years[-1] if years else None),
+                            value=stored_state.get("scenario-summary-year", years[-1] if years else None),
                             clearable=False
                         )
                     ], width=3)
@@ -101,13 +99,13 @@ def create_scenario_layout(scenario: str, years: list[int], data_handler: APICli
             dbc.CardBody([
                 dbc.Row([
                     dbc.Col([
-                        create_summary_stat_card(f"scenario-{scenario}-total-consumption", "Total Consumption (TWh)")
+                        create_summary_stat_card("scenario-total-consumption", "Total Consumption (TWh)")
                     ], width=4),
                     dbc.Col([
-                        create_summary_stat_card(f"scenario-{scenario}-percent-growth", "Percent Growth (%)")
+                        create_summary_stat_card("scenario-percent-growth", "Percent Growth (%)")
                     ], width=4),
                     dbc.Col([
-                        create_summary_stat_card(f"scenario-{scenario}-peak-demand", "Peak Demand (MW)")
+                        create_summary_stat_card("scenario-peak-demand", "Peak Demand (MW)")
                     ], width=4)
                 ])
             ])
@@ -123,22 +121,22 @@ def create_scenario_layout(scenario: str, years: list[int], data_handler: APICli
                     dbc.Col([
                         html.Label("LEFT AXIS:", style={"fontWeight": "bold", "fontSize": "0.9em"}),
                         dcc.Dropdown(
-                            id=f"scenario-{scenario}-consumption-breakdown",
+                            id="scenario-consumption-breakdown",
                             options=[
                                 {"label": "Annual Energy Consumption", "value": "None"},
                                 {"label": "Annual Energy Consumption by Sector", "value": "Sector"},
                                 {"label": "Annual Energy Consumption by End Use", "value": "End Use"}
                             ],
-                            value=stored_state.get(f"scenario-{scenario}-consumption-breakdown", "None"),
+                            value=stored_state.get("scenario-consumption-breakdown", "None"),
                             clearable=False
                         )
                     ], width=4),
                     dbc.Col([
                         html.Label("RIGHT AXIS (Optional):", style={"fontWeight": "bold", "fontSize": "0.9em"}),
                         dcc.Dropdown(
-                            id=f"scenario-{scenario}-consumption-secondary",
+                            id="scenario-consumption-secondary",
                             options=[{"label": val, "value": val} for val in literal_to_list(SecondaryMetric)],
-                            value=stored_state.get(f"scenario-{scenario}-consumption-secondary", None),
+                            value=stored_state.get("scenario-consumption-secondary", None),
                             clearable=True,
                             placeholder="Select secondary metric..."
                         )
@@ -146,7 +144,7 @@ def create_scenario_layout(scenario: str, years: list[int], data_handler: APICli
                 ], align="center")
             ]),
             dbc.CardBody([
-                dcc.Graph(id=f"scenario-{scenario}-consumption-plot")
+                dcc.Graph(id="scenario-consumption-plot")
             ])
         ], className="mb-4"),
 
@@ -160,7 +158,7 @@ def create_scenario_layout(scenario: str, years: list[int], data_handler: APICli
                     dbc.Col([
                         html.Label("LEFT AXIS:", style={"fontWeight": "bold", "fontSize": "0.9em"}),
                         dcc.Dropdown(
-                            id=f"scenario-{scenario}-peak-breakdown",
+                            id="scenario-peak-breakdown",
                             options=[
                                 {"label": "Annual Peak Demand", "value": "None"},
                                 {"label": "Annual Peak Demand by Sector", "value": "Sector"},
@@ -173,7 +171,7 @@ def create_scenario_layout(scenario: str, years: list[int], data_handler: APICli
                     dbc.Col([
                         html.Label("RIGHT AXIS (Optional):", style={"fontWeight": "bold", "fontSize": "0.9em"}),
                         dcc.Dropdown(
-                            id=f"scenario-{scenario}-peak-secondary",
+                            id="scenario-peak-secondary",
                             options=[{"label": val, "value": val} for val in literal_to_list(SecondaryMetric)],
                             value=None,
                             clearable=True,
@@ -183,7 +181,7 @@ def create_scenario_layout(scenario: str, years: list[int], data_handler: APICli
                 ], align="center")
             ]),
             dbc.CardBody([
-                dcc.Graph(id=f"scenario-{scenario}-peak-plot")
+                dcc.Graph(id="scenario-peak-plot")
             ])
         ], className="mb-4"),
 
@@ -197,7 +195,7 @@ def create_scenario_layout(scenario: str, years: list[int], data_handler: APICli
                     dbc.Col([
                         html.Label("BREAKDOWN:", style={"fontWeight": "bold", "fontSize": "0.9em"}),
                         dcc.Dropdown(
-                            id=f"scenario-{scenario}-timeseries-breakdown",
+                            id="scenario-timeseries-breakdown",
                             options=[
                                 {"label": "Annual Energy Consumption", "value": "None"},
                                 {"label": "Annual Energy Consumption by Sector", "value": "Sector"},
@@ -210,7 +208,7 @@ def create_scenario_layout(scenario: str, years: list[int], data_handler: APICli
                     dbc.Col([
                         html.Label("RESAMPLE:", style={"fontWeight": "bold", "fontSize": "0.9em"}),
                         dcc.Dropdown(
-                            id=f"scenario-{scenario}-timeseries-resample",
+                            id="scenario-timeseries-resample",
                             options=[{"label": val, "value": val} for val in literal_to_list(ResampleOptions)],
                             value="Daily Mean",
                             clearable=False
@@ -219,7 +217,7 @@ def create_scenario_layout(scenario: str, years: list[int], data_handler: APICli
                     dbc.Col([
                         html.Label("WEATHER VAR (Optional):", style={"fontWeight": "bold", "fontSize": "0.9em"}),
                         dcc.Dropdown(
-                            id=f"scenario-{scenario}-timeseries-weather",
+                            id="scenario-timeseries-weather",
                             options=[{"label": val, "value": val} for val in literal_to_list(WeatherVar)],
                             value=None,
                             clearable=True,
@@ -229,13 +227,13 @@ def create_scenario_layout(scenario: str, years: list[int], data_handler: APICli
                 ], align="center")
             ]),
             dbc.CardBody([
-                dcc.Graph(id=f"scenario-{scenario}-timeseries-plot"),
+                dcc.Graph(id="scenario-timeseries-plot"),
                 dbc.Row([
                     dbc.Col([
                         html.Label("Select Years:", style={"fontWeight": "bold"}),
                         create_styled_checklist(
                             [str(year) for year in years],
-                            f"scenario-{scenario}-timeseries-years",
+                            "scenario-timeseries-years",
                             [str(year) for year in years[:2]] if len(years) >= 2 else [str(years[0])] if years else []
                         )
                     ], width=12),
@@ -253,7 +251,7 @@ def create_scenario_layout(scenario: str, years: list[int], data_handler: APICli
                     dbc.Col([
                         html.Label("BREAKDOWN:", style={"fontWeight": "bold", "fontSize": "0.9em"}),
                         dcc.Dropdown(
-                            id=f"scenario-{scenario}-yearly-breakdown",
+                            id="scenario-yearly-breakdown",
                             options=[
                                 {"label": "Annual Energy Consumption", "value": "None"},
                                 {"label": "Annual Energy Consumption by Sector", "value": "Sector"},
@@ -266,7 +264,7 @@ def create_scenario_layout(scenario: str, years: list[int], data_handler: APICli
                     dbc.Col([
                         html.Label("RESAMPLE:", style={"fontWeight": "bold", "fontSize": "0.9em"}),
                         dcc.Dropdown(
-                            id=f"scenario-{scenario}-yearly-resample",
+                            id="scenario-yearly-resample",
                             options=[{"label": val, "value": val} for val in literal_to_list(ResampleOptions)],
                             value="Daily Mean",
                             clearable=False
@@ -275,7 +273,7 @@ def create_scenario_layout(scenario: str, years: list[int], data_handler: APICli
                     dbc.Col([
                         html.Label("YEAR:", style={"fontWeight": "bold", "fontSize": "0.9em"}),
                         dcc.Dropdown(
-                            id=f"scenario-{scenario}-yearly-year",
+                            id="scenario-yearly-year",
                             options=[{"label": str(year), "value": year} for year in years],
                             value=years[0] if years else None,
                             clearable=False
@@ -284,7 +282,7 @@ def create_scenario_layout(scenario: str, years: list[int], data_handler: APICli
                     dbc.Col([
                         html.Label("WEATHER VAR (Optional):", style={"fontWeight": "bold", "fontSize": "0.9em"}),
                         dcc.Dropdown(
-                            id=f"scenario-{scenario}-yearly-weather",
+                            id="scenario-yearly-weather",
                             options=[{"label": val, "value": val} for val in literal_to_list(WeatherVar)],
                             value=None,
                             clearable=True,
@@ -294,7 +292,7 @@ def create_scenario_layout(scenario: str, years: list[int], data_handler: APICli
                 ], align="center")
             ]),
             dbc.CardBody([
-                dcc.Graph(id=f"scenario-{scenario}-yearly-plot")
+                dcc.Graph(id="scenario-yearly-plot")
             ])
         ], className="mb-4"),
 
@@ -308,7 +306,7 @@ def create_scenario_layout(scenario: str, years: list[int], data_handler: APICli
                     dbc.Col([
                         html.Label("TIME GROUP:", style={"fontWeight": "bold", "fontSize": "0.9em"}),
                         dcc.RadioItems(
-                            id=f"scenario-{scenario}-seasonal-lines-timegroup",
+                            id="scenario-seasonal-lines-timegroup",
                             options=[{"label": val, "value": val} for val in literal_to_list(TimeGroup)],
                             value="Seasonal"
                         )
@@ -316,7 +314,7 @@ def create_scenario_layout(scenario: str, years: list[int], data_handler: APICli
                     dbc.Col([
                         html.Label("AGGREGATION:", style={"fontWeight": "bold", "fontSize": "0.9em"}),
                         dcc.Dropdown(
-                            id=f"scenario-{scenario}-seasonal-lines-agg",
+                            id="scenario-seasonal-lines-agg",
                             options=[{"label": val, "value": val} for val in literal_to_list(TimeGroupAgg)],
                             value="Average Day",
                             clearable=False
@@ -325,7 +323,7 @@ def create_scenario_layout(scenario: str, years: list[int], data_handler: APICli
                     dbc.Col([
                         html.Label("WEATHER VAR:", style={"fontWeight": "bold", "fontSize": "0.9em"}),
                         dcc.Dropdown(
-                            id=f"scenario-{scenario}-seasonal-lines-weather",
+                            id="scenario-seasonal-lines-weather",
                             options=[{"label": val, "value": val} for val in literal_to_list(WeatherVar)],
                             value="Temperature",
                             clearable=False
@@ -334,7 +332,7 @@ def create_scenario_layout(scenario: str, years: list[int], data_handler: APICli
                 ], align="center")
             ]),
             dbc.CardBody([
-                dcc.Graph(id=f"scenario-{scenario}-seasonal-lines-plot")
+                dcc.Graph(id="scenario-seasonal-lines-plot")
             ])
         ], className="mb-4"),
 
@@ -348,7 +346,7 @@ def create_scenario_layout(scenario: str, years: list[int], data_handler: APICli
                     dbc.Col([
                         html.Label("BREAKDOWN:", style={"fontWeight": "bold", "fontSize": "0.9em"}),
                         dcc.Dropdown(
-                            id=f"scenario-{scenario}-seasonal-area-breakdown",
+                            id="scenario-seasonal-area-breakdown",
                             options=[
                                 {"label": "Annual Energy Consumption", "value": "None"},
                                 {"label": "Annual Energy Consumption by Sector", "value": "Sector"},
@@ -361,7 +359,7 @@ def create_scenario_layout(scenario: str, years: list[int], data_handler: APICli
                     dbc.Col([
                         html.Label("YEAR:", style={"fontWeight": "bold", "fontSize": "0.9em"}),
                         dcc.Dropdown(
-                            id=f"scenario-{scenario}-seasonal-area-year",
+                            id="scenario-seasonal-area-year",
                             options=[{"label": str(year), "value": year} for year in years],
                             value=years[0] if years else None,
                             clearable=False
@@ -370,7 +368,7 @@ def create_scenario_layout(scenario: str, years: list[int], data_handler: APICli
                     dbc.Col([
                         html.Label("TIME GROUP AGG:", style={"fontWeight": "bold", "fontSize": "0.9em"}),
                         dcc.Dropdown(
-                            id=f"scenario-{scenario}-seasonal-area-agg",
+                            id="scenario-seasonal-area-agg",
                             options=[{"label": val, "value": val} for val in literal_to_list(TimeGroupAgg)],
                             value="Average Day",
                             clearable=False
@@ -379,7 +377,7 @@ def create_scenario_layout(scenario: str, years: list[int], data_handler: APICli
                     dbc.Col([
                         html.Label("TIME GROUP:", style={"fontWeight": "bold", "fontSize": "0.9em"}),
                         dcc.RadioItems(
-                            id=f"scenario-{scenario}-seasonal-area-timegroup",
+                            id="scenario-seasonal-area-timegroup",
                             options=[{"label": val, "value": val} for val in literal_to_list(TimeGroup)],
                             value="Seasonal"
                         )
@@ -389,7 +387,7 @@ def create_scenario_layout(scenario: str, years: list[int], data_handler: APICli
                     dbc.Col([
                         html.Label("WEATHER VAR:", style={"fontWeight": "bold", "fontSize": "0.9em"}),
                         dcc.Dropdown(
-                            id=f"scenario-{scenario}-seasonal-area-weather",
+                            id="scenario-seasonal-area-weather",
                             options=[{"label": val, "value": val} for val in literal_to_list(WeatherVar)],
                             value="Temperature",
                             clearable=False
@@ -398,7 +396,7 @@ def create_scenario_layout(scenario: str, years: list[int], data_handler: APICli
                 ], align="center")
             ]),
             dbc.CardBody([
-                dcc.Graph(id=f"scenario-{scenario}-seasonal-area-plot")
+                dcc.Graph(id="scenario-seasonal-area-plot")
             ])
         ], className="mb-4"),
 
@@ -411,25 +409,25 @@ def create_scenario_layout(scenario: str, years: list[int], data_handler: APICli
                         html.Label("Select Years:", style={"fontWeight": "bold"}),
                         create_styled_checklist(
                             [str(year) for year in years],
-                            f"scenario-{scenario}-load-duration-years",
+                            "scenario-load-duration-years",
                             [str(years[0])] if years else []
                         )
                     ], width=12)
                 ], className="mb-3"),
-                dcc.Graph(id=f"scenario-{scenario}-load-duration-plot")
+                dcc.Graph(id="scenario-load-duration-plot")
             ])
         ], className="mb-4")
     ])  # Close the main html.Div
 
 
-def register_scenario_callbacks(scenario: str, years: list[int], data_handler: APIClient, plotter: StridePlots):
+def register_scenario_callbacks(scenarios: list[str], years: list[int], data_handler: APIClient, plotter: StridePlots):
     """
-    Register all callbacks for a scenario tab.
+    Register all callbacks for the single scenario view.
 
     Parameters
     ----------
-    scenario : str
-        The scenario name
+    scenarios : list[str]
+        List of all available scenarios
     years : list[int]
         Available years in the project
     data_handler : APIClient
@@ -440,66 +438,73 @@ def register_scenario_callbacks(scenario: str, years: list[int], data_handler: A
 
     # Define all input IDs for this scenario
     scenario_input_ids = [
-        f"scenario-{scenario}-summary-year",
-        f"scenario-{scenario}-consumption-breakdown", f"scenario-{scenario}-consumption-secondary",
-        f"scenario-{scenario}-peak-breakdown", f"scenario-{scenario}-peak-secondary",
-        f"scenario-{scenario}-timeseries-breakdown", f"scenario-{scenario}-timeseries-resample",
-        f"scenario-{scenario}-timeseries-weather", f"scenario-{scenario}-timeseries-years",
-        f"scenario-{scenario}-yearly-breakdown", f"scenario-{scenario}-yearly-resample",
-        f"scenario-{scenario}-yearly-weather", f"scenario-{scenario}-yearly-year",
-        f"scenario-{scenario}-seasonal-lines-timegroup", f"scenario-{scenario}-seasonal-lines-agg",
-        f"scenario-{scenario}-seasonal-lines-weather",
-        f"scenario-{scenario}-seasonal-area-breakdown", f"scenario-{scenario}-seasonal-area-year",
-        f"scenario-{scenario}-seasonal-area-agg", f"scenario-{scenario}-seasonal-area-timegroup",
-        f"scenario-{scenario}-seasonal-area-weather",
-        f"scenario-{scenario}-load-duration-years"
+        "scenario-summary-year",
+        "scenario-consumption-breakdown", "scenario-consumption-secondary",
+        "scenario-peak-breakdown", "scenario-peak-secondary",
+        "scenario-timeseries-breakdown", "scenario-timeseries-resample",
+        "scenario-timeseries-weather", "scenario-timeseries-years",
+        "scenario-yearly-breakdown", "scenario-yearly-resample",
+        "scenario-yearly-weather", "scenario-yearly-year",
+        "scenario-seasonal-lines-timegroup", "scenario-seasonal-lines-agg",
+        "scenario-seasonal-lines-weather",
+        "scenario-seasonal-area-breakdown", "scenario-seasonal-area-year",
+        "scenario-seasonal-area-agg", "scenario-seasonal-area-timegroup",
+        "scenario-seasonal-area-weather",
+        "scenario-load-duration-years"
     ]
 
     # Save scenario state
     @callback(
-        Output(f"scenario-{scenario}-state-store", "data"),
+        Output("scenario-state-store", "data"),
         [Input(input_id, "value") for input_id in scenario_input_ids],
         prevent_initial_call=True
     )
     def save_scenario_state(*values):
         return dict(zip(scenario_input_ids, values))
 
-    # Cache data for summary statistics
-    try:
-        # Get all consumption and peak demand data for this scenario
-        consumption_df = data_handler.get_annual_electricity_consumption(
-            scenarios=[scenario],
-            years=years
-        )
-        peak_demand_df = data_handler.get_annual_peak_demand(
-            scenarios=[scenario],
-            years=years
-        )
+    # Update scenario title
+    @callback(
+        Output("scenario-title", "children"),
+        Input("view-selector", "value")
+    )
+    def update_scenario_title(selected_view):
+        if selected_view in scenarios:
+            return f"{selected_view}"
+        return "Scenario"
 
-        # Convert to dictionaries for fast lookup
-        consumption_by_year = consumption_df.set_index('year')['value'].to_dict()
-        peak_demand_by_year = peak_demand_df.set_index('year')['value'].to_dict()
-
-    except Exception as e:
-        print(f"Error caching summary data for scenario {scenario}: {e}")
-        consumption_by_year = {}
-        peak_demand_by_year = {}
 
     # Summary Statistics callback
     @callback(
         [
-            Output(f"scenario-{scenario}-total-consumption", "children"),
-            Output(f"scenario-{scenario}-percent-growth", "children"),
-            Output(f"scenario-{scenario}-peak-demand", "children")
+            Output("scenario-total-consumption", "children"),
+            Output("scenario-percent-growth", "children"),
+            Output("scenario-peak-demand", "children")
         ],
-        Input(f"scenario-{scenario}-summary-year", "value"),
+        [
+            Input("view-selector", "value"),
+            Input("scenario-summary-year", "value")
+        ],
         prevent_initial_call=False
     )
-    def update_summary_stats(selected_year):
-        if not selected_year:
+    def update_summary_stats(scenario, selected_year):
+        if not selected_year or scenario not in scenarios:
             return "---", "---", "---"
 
         try:
+            # Get all consumption and peak demand data for this scenario
+            consumption_df = data_handler.get_annual_electricity_consumption(
+                scenarios=[scenario],
+                years=years
+            )
+            peak_demand_df = data_handler.get_annual_peak_demand(
+                scenarios=[scenario],
+                years=years
+            )
+
+            # Convert to dictionaries for fast lookup
+            consumption_by_year = consumption_df.set_index('year')['value'].to_dict()
+            peak_demand_by_year = peak_demand_df.set_index('year')['value'].to_dict()
+
             # Get total consumption for selected year
             total_consumption = consumption_by_year.get(selected_year, 0)
 
@@ -538,14 +543,17 @@ def register_scenario_callbacks(scenario: str, years: list[int], data_handler: A
 
     # Annual Energy Consumption callback
     @callback(
-        Output(f"scenario-{scenario}-consumption-plot", "figure"),
+        Output("scenario-consumption-plot", "figure"),
         [
-            Input(f"scenario-{scenario}-consumption-breakdown", "value"),
-            Input(f"scenario-{scenario}-consumption-secondary", "value")
+            Input("view-selector", "value"),
+            Input("scenario-consumption-breakdown", "value"),
+            Input("scenario-consumption-secondary", "value")
         ],
         prevent_initial_call=False
     )
-    def update_consumption_plot(breakdown, secondary_metric):
+    def update_consumption_plot(scenario, breakdown, secondary_metric):
+        if scenario not in scenarios:
+            return no_update
         try:
             # Convert "None" to None
             breakdown_value = None if breakdown == "None" else breakdown
@@ -558,9 +566,8 @@ def register_scenario_callbacks(scenario: str, years: list[int], data_handler: A
 
             # Create plot
             if breakdown_value:
-                if breakdown_value == "End Use":
-                    breakdown_value="metric"
-                fig = plotter.grouped_stacked_bars(df, stack_col=breakdown_value.lower(), value_col="value", group_col="scenario")
+                stack_col = "metric" if breakdown_value == "End Use" else breakdown_value.lower()
+                fig = plotter.grouped_stacked_bars(df, stack_col=stack_col, value_col="value", group_col="scenario")
             else:
                 fig = plotter.grouped_single_bars(df, "year", use_color_manager=False)
 
@@ -572,14 +579,17 @@ def register_scenario_callbacks(scenario: str, years: list[int], data_handler: A
 
     # Peak Demand callback
     @callback(
-        Output(f"scenario-{scenario}-peak-plot", "figure"),
+        Output("scenario-peak-plot", "figure"),
         [
-            Input(f"scenario-{scenario}-peak-breakdown", "value"),
-            Input(f"scenario-{scenario}-peak-secondary", "value")
+            Input("view-selector", "value"),
+            Input("scenario-peak-breakdown", "value"),
+            Input("scenario-peak-secondary", "value")
         ],
         prevent_initial_call=False
     )
-    def update_peak_plot(breakdown, secondary_metric):
+    def update_peak_plot(scenario, breakdown, secondary_metric):
+        if scenario not in scenarios:
+            return no_update
         try:
             # Convert "None" to None
             breakdown_value = None if breakdown == "None" else breakdown
@@ -592,9 +602,8 @@ def register_scenario_callbacks(scenario: str, years: list[int], data_handler: A
 
             # Create plot
             if breakdown_value:
-                if breakdown_value == "End Use":
-                    breakdown_value="metric"
-                fig = plotter.grouped_stacked_bars(df, stack_col=breakdown_value.lower(), value_col="value", group_col="scenario")
+                stack_col = "metric" if breakdown_value == "End Use" else breakdown_value.lower()
+                fig = plotter.grouped_stacked_bars(df, stack_col=stack_col, value_col="value", group_col="scenario")
             else:
                 fig = plotter.grouped_single_bars(df, "year", use_color_manager=False)
 
@@ -606,17 +615,18 @@ def register_scenario_callbacks(scenario: str, years: list[int], data_handler: A
 
     # Timeseries callback
     @callback(
-        Output(f"scenario-{scenario}-timeseries-plot", "figure"),
+        Output("scenario-timeseries-plot", "figure"),
         [
-            Input(f"scenario-{scenario}-timeseries-breakdown", "value"),
-            Input(f"scenario-{scenario}-timeseries-resample", "value"),
-            Input(f"scenario-{scenario}-timeseries-weather", "value"),
-            Input(f"scenario-{scenario}-timeseries-years", "value")
+            Input("view-selector", "value"),
+            Input("scenario-timeseries-breakdown", "value"),
+            Input("scenario-timeseries-resample", "value"),
+            Input("scenario-timeseries-weather", "value"),
+            Input("scenario-timeseries-years", "value")
         ],
         prevent_initial_call=False
     )
-    def update_timeseries_plot(breakdown, resample, weather_var, selected_years):
-        if not selected_years:
+    def update_timeseries_plot(scenario, breakdown, resample, weather_var, selected_years):
+        if not selected_years or scenario not in scenarios:
             return {"data": [], "layout": {"title": "Select years to view data"}}
 
         try:
@@ -649,17 +659,18 @@ def register_scenario_callbacks(scenario: str, years: list[int], data_handler: A
 
     # Yearly callback (area chart for single year)
     @callback(
-        Output(f"scenario-{scenario}-yearly-plot", "figure"),
+        Output("scenario-yearly-plot", "figure"),
         [
-            Input(f"scenario-{scenario}-yearly-breakdown", "value"),
-            Input(f"scenario-{scenario}-yearly-resample", "value"),
-            Input(f"scenario-{scenario}-yearly-weather", "value"),
-            Input(f"scenario-{scenario}-yearly-year", "value")
+            Input("view-selector", "value"),
+            Input("scenario-yearly-breakdown", "value"),
+            Input("scenario-yearly-resample", "value"),
+            Input("scenario-yearly-weather", "value"),
+            Input("scenario-yearly-year", "value")
         ],
         prevent_initial_call=False
     )
-    def update_yearly_plot(breakdown, resample, weather_var, selected_year):
-        if not selected_year:
+    def update_yearly_plot(scenario, breakdown, resample, weather_var, selected_year):
+        if not selected_year or scenario not in scenarios:
             return {"data": [], "layout": {"title": "Select a year to view data"}}
 
         try:
@@ -692,15 +703,18 @@ def register_scenario_callbacks(scenario: str, years: list[int], data_handler: A
 
     # Seasonal Load Lines callback
     @callback(
-        Output(f"scenario-{scenario}-seasonal-lines-plot", "figure"),
+        Output("scenario-seasonal-lines-plot", "figure"),
         [
-            Input(f"scenario-{scenario}-seasonal-lines-timegroup", "value"),
-            Input(f"scenario-{scenario}-seasonal-lines-agg", "value"),
-            Input(f"scenario-{scenario}-seasonal-lines-weather", "value")
+            Input("view-selector", "value"),
+            Input("scenario-seasonal-lines-timegroup", "value"),
+            Input("scenario-seasonal-lines-agg", "value"),
+            Input("scenario-seasonal-lines-weather", "value")
         ],
         prevent_initial_call=False
     )
-    def update_seasonal_lines_plot(timegroup, agg, weather_var):
+    def update_seasonal_lines_plot(scenario, timegroup, agg, weather_var):
+        if scenario not in scenarios:
+            return no_update
         try:
             # Get seasonal load lines data
             df = data_handler.get_seasonal_load_lines(
@@ -721,18 +735,19 @@ def register_scenario_callbacks(scenario: str, years: list[int], data_handler: A
 
     # Seasonal Load Area callback
     @callback(
-        Output(f"scenario-{scenario}-seasonal-area-plot", "figure"),
+        Output("scenario-seasonal-area-plot", "figure"),
         [
-            Input(f"scenario-{scenario}-seasonal-area-breakdown", "value"),
-            Input(f"scenario-{scenario}-seasonal-area-year", "value"),
-            Input(f"scenario-{scenario}-seasonal-area-agg", "value"),
-            Input(f"scenario-{scenario}-seasonal-area-timegroup", "value"),
-            Input(f"scenario-{scenario}-seasonal-area-weather", "value")
+            Input("view-selector", "value"),
+            Input("scenario-seasonal-area-breakdown", "value"),
+            Input("scenario-seasonal-area-year", "value"),
+            Input("scenario-seasonal-area-agg", "value"),
+            Input("scenario-seasonal-area-timegroup", "value"),
+            Input("scenario-seasonal-area-weather", "value")
         ],
         prevent_initial_call=False
     )
-    def update_seasonal_area_plot(breakdown, selected_year, agg, timegroup, weather_var):
-        if not selected_year:
+    def update_seasonal_area_plot(scenario, breakdown, selected_year, agg, timegroup, weather_var):
+        if not selected_year or scenario not in scenarios:
             return {"data": [], "layout": {"title": "Select a year to view data"}}
 
         try:
@@ -760,12 +775,15 @@ def register_scenario_callbacks(scenario: str, years: list[int], data_handler: A
 
     # Load Duration Curve callback
     @callback(
-        Output(f"scenario-{scenario}-load-duration-plot", "figure"),
-        Input(f"scenario-{scenario}-load-duration-years", "value"),
+        Output("scenario-load-duration-plot", "figure"),
+        [
+            Input("view-selector", "value"),
+            Input("scenario-load-duration-years", "value")
+        ],
         prevent_initial_call=False
     )
-    def update_load_duration_plot(selected_years):
-        if not selected_years:
+    def update_load_duration_plot(scenario, selected_years):
+        if not selected_years or scenario not in scenarios:
             return {"data": [], "layout": {"title": "Select years to view data"}}
 
         try:

@@ -3,7 +3,7 @@ import dash_bootstrap_components as dbc
 from stride.ui.plotting import StridePlots
 from stride.api import APIClient, literal_to_list, Sectors, SecondaryMetric
 from stride.ui.color_manager import ColorManager
-from stride.ui.scenario_layout import create_scenario_layout, register_scenario_callbacks
+from stride.ui.scenario_layout import create_scenario_layout
 import json
 
 def create_layout(data_handler: APIClient, plotter: StridePlots, color_manager: ColorManager):
@@ -39,10 +39,6 @@ def create_layout(data_handler: APIClient, plotter: StridePlots, color_manager: 
     ])
 
     register_callbacks(data_handler, plotter, scenarios, sectors, years, color_manager)
-
-    # Register scenario-specific callbacks for each scenario
-    for scenario in scenarios:
-        register_scenario_callbacks(scenario, years, data_handler, plotter)
 
     return layout
 
