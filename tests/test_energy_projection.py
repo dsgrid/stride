@@ -14,10 +14,12 @@ def test_energy_projection(default_project: Project) -> None:
     """
     project = default_project
     actual = project.get_energy_projection()
+    check_counts(project.con, actual)
     actual_df = actual.sort(*actual.columns).to_df()
     expected_baseline = compute_energy_projection(project.con, "baseline", project.config.country)
     expected_alt = compute_energy_projection(project.con, "alternate_gdp", project.config.country)
     expected = expected_baseline.union(expected_alt)
+    check_counts(project.con, expected)
     expected_df = expected.select(*actual.columns).sort(*actual.columns).to_df()
     assert_frame_equal(actual_df, expected_df)
 
@@ -27,6 +29,20 @@ def test_energy_projection_by_scenario(default_project: Project) -> None:
     expected = project.get_energy_projection().filter("scenario = 'baseline'").to_df()
     actual = project.get_energy_projection(scenario="baseline").to_df()
     assert_frame_equal(actual[expected.columns], expected)
+
+
+def check_counts(con: DuckDBPyConnection, rel: DuckDBPyRelation) -> None:
+    res = con.execute(
+        """
+        WITH tmp AS (
+            SELECT scenario, sector, geography, model_year, metric, count(*) AS count_items
+            FROM rel
+            GROUP BY scenario, sector, geography, model_year, metric
+        ) SELECT distinct count_items FROM tmp
+    """
+    ).fetchall()
+    assert len(res) == 1
+    assert res[0][0] == 8760
 
 
 def compute_energy_projection(
