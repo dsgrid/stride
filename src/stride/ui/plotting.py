@@ -878,14 +878,14 @@ class StridePlots:
         # Determine grouping columns
         has_season = 'season' in df.columns
         has_day_type = 'day_type' in df.columns
-        has_breakdown = any(col in df.columns for col in ['sector', 'end_use'])
+        has_breakdown = any(col in df.columns for col in ['sector', 'metric'])
 
         # Determine breakdown column
         breakdown_col = None
         if 'sector' in df.columns:
             breakdown_col = 'sector'
-        elif 'end_use' in df.columns:
-            breakdown_col = 'end_use'
+        elif 'metric' in df.columns:
+            breakdown_col = 'metric'
 
         if has_season and has_day_type:
             # Both season and day_type - create 2 rows x 4 columns
