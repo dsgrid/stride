@@ -27,6 +27,7 @@ import threading
 from pathlib import Path
 from typing import  Literal, TYPE_CHECKING, get_args
 import pandas as pd
+from loguru import logger
 
 if TYPE_CHECKING:
     import duckdb
@@ -215,6 +216,7 @@ class APIClient:
         path_or_conn: str | Path | 'duckdb.DuckDBPyConnection' | None = None,
         project_config: 'ProjectConfig | None' = None
     ):
+        logger.debug(f"APIClient.__init__ called with project_config: {project_config is not None}")
         # Remove singleton behavior during development
         self.project_config = project_config
 
@@ -234,9 +236,9 @@ class APIClient:
         if hasattr(self, "db") and self.db:
             try:
                 self.db.close()
-                print("Database connection closed")
+                logger.debug("Database connection closed")
             except Exception as e:
-                print(f"Error closing connection: {e}")
+                logger.error(f"Error closing connection: {e}")
                 pass
 
     def _initialize_connection(self, path_or_conn):
@@ -257,13 +259,13 @@ class APIClient:
             try:
                 import duckdb
                 # Try read-only connection first to avoid locks
-                print(f"Attempting read-only connection to: {db_path}")
+                logger.debug(f"Attempting read-only connection to: {db_path}")
                 self.db = duckdb.connect(str(db_path), read_only=True)
-                print(f"Successfully connected to database: {db_path}")
+                logger.info(f"Successfully connected to database: {db_path}")
             except duckdb.IOException as e:
                 if "lock" in str(e).lower():
-                    print(f"Database is locked. Error: {e}")
-                    print("Try killing the process mentioned in the error or use 'pkill -f python'")
+                    logger.error(f"Database is locked. Error: {e}")
+                    logger.error("Try killing the process mentioned in the error or use 'pkill -f python'")
                     raise ConnectionError(f"Database is locked by another process. {e}")
                 else:
                     raise ConnectionError(f"Failed to connect to database at {db_path}: {e}")
@@ -461,6 +463,7 @@ class APIClient:
         | baseline    | 2030 | Commercial  | 1650  |
         | high_growth | 2025 | Commercial  | 1600  |
         """
+        logger.debug(f"get_annual_electricity_consumption called with: scenarios={scenarios}, years={years}, group_by={group_by}")
 
         if years is None:
             years = self.years
@@ -497,8 +500,10 @@ class APIClient:
             ORDER BY scenario, model_year
             """
         # Execute query and return DataFrame
-        print(sql)
-        return self.db.execute(sql).df()
+        logger.debug(f"SQL Query:\n{sql}")
+        df = self.db.execute(sql).df()
+        logger.debug(f"Returning {len(df)} rows.")
+        return df
 
     def get_annual_peak_demand(
             self,
@@ -556,6 +561,7 @@ class APIClient:
         | baseline    | 2030 | Commercial  | 1650  |
         | high_growth | 2025 | Commercial  | 1600  |
         """
+        logger.debug(f"get_annual_peak_demand called with: scenarios={scenarios}, years={years}, group_by={group_by}")
         if years is None:
             years = self.years
         if scenarios is None:
@@ -631,7 +637,10 @@ class APIClient:
             """
 
         # Execute query and return DataFrame
-        return self.db.execute(sql).df()
+        logger.debug(f"SQL Query:\n{sql}")
+        df = self.db.execute(sql).df()
+        logger.debug(f"Returning {len(df)} rows.")
+        return df
 
     # TODO, needs a scenario as an input
     # Need an asset table to say "for this asset, this scenario, use this gdp table"
@@ -675,6 +684,7 @@ class APIClient:
         | 2030 | 1380.2|
         | 2035 | 1520.8|
         """
+        logger.debug(f"get_secondary_metric called with: scenario={scenario}, metric={metric}, years={years}")
         if years is None:
             years = self.years
 
@@ -683,6 +693,7 @@ class APIClient:
         self._validate_years(years)
 
         # Placeholder implementation
+        logger.warning("get_secondary_metric is not implemented.")
         return NotImplementedError
 
     def get_load_duration_curve(
@@ -725,6 +736,7 @@ class APIClient:
         >>> # Single year, single scenario
         >>> df = client.get_load_duration_curve(2030, ["baseline"])
         """
+        logger.debug(f"get_load_duration_curve called with: years={years}, scenarios={scenarios}")
         # Handle defaults
         if years is None:
             years = [self.years[0]]  # Use first year as default
@@ -782,6 +794,7 @@ class APIClient:
             )
             """
 
+        logger.debug(f"SQL Query:\n{sql}")
         df = self.db.execute(sql).df()
 
         # Sort each column from highest to lowest
@@ -792,6 +805,7 @@ class APIClient:
         # Reset index to get row numbers starting from 0
         result_df = df.reset_index(drop=True)
 
+        logger.debug(f"Returning {len(result_df)} rows.")
         return result_df
 
 
@@ -826,11 +840,13 @@ class APIClient:
             'PEAK_DMD': 5500.0
         }
         """
+        logger.debug(f"get_scenario_summary called with: scenario={scenario}, year={year}")
         # Validate inputs
         self._validate_scenarios([scenario])
         self._validate_years([year])
 
         # Placeholder implementation
+        logger.warning("get_scenario_summary is not implemented.")
         return {
             'TOTAL_CONSUMPTION': 0.0,
             'PERC_GROWTH': 0.0,
@@ -884,11 +900,13 @@ class APIClient:
         | 2030-01-04 |  7.3  |
         | 2030-01-05 |  8.9  |
         """
+        logger.debug(f"get_weather_metric called with: scenario={scenario}, year={year}, wvar={wvar}, resample={resample}, timegroup={timegroup}")
         # Validate inputs
         self._validate_scenarios([scenario])
         self._validate_years([year])
 
         # Placeholder implementation
+        logger.warning("get_weather_metric is not implemented.")
         return pd.DataFrame({'datetime': pd.date_range(f'{year}-01-01', periods=365), 'value': [0.0] * 365})
 
 
@@ -951,6 +969,7 @@ class APIClient:
         | baseline | 2030 | 1           | 5675.4 |
         | baseline | 2030 | 2           | 5666.5 |
         """
+        logger.debug(f"get_timeseries_comparison called with: scenario={scenario}, years={years}, group_by={group_by}, resample={resample}")
 
         if isinstance(years, int):
             years = [years]
@@ -1001,7 +1020,10 @@ class APIClient:
             ORDER BY scenario, model_year, time_period
             """
 
-        return self.db.execute(sql).df()
+        logger.debug(f"SQL Query:\n{sql}")
+        df = self.db.execute(sql).df()
+        logger.debug(f"Returning {len(df)} rows.")
+        return df
 
     def get_seasonal_load_lines(
         self,
@@ -1059,6 +1081,7 @@ class APIClient:
         | baseline | 2025 | Winter | Weekend  | 0           | 3000.3 |
         | baseline | 2025 | Spring | Weekday  | 0           | 2900.7 |
         """
+        logger.debug(f"get_seasonal_load_lines called with: scenario={scenario}, years={years}, group_by={group_by}, agg={agg}")
         if years is None:
             years = self.years
         if isinstance(years, int):
@@ -1122,7 +1145,10 @@ class APIClient:
         ORDER BY {order_cols}
         """
 
-        return self.db.execute(sql).df()
+        logger.debug(f"SQL Query:\n{sql}")
+        df = self.db.execute(sql).df()
+        logger.debug(f"Returning {len(df)} rows.")
+        return df
 
     def get_seasonal_load_area(
         self,
@@ -1184,6 +1210,7 @@ class APIClient:
         | baseline    | 2030 | Spring | 0           | Commercial  | 1300.7|
         | baseline    | 2030 | Spring | 0           | Industrial  | 1600.3|
         """
+        logger.debug(f"get_seasonal_load_area called with: scenario={scenario}, year={year}, group_by={group_by}, agg={agg}, breakdown={breakdown}")
         # Validate inputs
         self._validate_scenarios([scenario])
         self._validate_years([year])
@@ -1255,5 +1282,8 @@ class APIClient:
         ORDER BY {order_by_clause}
         """
 
-        return self.db.execute(sql).df()
+        logger.debug(f"SQL Query:\n{sql}")
+        df = self.db.execute(sql).df()
+        logger.debug(f"Returning {len(df)} rows.")
+        return df
 

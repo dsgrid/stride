@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from stride.models import ProjectConfig
 
 assets_path = Path(__file__).parent.absolute() / "assets"
-app = Dash("STRIDE", external_stylesheets=[dbc.themes.BOOTSTRAP], assets_folder=str(assets_path), suppress_callback_exceptions=True)
+app = Dash("STRIDE", title="Stride", external_stylesheets=[dbc.themes.BOOTSTRAP], assets_folder=str(assets_path), suppress_callback_exceptions=True)
 
 
 def create_app(project_config: 'ProjectConfig | None' = None, db_connection: 'duckdb.DuckDBPyConnection | None' = None):
