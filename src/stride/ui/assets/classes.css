@@ -3,7 +3,7 @@
     border-bottom: 3px solid #000000;
     padding-bottom: 0px;
     padding-left: 40px;
-    margin-bottom: 20px;
+    margin-bottom: 0; /* Removed bottom margin */
     text-align: left;
 }
 
@@ -15,8 +15,17 @@
     text-align: left;
 }
 
-/* Tab styling */
-.nav-tabs .nav-link {
+/* Radio button tabs styling - make radio buttons look like tabs */
+.nav-tabs .form-check {
+    margin: 0;
+    padding: 0;
+}
+
+.nav-tabs .form-check-input {
+    display: none; /* Hide the actual radio button */
+}
+
+.nav-tabs .form-check-label {
     font-size: 1.2rem !important;
     font-weight: 500 !important;
     color: #495057 !important;
@@ -24,17 +33,23 @@
     border: 1px solid transparent !important;
     padding: 12px 20px !important;
     margin-right: 5px !important;
+    cursor: pointer !important;
+    display: inline-block !important;
+    border-radius: 4px 4px 0 0 !important;
+    background-color: #f8f9fa !important;
+    transition: all 0.2s ease !important;
 }
 
-/* Remove hyperlink styling from tabs */
-.nav-tabs .nav-link:hover {
+/* Hover state for radio button tabs */
+.nav-tabs .form-check-label:hover {
     text-decoration: none !important;
     color: #007bff !important;
     border-color: #e9ecef #e9ecef #dee2e6 !important;
+    background-color: #e9ecef !important;
 }
 
-/* Active tab styling */
-.nav-tabs .nav-link.active {
+/* Active/checked state for radio button tabs */
+.nav-tabs .form-check-input:checked + .form-check-label {
     background-color: #007bff !important;
     color: white !important;
     border-color: #007bff #007bff #fff !important;
@@ -45,10 +60,16 @@
 .nav-tabs {
     border-bottom: 2px solid #dee2e6 !important;
     margin-bottom: 20px !important;
-    background-color: #94949434 !important;
-    padding-left: 40px !important;
+    background-color: #e9ecef !important; /* Medium gray background */
+    padding-left: 0 !important; /* Full width */
+    padding-right: 0 !important; /* Full width */
     padding-top: 10px !important;
-    padding-bottom: 5px !important;
+    padding-bottom: 10px !important;
+    text-align: center; /* Center content */
+}
+
+.nav-tabs .btn-group {
+    justify-content: center;
 }
 
 /* Optional: Add some spacing and styling to cards */
