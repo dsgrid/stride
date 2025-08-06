@@ -558,6 +558,8 @@ def register_scenario_callbacks(scenario: str, years: list[int], data_handler: A
 
             # Create plot
             if breakdown_value:
+                if breakdown_value == "End Use":
+                    breakdown_value="metric"
                 fig = plotter.grouped_stacked_bars(df, stack_col=breakdown_value.lower(), value_col="value", group_col="scenario")
             else:
                 fig = plotter.grouped_single_bars(df, "year", use_color_manager=False)
@@ -590,6 +592,8 @@ def register_scenario_callbacks(scenario: str, years: list[int], data_handler: A
 
             # Create plot
             if breakdown_value:
+                if breakdown_value == "End Use":
+                    breakdown_value="metric"
                 fig = plotter.grouped_stacked_bars(df, stack_col=breakdown_value.lower(), value_col="value", group_col="scenario")
             else:
                 fig = plotter.grouped_single_bars(df, "year", use_color_manager=False)
@@ -618,6 +622,7 @@ def register_scenario_callbacks(scenario: str, years: list[int], data_handler: A
         try:
             # Convert "None" to None and years to int
             breakdown_value = None if breakdown == "None" else breakdown
+
             selected_years_int = [int(year) for year in selected_years]
 
             # Get timeseries data
@@ -628,6 +633,8 @@ def register_scenario_callbacks(scenario: str, years: list[int], data_handler: A
                 resample=resample
             )
 
+            if breakdown_value == "End Use":
+                breakdown_value="metric"
             # Use the new time_series function for better multi-year visualization
             fig = plotter.time_series(
                 df,
@@ -666,6 +673,9 @@ def register_scenario_callbacks(scenario: str, years: list[int], data_handler: A
                 group_by=breakdown_value,
                 resample=resample
             )
+
+            if breakdown_value == "End Use":
+                breakdown_value="metric"
 
             # Use the time_series function with area chart type
             fig = plotter.time_series(
@@ -729,6 +739,7 @@ def register_scenario_callbacks(scenario: str, years: list[int], data_handler: A
             # Convert "None" to None
             breakdown_value = None if breakdown == "None" else breakdown
 
+
             # Get seasonal load data with breakdown
             df = data_handler.get_seasonal_load_area(
                 scenario=scenario,
@@ -771,16 +782,4 @@ def register_scenario_callbacks(scenario: str, years: list[int], data_handler: A
 
         except Exception as e:
             print(f"Error in load duration plot: {e}")
-            return {"data": [], "layout": {"title": f"Error: {str(e)}"}}
-            print(f"Error in load duration plot: {e}")
-            return {"data": [], "layout": {"title": f"Error: {str(e)}"}}
-        except Exception as e:
-            print(f"Error in load duration plot: {e}")
-            return {"data": [], "layout": {"title": f"Error: {str(e)}"}}
-            print(f"Error in load duration plot: {e}")
-            return {"data": [], "layout": {"title": f"Error: {str(e)}"}}
-            print(f"Error in load duration plot: {e}")
-            return {"data": [], "layout": {"title": f"Error: {str(e)}"}}
-            print(f"Error in load duration plot: {e}")
-            return {"data": [], "layout": {"title": f"Error: {str(e)}"}}
             return {"data": [], "layout": {"title": f"Error: {str(e)}"}}

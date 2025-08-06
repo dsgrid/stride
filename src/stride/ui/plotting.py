@@ -89,7 +89,7 @@ class StridePlots:
         self, df: pd.DataFrame,
         year_col: str = "year",
         group_col: str = "scenario",
-        stack_col: str = "end_use",
+        stack_col: str = "metric",
         value_col: str = "demand"
     ) -> go.Figure:
         """

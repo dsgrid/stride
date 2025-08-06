@@ -30,6 +30,7 @@ import pandas as pd
 
 if TYPE_CHECKING:
     import duckdb
+    from stride.models import ProjectConfig
 
 
 ConsumptionBreakdown = Literal["End Use", "Sector"]
@@ -55,9 +56,6 @@ def literal_to_list(literal, include_none_str=False, prefix=None) -> list[str]:
 
     return result
 
-# TODO remove hard coded value.
-ENERGY_PROJ_TABLE = "main.scenario_comparison"
-PROJECT_COUNTRY= "country_1"
 
 # Default Day of Year for equinoxes.
 SPRING_DAY_START=31+28+20  # Always falls on march 20 or 21 (19 for a leap year)
@@ -93,7 +91,7 @@ def _generate_season_case_statement(hour_col: str = "hour") -> str:
     Parameters
     ----------
     hour_col : str, optional
-        Name of the hour column, by default "hour"
+        Name of the hour column or expression, by default "hour"
 
     Returns
     -------
@@ -119,17 +117,14 @@ def _generate_season_case_statement(hour_col: str = "hour") -> str:
     fall_hour_end = FALL_DAY_END * 24
 
     return f"""CASE
-        WHEN {hour_col} >= 0 AND {hour_col} < {spring_hour_start} THEN 'Winter'
-        WHEN {hour_col} >= {spring_hour_start} AND {hour_col} < {spring_hour_end} THEN 'Spring'
-        WHEN {hour_col} >= {spring_hour_end} AND {hour_col} < {fall_hour_start} THEN 'Summer'
-        WHEN {hour_col} >= {fall_hour_start} AND {hour_col} < {fall_hour_end} THEN 'Fall'
-        WHEN {hour_col} >= {fall_hour_end} AND {hour_col} < 8760 THEN 'Winter'
+        WHEN ({hour_col}) >= 0 AND ({hour_col}) < {spring_hour_start} THEN 'Winter'
+        WHEN ({hour_col}) >= {spring_hour_start} AND ({hour_col}) < {spring_hour_end} THEN 'Spring'
+        WHEN ({hour_col}) >= {spring_hour_end} AND ({hour_col}) < {fall_hour_start} THEN 'Summer'
+        WHEN ({hour_col}) >= {fall_hour_start} AND ({hour_col}) < {fall_hour_end} THEN 'Fall'
+        WHEN ({hour_col}) >= {fall_hour_end} AND ({hour_col}) < 8760 THEN 'Winter'
         ELSE 'Winter'
     END"""
 
-# NOTE IN the case of each year starting on a different day of the week, rather than generic
-# model year extrapolation, we will need to nest this case statement to determine the offset for each
-# year value in the query.
 def _generate_weekday_weekend_case_statement(hour_col: str = "hour") -> str:
     """
     Generate a SQL CASE statement to determine if an hour falls on a weekday or weekend.
@@ -140,7 +135,7 @@ def _generate_weekday_weekend_case_statement(hour_col: str = "hour") -> str:
     Parameters
     ----------
     hour_col : str, optional
-        Name of the hour column, by default "hour"
+        Name of the hour column or expression, by default "hour"
 
     Returns
     -------
@@ -161,7 +156,7 @@ def _generate_weekday_weekend_case_statement(hour_col: str = "hour") -> str:
     weekend_start = DEFAULT_FIRST_SATURDAY_HOUR  # 120 (Saturday start)
 
     return f"""CASE
-        WHEN ({hour_col} % {HOURS_PER_WEEK}) >= {weekend_start} THEN 'Weekend'
+        WHEN (({hour_col}) % {HOURS_PER_WEEK}) >= {weekend_start} THEN 'Weekend'
         ELSE 'Weekday'
     END"""
 
@@ -186,35 +181,52 @@ class APIClient:
     ----------
     db : duckdb.DuckDBPyConnection
         The underlying DuckDB database connection
+    project_config : ProjectConfig, optional
+        The project configuration if provided
+    energy_proj_table : str
+        Name of the energy projection table
+    project_country : str
+        Country identifier for the project
 
     Examples
     --------
     >>> # Initialize with database path
     >>> client = APIClient("/path/to/database.db")
     >>>
-    >>> # Subsequent calls return the same instance
-    >>> same_client = APIClient()  # No parameters needed
-    >>> assert client is same_client
+    >>> # Initialize with ProjectConfig
+    >>> client = APIClient(project_config=config, db_connection=conn)
     >>>
     >>> # Query annual consumption by sector
     >>> consumption = client.get_annual_electricity_consumption(
     ...     scenarios=["baseline", "high_growth"],
     ...     group_by="Sector"
     ... )
-    >>>
-    >>> # Get load duration curve for capacity analysis
-    >>> ldc = client.get_load_duration_curve(year=2030)
     """
 
     _instance = None
     _lock = threading.Lock()
 
-    def __new__(cls, path_or_conn: str | Path | 'duckdb.DuckDBPyConnection' | None = None):
+    def __new__(cls, path_or_conn: str | Path | 'duckdb.DuckDBPyConnection' | None = None, project_config: 'ProjectConfig | None' = None):
         # Always create a new instance instead of singleton for development
         return super().__new__(cls)
 
-    def __init__(self, path_or_conn: str | Path | 'duckdb.DuckDBPyConnection' | None = None):
+    def __init__(
+        self,
+        path_or_conn: str | Path | 'duckdb.DuckDBPyConnection' | None = None,
+        project_config: 'ProjectConfig | None' = None
+    ):
         # Remove singleton behavior during development
+        self.project_config = project_config
+
+        # Set table name and country from config or defaults
+        if project_config:
+            self.energy_proj_table = "energy_projection"
+            self.project_country = project_config.country
+        else:
+            # Fallback to original hardcoded values
+            self.energy_proj_table = "energy_projection"
+            self.project_country = "country_1"
+
         self._initialize_connection(path_or_conn)
 
     def _close_existing_connection(self):
@@ -336,10 +348,10 @@ class APIClient:
     def _fetch_years(self) -> list[int]:
         """Fetch years from database."""
         sql = f"""
-        SELECT DISTINCT year
-        FROM {ENERGY_PROJ_TABLE}
-        WHERE country = '{PROJECT_COUNTRY}'
-        ORDER BY year
+        SELECT DISTINCT model_year as year
+        FROM {self.energy_proj_table}
+        WHERE geography = '{self.project_country}'
+        ORDER BY model_year
         """
         result = self.db.execute(sql).fetchall()
         return [row[0] for row in result]
@@ -348,8 +360,8 @@ class APIClient:
         """Fetch scenarios from database."""
         sql = f"""
         SELECT DISTINCT scenario
-        FROM {ENERGY_PROJ_TABLE}
-        WHERE country = '{PROJECT_COUNTRY}'
+        FROM {self.energy_proj_table}
+        WHERE geography = '{self.project_country}'
         ORDER BY scenario
         """
         result = self.db.execute(sql).fetchall()
@@ -461,27 +473,31 @@ class APIClient:
 
         # Build SQL query based on group_by parameter
         if group_by:
-            group_col = group_by.lower().replace(' ', '_')
+            if group_by == "End Use":
+                group_col = "metric"
+            else:  # group_by == "Sector"
+                group_col = "sector"
             sql = f"""
-            SELECT scenario, year, {group_col}, SUM(value) as value
-            FROM {ENERGY_PROJ_TABLE}
-            WHERE country = '{PROJECT_COUNTRY}'
+            SELECT scenario, model_year as year, {group_col}, SUM(value) as value
+            FROM {self.energy_proj_table}
+            WHERE geography = '{self.project_country}'
             AND scenario IN ('{"','".join(scenarios)}')
-            AND year IN ({','.join(map(str, years))})
-            GROUP BY scenario, year, {group_col}
-            ORDER BY scenario, year, {group_col}
+            AND model_year IN ({','.join(map(str, years))})
+            GROUP BY scenario, model_year, {group_col}
+            ORDER BY scenario, model_year, {group_col}
             """
         else:
             sql = f"""
-            SELECT scenario, year, SUM(value) as value
-            FROM {ENERGY_PROJ_TABLE}
-            WHERE country = '{PROJECT_COUNTRY}'
+            SELECT scenario, model_year as year, SUM(value) as value
+            FROM {self.energy_proj_table}
+            WHERE geography = '{self.project_country}'
             AND scenario IN ('{"','".join(scenarios)}')
-            AND year IN ({','.join(map(str, years))})
-            GROUP BY scenario, year
-            ORDER BY scenario, year
+            AND model_year IN ({','.join(map(str, years))})
+            GROUP BY scenario, model_year
+            ORDER BY scenario, model_year
             """
         # Execute query and return DataFrame
+        print(sql)
         return self.db.execute(sql).df()
 
     def get_annual_peak_demand(
@@ -550,65 +566,68 @@ class APIClient:
         self._validate_years(years)
 
         if group_by:
-            group_col = group_by.lower().replace(' ', '_')
+            if group_by == "End Use":
+                group_col = "metric"
+            else:  # group_by == "Sector"
+                group_col = "sector"
             # Find peak hours and get breakdown values at those hours
             sql = f"""
             WITH peak_hours AS (
                 SELECT
                     scenario,
-                    year,
-                    hour,
-                    ROW_NUMBER() OVER (PARTITION BY scenario, year ORDER BY total_demand DESC) as rn
+                    model_year as year,
+                    timestamp,
+                    ROW_NUMBER() OVER (PARTITION BY scenario, model_year ORDER BY total_demand DESC) as rn
                 FROM (
                     SELECT
                         scenario,
-                        year,
-                        hour,
+                        model_year,
+                        timestamp,
                         SUM(value) as total_demand
-                    FROM {ENERGY_PROJ_TABLE}
-                    WHERE country = '{PROJECT_COUNTRY}'
+                    FROM {self.energy_proj_table}
+                    WHERE geography = '{self.project_country}'
                     AND scenario IN ('{"','".join(scenarios)}')
-                    AND year IN ({','.join(map(str, years))})
-                    GROUP BY scenario, year, hour
+                    AND model_year IN ({','.join(map(str, years))})
+                    GROUP BY scenario, model_year, timestamp
                 ) totals
             )
             SELECT
                 t.scenario,
-                t.year,
+                t.model_year as year,
                 t.{group_col},
                 t.value
-            FROM {ENERGY_PROJ_TABLE} t
+            FROM {self.energy_proj_table} t
             INNER JOIN peak_hours p ON
                 t.scenario = p.scenario
-                AND t.year = p.year
-                AND t.hour = p.hour
+                AND t.model_year = p.year
+                AND t.timestamp = p.timestamp
                 AND p.rn = 1
-            WHERE t.country = '{PROJECT_COUNTRY}'
+            WHERE t.geography = '{self.project_country}'
             AND t.scenario IN ('{"','".join(scenarios)}')
-            AND t.year IN ({','.join(map(str, years))})
-            ORDER BY t.scenario, t.year, t.{group_col}
+            AND t.model_year IN ({','.join(map(str, years))})
+            ORDER BY t.scenario, t.model_year, t.{group_col}
             """
         else:
             # Just get peak totals without breakdown
             sql = f"""
             SELECT
                 scenario,
-                year,
+                model_year as year,
                 MAX(total_demand) as value
             FROM (
                 SELECT
                     scenario,
-                    year,
-                    hour,
+                    model_year,
+                    timestamp,
                     SUM(value) as total_demand
-                FROM {ENERGY_PROJ_TABLE}
-                WHERE country = '{PROJECT_COUNTRY}'
+                FROM {self.energy_proj_table}
+                WHERE geography = '{self.project_country}'
                 AND scenario IN ('{"','".join(scenarios)}')
-                AND year IN ({','.join(map(str, years))})
-                GROUP BY scenario, year, hour
+                AND model_year IN ({','.join(map(str, years))})
+                GROUP BY scenario, model_year, timestamp
             ) totals
-            GROUP BY scenario, year
-            ORDER BY scenario, year
+            GROUP BY scenario, model_year
+            ORDER BY scenario, model_year
             """
 
         # Execute query and return DataFrame
@@ -731,12 +750,12 @@ class APIClient:
             pivot_cols = [str(year) for year in years]
             sql = f"""
             WITH hourly_totals AS (
-                SELECT year, hour, SUM(value) as total_demand
-                FROM {ENERGY_PROJ_TABLE}
-                WHERE country = '{PROJECT_COUNTRY}'
-                AND year IN ({','.join(map(str, years))})
+                SELECT model_year as year, timestamp, SUM(value) as total_demand
+                FROM {self.energy_proj_table}
+                WHERE geography = '{self.project_country}'
+                AND model_year IN ({','.join(map(str, years))})
                 AND scenario = '{scenarios[0]}'
-                GROUP BY year, hour
+                GROUP BY model_year, timestamp
             )
             SELECT {', '.join([f'"{col}"' for col in pivot_cols])}
             FROM hourly_totals
@@ -749,12 +768,12 @@ class APIClient:
             pivot_cols = scenarios
             sql = f"""
             WITH hourly_totals AS (
-                SELECT scenario, hour, SUM(value) as total_demand
-                FROM {ENERGY_PROJ_TABLE}
-                WHERE country = '{PROJECT_COUNTRY}'
-                AND year = {years[0]}
+                SELECT scenario, timestamp, SUM(value) as total_demand
+                FROM {self.energy_proj_table}
+                WHERE geography = '{self.project_country}'
+                AND model_year = {years[0]}
                 AND scenario IN ('{"','".join(scenarios)}')
-                GROUP BY scenario, hour
+                GROUP BY scenario, timestamp
             )
             SELECT {', '.join([f'"{col}"' for col in pivot_cols])}
             FROM hourly_totals
@@ -942,41 +961,44 @@ class APIClient:
 
         # Determine time period calculation based on resample option
         if resample == "Daily Mean":
-            time_period_calc = "FLOOR(hour / 24) + 1"
+            time_period_calc = "FLOOR(EXTRACT(DOY FROM timestamp)) + 1"
         elif resample == "Weekly Mean":
-            time_period_calc = "FLOOR(hour / 168) + 1"
+            time_period_calc = "FLOOR((EXTRACT(DOY FROM timestamp) - 1) / 7) + 1"
         else:
             raise ValueError(f"Invalid resample option: {resample}")
 
         if group_by:
-            group_col = group_by.lower().replace(' ', '_')
+            if group_by == "End Use":
+                group_col = "metric"
+            else:  # group_by == "Sector"
+                group_col = "sector"
             sql = f"""
             SELECT
                 scenario,
-                year,
+                model_year as year,
                 {time_period_calc} as time_period,
                 {group_col},
                 AVG(value) as value
-            FROM {ENERGY_PROJ_TABLE}
-            WHERE country = '{PROJECT_COUNTRY}'
+            FROM {self.energy_proj_table}
+            WHERE geography = '{self.project_country}'
                 AND scenario = '{scenario}'
-                AND year IN ({','.join(map(str, years))})
-            GROUP BY scenario, year, {time_period_calc}, {group_col}
-            ORDER BY scenario, year, time_period, {group_col}
+                AND model_year IN ({','.join(map(str, years))})
+            GROUP BY scenario, model_year, {time_period_calc}, {group_col}
+            ORDER BY scenario, model_year, time_period, {group_col}
             """
         else:
             sql = f"""
             SELECT
                 scenario,
-                year,
+                model_year as year,
                 {time_period_calc} as time_period,
                 SUM(value) as value
-            FROM {ENERGY_PROJ_TABLE}
-            WHERE country = '{PROJECT_COUNTRY}'
+            FROM {self.energy_proj_table}
+            WHERE geography = '{self.project_country}'
                 AND scenario = '{scenario}'
-                AND year IN ({','.join(map(str, years))})
-            GROUP BY scenario, year, {time_period_calc}
-            ORDER BY scenario, year, time_period
+                AND model_year IN ({','.join(map(str, years))})
+            GROUP BY scenario, model_year, {time_period_calc}
+            ORDER BY scenario, model_year, time_period
             """
 
         return self.db.execute(sql).df()
@@ -1046,19 +1068,22 @@ class APIClient:
         self._validate_scenarios([scenario])
         self._validate_years(years)
 
-        # Build the select and group by clauses
-        select_cols = ["scenario", "year", "hour % 24 as hour_of_day"]
-        group_by_cols = ["scenario", "year", "hour % 24"]
+        # Build the select and group by clauses - calculate hour of year and hour of day
+        hour_of_year_expr = f"EXTRACT(DOY FROM timestamp) * 24 + EXTRACT(HOUR FROM timestamp) - 24"
+        hour_of_day_expr = "EXTRACT(HOUR FROM timestamp)"
+
+        select_cols = ["scenario", "model_year as year", f"{hour_of_day_expr} as hour_of_day"]
+        group_by_cols = ["scenario", "model_year", f"{hour_of_day_expr}"]
 
         # Add seasonal grouping if needed
         if "Seasonal" in group_by:
-            season_case = _generate_season_case_statement("hour")
+            season_case = _generate_season_case_statement(hour_of_year_expr)
             select_cols.append(f"({season_case}) as season")
             group_by_cols.append(f"({season_case})")
 
         # Add weekday/weekend grouping if needed
         if "Weekday/Weekend" in group_by:
-            weekday_case = _generate_weekday_weekend_case_statement("hour")
+            weekday_case = _generate_weekday_weekend_case_statement(hour_of_year_expr)
             select_cols.append(f"({weekday_case}) as day_type")
             group_by_cols.append(f"({weekday_case})")
 
@@ -1085,18 +1110,16 @@ class APIClient:
         if "Weekday/Weekend" in group_by:
             order_cols.append("day_type")
         order_cols.append("hour_of_day")
-        order_by_clause = ", ".join(order_cols)
-
         sql = f"""
         SELECT
             {select_clause},
             {agg_func}(value) as value
-        FROM {ENERGY_PROJ_TABLE}
-        WHERE country = '{PROJECT_COUNTRY}'
+        FROM {self.energy_proj_table}
+        WHERE geography = '{self.project_country}'
             AND scenario = '{scenario}'
-            AND year IN ({','.join(map(str, years))})
+            AND model_year IN ({','.join(map(str, years))})
         GROUP BY {group_by_clause}
-        ORDER BY {order_by_clause}
+        ORDER BY {order_cols}
         """
 
         return self.db.execute(sql).df()
@@ -1165,25 +1188,31 @@ class APIClient:
         self._validate_scenarios([scenario])
         self._validate_years([year])
 
-        # Build the select and group by clauses
-        select_cols = ["scenario", "year", "hour % 24 as hour_of_day"]
-        group_by_cols = ["scenario", "year", "hour % 24"]
+        # Build the select and group by clauses - calculate hour of year and hour of day
+        hour_of_year_expr = f"EXTRACT(DOY FROM timestamp) * 24 + EXTRACT(HOUR FROM timestamp) - 24"
+        hour_of_day_expr = "EXTRACT(HOUR FROM timestamp)"
+
+        select_cols = ["scenario", "model_year as year", f"{hour_of_day_expr} as hour_of_day"]
+        group_by_cols = ["scenario", "model_year", f"{hour_of_day_expr}"]
 
         # Add breakdown column if specified
         if breakdown:
-            breakdown_col = breakdown.lower().replace(' ', '_')
+            if breakdown == "End Use":
+                breakdown_col = "metric"
+            else:  # breakdown == "Sector"
+                breakdown_col = "sector"
             select_cols.append(breakdown_col)
             group_by_cols.append(breakdown_col)
 
         # Add seasonal grouping if needed
         if "Seasonal" in group_by:
-            season_case = _generate_season_case_statement("hour")
+            season_case = _generate_season_case_statement(hour_of_year_expr)
             select_cols.append(f"({season_case}) as season")
             group_by_cols.append(f"({season_case})")
 
         # Add weekday/weekend grouping if needed
         if "Weekday/Weekend" in group_by:
-            weekday_case = _generate_weekday_weekend_case_statement("hour")
+            weekday_case = _generate_weekday_weekend_case_statement(hour_of_year_expr)
             select_cols.append(f"({weekday_case}) as day_type")
             group_by_cols.append(f"({weekday_case})")
 
@@ -1218,10 +1247,10 @@ class APIClient:
         SELECT
             {select_clause},
             {agg_func}(value) as value
-        FROM {ENERGY_PROJ_TABLE}
-        WHERE country = '{PROJECT_COUNTRY}'
+        FROM {self.energy_proj_table}
+        WHERE geography = '{self.project_country}'
             AND scenario = '{scenario}'
-            AND year = {year}
+            AND model_year = {year}
         GROUP BY {group_by_clause}
         ORDER BY {order_by_clause}
         """

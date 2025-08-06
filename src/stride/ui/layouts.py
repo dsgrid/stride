@@ -319,6 +319,8 @@ def register_callbacks(data_handler: APIClient, plotter: StridePlots, scenarios:
 
             # Create the main plot
             if breakdown_value:
+                if breakdown_value == "End Use":
+                    breakdown_value="metric"
                 fig = plotter.grouped_stacked_bars(df, stack_col=breakdown_value.lower(), value_col="value")
             else:
                 fig = plotter.grouped_single_bars(df, "scenario")
@@ -365,6 +367,8 @@ def register_callbacks(data_handler: APIClient, plotter: StridePlots, scenarios:
 
             # Create the main plot
             if breakdown_value:
+                if breakdown_value == "End Use":
+                    breakdown_value="metric"
                 fig = plotter.grouped_stacked_bars(df, stack_col=breakdown_value.lower(), value_col="value")
             else:
                 fig = plotter.grouped_single_bars(df, "scenario")
@@ -425,6 +429,8 @@ def register_callbacks(data_handler: APIClient, plotter: StridePlots, scenarios:
 
             print(f"Retrieved timeseries data with shape: {df.shape}")
 
+            if breakdown_value == "End Use":
+                breakdown_value="metric"
             # Create the faceted plot
             fig = plotter.faceted_time_series(
                 df,
