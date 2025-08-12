@@ -20,7 +20,7 @@ class ColorManager:
         if self._initialized:
             return
 
-        self._color_palette = colors.qualitative.Dark24
+        self._color_palette = colors.qualitative.Prism
         self._color_iterator = cycle(self._color_palette)
         self._color_cache: Dict[str, str] = {}
         self._scenario_colors: Dict[str, Dict[str, str]] = {}
@@ -43,8 +43,15 @@ class ColorManager:
     def get_color(self, key: str) -> str:
         """Get consistent RGBA color for a given key."""
         if key not in self._color_cache:
-            hex_color = next(self._color_iterator)
-            self._color_cache[key] = self._hex_to_rgba_str(hex_color)
+            color = next(self._color_iterator)
+
+            # TODO might want to handle all cases with match statement.
+            if isinstance(color, str) and color.startswith("#"):
+
+                self._color_cache[key] = self._hex_to_rgba_str(color)
+            else:
+                # Assume it is already an rgb(a) string
+                self._color_cache[key] = color
         return self._color_cache[key]
 
     def get_scenario_styling(self, scenario: str) -> Dict[str, str]:

@@ -1,7 +1,6 @@
-from dash import Dash, html, dcc, Input, Output, State, callback
-import dash_bootstrap_components as dbc
 from pathlib import Path
-from typing import TYPE_CHECKING
+from dash import Dash, html, dcc, Input, Output, callback
+import dash_bootstrap_components as dbc
 
 from stride.ui.layouts import create_home_tab, register_callbacks as register_home_callbacks
 from stride.ui.scenario_layout import create_scenario_layout, register_scenario_callbacks
@@ -9,15 +8,12 @@ from stride.ui.color_manager import get_color_manager
 from stride.ui.plotting import StridePlots
 from stride.api import APIClient, Sectors, literal_to_list
 
-if TYPE_CHECKING:
-    import duckdb
-    from stride.models import ProjectConfig
 
 assets_path = Path(__file__).parent.absolute() / "assets"
 app = Dash("STRIDE", title="Stride", external_stylesheets=[dbc.themes.BOOTSTRAP], assets_folder=str(assets_path), suppress_callback_exceptions=True)
 
 
-def create_app(project_config: 'ProjectConfig | None' = None, db_connection: 'duckdb.DuckDBPyConnection | None' = None):
+def create_app(data_handler: APIClient):
     """
     Create the Dash application.
 
@@ -35,13 +31,6 @@ def create_app(project_config: 'ProjectConfig | None' = None, db_connection: 'du
     Dash
         Configured Dash application
     """
-    # Initialize APIClient based on available parameters
-    if project_config is not None and db_connection is not None:
-        data_handler = APIClient(path_or_conn=db_connection, project_config=project_config)
-    else:
-        # Fallback to hardcoded path for development
-        data_handler = APIClient("/home/mwebb-wsl/code/stride/stride.duckdb")
-
     # Initialize color manager with all entities
     color_manager = get_color_manager()
     color_manager.initialize_colors(
