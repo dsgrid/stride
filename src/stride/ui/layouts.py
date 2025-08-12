@@ -293,7 +293,6 @@ def register_callbacks(data_handler: APIClient, plotter: StridePlots, scenarios:
         Input("home-scenarios-checklist", "value"),
         Input("home-consumption-breakdown", "value"),
         Input("home-secondary-metric", "value"),
-        prevent_initial_call=False,
     )
     def update_home_scenario_comparison(selected_scenarios, breakdown, secondary_metric):
         print(f"Callback triggered with scenarios: {selected_scenarios}, breakdown: {breakdown}")
@@ -341,7 +340,6 @@ def register_callbacks(data_handler: APIClient, plotter: StridePlots, scenarios:
         Input("home-scenarios-2-checklist", "value"),
         Input("home-peak-breakdown", "value"),
         Input("home-peak-secondary-metric", "value"),
-        prevent_initial_call=False,
     )
     def update_home_sector_breakdown(selected_scenarios, breakdown, secondary_metric):
         print(f"Peak demand callback triggered with scenarios: {selected_scenarios}, breakdown: {breakdown}")
@@ -405,7 +403,6 @@ def register_callbacks(data_handler: APIClient, plotter: StridePlots, scenarios:
         Input("home-timeseries-chart-type", "value"),
         Input("home-timeseries-breakdown", "value"),
         Input("home-timeseries-secondary-metric", "value"),
-        prevent_initial_call=False,
     )
     def update_home_scenario_timeseries(selected_scenarios, chart_type, breakdown, secondary_metric):
         print(f"Timeseries callback triggered with scenarios: {selected_scenarios}, chart_type: {chart_type}, breakdown: {breakdown}")

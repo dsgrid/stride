@@ -149,12 +149,7 @@ def calculated_tables() -> None:
     """Calculated table commands"""
 
 
-@click.group()
-def ui() -> None:
-    """UI commands"""
-
-
-@click.command(name="start")
+@click.command(name="view")
 @click.argument("project-path", type=click.Path(exists=True), callback=path_callback)
 @click.option(
     "--host",
@@ -177,13 +172,19 @@ def ui() -> None:
     help="Run in debug mode",
 )
 @click.pass_context
-def start_ui(ctx: click.Context, project_path: Path, host: str, port: int, debug: bool) -> None:
+def view(ctx: click.Context, project_path: Path, host: str, port: int, debug: bool) -> None:
     """Start the STRIDE dashboard UI for the specified project."""
     from stride.ui.app import create_app
-
+    from stride.api import APIClient
     project = safe_get_project_from_context(ctx, project_path)
-    app = create_app(project.config, project.con)
-    app.run(host=host, port=port, debug=debug)
+
+    if project.config is not None and project.con is not None:
+        data_handler = APIClient(path_or_conn=project.con, project_config=project.config)
+        app = create_app(data_handler=data_handler)
+        # Run in single threaded mode to avoid data races.
+        app.run(host=host, port=port, debug=debug, threaded=False)
+    else:
+        raise click.ClickException("Project is not properly configured or connected.")
 
 
 @click.command(name="list")
@@ -352,7 +353,7 @@ cli.add_command(projects)
 cli.add_command(datasets)
 cli.add_command(scenarios)
 cli.add_command(calculated_tables)
-cli.add_command(ui)
+cli.add_command(view)
 projects.add_command(create_project)
 datasets.add_command(list_datasets)
 datasets.add_command(show_dataset)
@@ -360,4 +361,3 @@ scenarios.add_command(list_scenarios)
 calculated_tables.add_command(list_calculated_tables)
 calculated_tables.add_command(override_calculated_table)
 calculated_tables.add_command(export_calculated_table)
-ui.add_command(start_ui)
