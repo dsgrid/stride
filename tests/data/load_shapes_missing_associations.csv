@@ -1,0 +1,11 @@
+geography,metric,sector,weather_year
+country_1,cooling,transportation,2018
+country_1,other,industrial,2018
+country_2,total,residential,2018
+country_2,other,industrial,2018
+country_1,total,residential,2018
+country_2,cooling,industrial,2018
+country_2,other,transportation,2018
+country_1,cooling,industrial,2018
+country_1,other,transportation,2018
+country_2,cooling,transportation,2018

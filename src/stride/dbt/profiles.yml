@@ -1,0 +1,6 @@
+stride:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: '../registry_data/data.duckdb'

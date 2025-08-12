@@ -1,0 +1,190 @@
+{
+    project_id: "test_project",
+    creator: "tester",
+    description: "This is a test project.",
+    datasets: [
+        {
+            dataset_id: "energy_intensity",
+            path: "tests/data/energy_intensity.csv",
+            metric: "energy intensity regression", // hooking to dimension name
+            dimension_columns: {
+                country: "geography",
+                year: "model_year",
+            }
+        },
+        {
+            dataset_id: "gdp",
+            path: "tests/data/gdp.csv",
+            metric: "GDP",
+            dimension_columns: {
+                country: "geography",
+                year: "model_year",
+            }
+        },
+        {
+            dataset_id: "hdi",
+            path: "tests/data/hdi.csv",
+            metric: "HDI",
+            dimension_columns: {
+                country: "geography",
+                year: "model_year",
+            }
+        },
+        {
+            dataset_id: "population",
+            path: "tests/data/population.csv",
+            metric: "population",
+            dimension_columns: {
+                country: "geography",
+                year: "model_year",
+            }
+        },
+        {
+            dataset_id: "load_shapes",
+            path: "tests/data/load_shapes.csv",
+            // dataset_type: "energy_by_sector",
+            time_columns: ["month", "day_type", "hour"],
+            dimension_columns: {
+                country: "geography",
+                year: "model_year",
+                sector: "sector",
+                enduse: "metric",
+            }
+        },
+    ],
+    dimensions: {
+        base_dimensions: [
+            {
+                type: 'scenario',
+                class: 'Scenario',
+                name: 'scenario',
+                // Matching the wireframe names for now. Could also have the 
+                // first scenario be 'default' and others could have user-specified
+                // names. In general people will want to provide some sort of 
+                // meaningful label and/or to access a description.
+                records: [
+                    {id: 'scenario_1', name: 'Scenario 1'}
+                ],
+                module: 'dsgrid.dimension.standard',
+            },
+            {
+                type: 'model_year',
+                class: 'ModelYear',
+                name: 'model_year',
+                description: 'Selected model years',
+                file: 'dimensions/model_years.csv',
+                module: 'dsgrid.dimension.standard',
+            },
+            {
+                type: 'weather_year',
+                class: 'WeatherYear',
+                name: 'weather_year',
+                description: "Selected weather year",
+                records: [
+                    {id: '2018', name: '2018'}
+                ],
+                module: 'dsgrid.dimension.standard'
+            },
+            // Time could be period beginning, hourly, aligned with weather_year
+            // and in the dominant time zone for the selected country. Right now
+            // the chronify time zones are US-centric: https://github.com/NREL/chronify/blob/main/src/chronify/time.py#L138.
+            {
+                type: 'geography',
+                class: 'Geography',
+                name: 'country',
+                description: 'Selected country',
+                is_trivial: true,
+                records: [
+                    {id: 'country_1', name: 'Country 1'},
+                ],
+                module: 'dsgrid.dimension.standard',
+            },
+            {
+                type: 'sector',
+                class: 'Sector',
+                name: 'sector',
+                description: 'Industrial, residential, and transportation sectors',
+                file: 'dimensions/sectors.csv',
+                module: 'dsgrid.dimension.standard',
+            },
+            {
+                // TODO: Will change this to "unspecified" and "electric_ldv" 
+                // for Workflow 3. In the meantime, this illustrates excluding
+                // subsector altogether. We could also just support subsector
+                // not being in the list at all or fully flexible "subsector"-
+                // like specifications, i.e., 0-N subsector dimensions.
+                type: 'subsector',
+                is_noop: true,
+            },
+            {
+                type: 'metric',
+                class: 'EnergyEndUse',
+                name: 'end use',
+                description: 'Temporary placeholder for annual energy',
+                records: [
+                    {id: 'unspecified', name: 'Unspecified', fuel_id: 'electricity', unit: 'MWh'}
+                ],
+                module: 'dsgrid.dimension.standard'
+            },
+            {
+                type: 'metric',
+                class: 'Population',
+                name: 'population',
+                description: 'Number of people',
+                records: [
+                    {id: 'population', name: 'Population', unit: 'people'}
+                ],
+                module: 'dsgrid.dimension.standard'
+            },
+            {
+                type: 'metric',
+                class: 'FractionalIndex',
+                name: 'HDI',
+                description: 'Human Development Index',
+                records: [
+                    {id: 'hdi',name: 'HDI',unit: 'HDI', min_value: 0.0, max_value: 1.0}
+                ],
+                module: 'dsgrid.dimension.standard'
+            },
+            {
+                type: 'metric',
+                class: 'Stock',
+                name: 'GDP',
+                description: 'Gross Domestic Product',
+                records: [
+                    {id: 'gdp', name: 'GDP', unit: 'billion USD-2024'}
+                ],
+                module: 'dsgrid.dimension.standard'
+            },
+            {
+                type: 'metric',
+                class: 'EnergyIntensityRegression',
+                name: 'energy intensity regression',
+                description: 'Energy intensity regression coefficients for linear and exponential fits',
+                records: [
+                    {id: 'res_a0_lin', name: 'Residential Intercept Linear', regression_type: 'linear', unit: 'TJ/HDI-person'},
+                    {id: 'res_a1_lin', name: 'Residential Slope Linear', regression_type: 'linear', unit: 'TJ/HDI-person-yr'},
+                    {id: 'res_a0_exp', name: 'Residential Intercept Exponential', regression_type: 'exponential', unit: 'TJ/HDI-person'},
+                    {id: 'res_a1_exp', name: 'Residential Slope Exponential', regression_type: 'exponential', unit: 'TJ/HDI-person-yr'},
+                    {id: 'nonres_a0_lin', name: 'Non-residential Intercept Linear', regression_type: 'linear', unit: 'TJ/billion USD-2024'},
+                    {id: 'nonres_a1_lin', name: 'Non-residential Slope Linear', regression_type: 'linear', unit: 'TJ/billion USD-2024-yr'},
+                    {id: 'nonres_a0_exp', name: 'Non-residential Intercept Exponential', regression_type: 'exponential', unit: 'TJ/billion USD-2024'},
+                    {id: 'nonres_a1_exp', name: 'Non-residential Slope Exponential', regression_type:  'exponential', unit: 'TJ/billion USD-2024-yr'},
+                ],
+                module: 'dsgrid.dimension.standard'
+            },
+            {
+                type: 'metric',
+                class: 'EnergyIntensity',
+                name: 'energy intensity',
+                description: 'Energy intensity by HDI-population or GDP',
+                records: [
+                    {id: 'res_energy_intensity', name: 'Residential Energy Intensity', unit: 'MWh/HDI-person'},
+                    {id: 'nonres_energy_intensity', name: 'Non-residential Energy Intensity', unit: 'MWh/billion USD-2024'},
+                ],
+                module: 'dsgrid.dimension.standard'
+            }
+            // Briefly (prior to pulling in the hourly data) should we focus on AnnualTime?
+        ]
+    }
+}
