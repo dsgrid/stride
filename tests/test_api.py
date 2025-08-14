@@ -4,52 +4,22 @@ Tests for the database api.
 
 import pytest
 import pandas as pd
-from pathlib import Path
 from stride.api import APIClient
-from stride.project import Project
-
-
-@pytest.fixture
-def test_project_path():
-    """Path to the test project."""
-    # Assuming test_project exists in the tests directory or parent
-    test_project = Path(__file__).parent / "test_project"
-    if not test_project.exists():
-        # Try parent directory
-        test_project = Path(__file__).parent.parent / "test_project"
-
-    if not test_project.exists():
-        pytest.skip("test_project not found")
-
-    return test_project
-
-
-@pytest.fixture
-def stride_project(test_project_path):
-    """Load the Stride project."""
-    return Project.load(test_project_path)
-
-
-@pytest.fixture
-def api_client(stride_project):
-    """Create APIClient instance with test project."""
-    # Reset singleton to ensure clean state
-    APIClient._instance = None
-    client = APIClient(path_or_conn=stride_project.con, project_config=stride_project.config)
-    yield client
-    # Cleanup
-    APIClient._instance = None
 
 
 class TestAPIClient:
     """Test suite for APIClient methods."""
 
-    def test_singleton_behavior(self, stride_project):
+    def test_singleton_behavior(self, default_project):
         """Test that APIClient follows singleton pattern."""
-        client1 = APIClient(path_or_conn=stride_project.con, project_config=stride_project.config)
+        client1 = APIClient(
+            path_or_conn=default_project.con, project_config=default_project.config
+        )
         # Reset singleton for clean test
         APIClient._instance = None
-        client2 = APIClient(path_or_conn=stride_project.con, project_config=stride_project.config)
+        client2 = APIClient(
+            path_or_conn=default_project.con, project_config=default_project.config
+        )
         # Note: In real usage, both would be same instance
         assert isinstance(client1, APIClient)
         assert isinstance(client2, APIClient)
@@ -224,6 +194,7 @@ class TestAPIClient:
 
     def test_get_weather_metric(self, api_client):
         """Test weather metric method executes."""
+        pytest.skip("Weather Metric not implemented yet.")
         valid_scenario = api_client.scenarios[0]
         valid_year = api_client.years[0]
         df = api_client.get_weather_metric(valid_scenario, valid_year, "Temperature")
@@ -249,7 +220,3 @@ class TestAPIClient:
 
         assert isinstance(df, pd.DataFrame)
         assert not df.empty
-
-
-if __name__ == "__main__":
-    pytest.main([__file__])

@@ -1,4 +1,5 @@
 from dash import Input, Output, callback, no_update
+from loguru import logger
 
 from stride.api import (
     ConsumptionBreakdown,
@@ -110,7 +111,8 @@ def update_consumption_plot(
     """
 
     if scenario not in data_handler.scenarios:
-        return no_update
+        logger.error(f"Error: {scenario} does not exist.")
+        return {"data": [], "layout": {"title": f"Error: {scenario} does not exist."}}
     try:
         # Convert "None" to None
         breakdown_value = None if breakdown == "None" else breakdown
@@ -128,7 +130,7 @@ def update_consumption_plot(
             fig = plotter.grouped_single_bars(df, "year", use_color_manager=False)
         return fig
     except Exception as e:
-        print(f"Error in consumption plot: {e}")
+        logger.error(f"Error in consumption plot: {e}")
         return {"data": [], "layout": {"title": f"Error: {str(e)}"}}
 
 
@@ -250,7 +252,7 @@ def update_yearly_plot(
     breakdown: ConsumptionBreakdown,
     resample: ResampleOptions,
     weather_var: WeatherVar,
-    selected_year: list[int],
+    selected_year: int | list[int],
 ):
     """
     Update the yearly area plot for a single year.
@@ -278,6 +280,9 @@ def update_yearly_plot(
         Plotly figure object or error dictionary
     """
 
+    if isinstance(selected_year, int):
+        selected_year = list[selected_year]
+
     if not selected_year or scenario not in data_handler.scenarios:
         return {"data": [], "layout": {"title": "Select a year to view data"}}
     try:
@@ -285,7 +290,7 @@ def update_yearly_plot(
         breakdown_value = None if breakdown == "None" else breakdown
         # Get timeseries data for single year
         df = data_handler.get_timeseries_comparison(
-            scenario=scenario, years=[selected_year], group_by=breakdown_value, resample=resample
+            scenario=scenario, years=selected_year, group_by=breakdown_value, resample=resample
         )
         if breakdown_value == "End Use":
             breakdown_value = "metric"

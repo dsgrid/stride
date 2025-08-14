@@ -106,8 +106,3 @@ def create_app(data_handler: APIClient):
     register_scenario_callbacks(scenarios, years, data_handler, plotter)
 
     return app
-
-
-if __name__ == "__main__":
-    app = create_app()
-    app.run(debug=True)

@@ -685,7 +685,7 @@ class APIClient:
 
         # Placeholder implementation
         logger.warning("get_secondary_metric is not implemented.")
-        return NotImplementedError
+        return NotImplemented
 
     def get_load_duration_curve(
         self,
@@ -898,10 +898,7 @@ class APIClient:
         self._validate_years([year])
 
         # Placeholder implementation
-        logger.warning("get_weather_metric is not implemented.")
-        return pd.DataFrame(
-            {"datetime": pd.date_range(f"{year}-01-01", periods=365), "value": [0.0] * 365}
-        )
+        return NotImplemented
 
     # NOTE we don't restrict the user to two model years here in case they use the api outside of the UI.
     # NOTE for weekly mean, depending on the year, the weekends will not be at the start or end of the week.
