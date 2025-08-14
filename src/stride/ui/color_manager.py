@@ -1,4 +1,4 @@
-from typing import Dict, List, Callable
+from typing import Dict, List
 from functools import lru_cache
 from itertools import cycle
 from plotly import colors
@@ -26,7 +26,9 @@ class ColorManager:
         self._scenario_colors: Dict[str, Dict[str, str]] = {}
         self._initialized = True
 
-    def initialize_colors(self, scenarios: List[str], sectors: List[str], end_uses: List[str] = None):
+    def initialize_colors(
+        self, scenarios: List[str], sectors: List[str], end_uses: List[str] = None
+    ):
         """Initialize colors for all entities at once to ensure consistency."""
         all_keys = scenarios + sectors
         if end_uses:
@@ -47,7 +49,6 @@ class ColorManager:
 
             # TODO might want to handle all cases with match statement.
             if isinstance(color, str) and color.startswith("#"):
-
                 self._color_cache[key] = self._hex_to_rgba_str(color)
             else:
                 # Assume it is already an rgb(a) string
@@ -62,22 +63,23 @@ class ColorManager:
         """Get all scenario styling colors."""
         return self._scenario_colors.copy()
 
+    # FIXME This doesn't seem to override the default css for the checkbox as intended
     def generate_scenario_css(self) -> str:
         """Generate CSS string for scenario checkbox styling."""
         css_rules = []
 
-        for scenario, colors in self._scenario_colors.items():
+        for scenario, scolors in self._scenario_colors.items():
             # Escape scenario name for CSS selector
-            escaped_scenario = scenario.replace(' ', '\\ ').replace('(', '\\(').replace(')', '\\)')
+            escaped_scenario = scenario.replace(" ", "\\ ").replace("(", "\\(").replace(")", "\\)")
 
             css_rule = f"""
             .scenario-checklist .form-check-input[value='{escaped_scenario}']:checked + .form-check-label {{
-                background-color: {colors['bg']} !important;
-                border-color: {colors['border']} !important;
+                background-color: {scolors['bg']} !important;
+                border-color: {scolors['border']} !important;
             }}"""
             css_rules.append(css_rule)
 
-        return '\n'.join(css_rules)
+        return "\n".join(css_rules)
 
     def _generate_scenario_colors(self, scenarios: List[str]):
         """Generate background and border colors for scenarios."""
@@ -87,13 +89,13 @@ class ColorManager:
 
             self._scenario_colors[scenario] = {
                 "bg": self._rgba_to_str(r, g, b, 0.2),
-                "border": self._rgba_to_str(r, g, b, 0.8)
+                "border": self._rgba_to_str(r, g, b, 0.8),
             }
 
     def _hex_to_rgba_str(self, hex_color: str) -> str:
         """Convert hex color to RGBA string."""
         hex_color = hex_color.lstrip("#")
-        r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+        r, g, b = tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
         return self._rgba_to_str(r, g, b, 1.0)
 
     def _rgba_to_str(self, r: int, g: int, b: int, a: float = 1.0) -> str:
@@ -108,19 +110,15 @@ class ColorManager:
                 int(rgba.groups()[0]),
                 int(rgba.groups()[1]),
                 int(rgba.groups()[2]),
-                float(rgba.groups()[3])
+                float(rgba.groups()[3]),
             )
 
         rgb = re.search(r"rgb\((\d+), (\d+), (\d+)\)", rgba_str)
         if rgb is not None:
-            return (
-                int(rgb.groups()[0]),
-                int(rgb.groups()[1]),
-                int(rgb.groups()[2]),
-                1.0
-            )
+            return (int(rgb.groups()[0]), int(rgb.groups()[1]), int(rgb.groups()[2]), 1.0)
 
-        raise ValueError(f"Not a valid rgb(a) string {rgba_str}")
+        err = f"Not a valid rgb(a) string {rgba_str}"
+        raise ValueError(err)
 
 
 # Convenience function to get the singleton instance

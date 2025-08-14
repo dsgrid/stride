@@ -26,12 +26,15 @@ classifiers = [
 ]
 dependencies = [
     "click",
+    "dash>=3.2.0",
+    "dash-bootstrap-components>=2.0.3",
     "dbt-core >= 1.10.5, < 2",
     "dbt-duckdb",
     "dsgrid @ git+https://github.com/dsgrid/dsgrid.git@feat/dataset-support",
     "duckdb >= 1.1, < 2",
     "loguru",
-    "pandas >= 2.2, < 3",
+    "pandas>=2.2,<3",
+    "plotly>=6.2.0",
     "pyarrow",
     "pydantic >= 2.7, < 3",
     "rich",

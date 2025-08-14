@@ -176,6 +176,7 @@ def view(ctx: click.Context, project_path: Path, host: str, port: int, debug: bo
     """Start the STRIDE dashboard UI for the specified project."""
     from stride.ui.app import create_app
     from stride.api import APIClient
+
     project = safe_get_project_from_context(ctx, project_path)
 
     if project.config is not None and project.con is not None:
@@ -184,7 +185,8 @@ def view(ctx: click.Context, project_path: Path, host: str, port: int, debug: bo
         # Run in single threaded mode to avoid data races.
         app.run(host=host, port=port, debug=debug, threaded=False)
     else:
-        raise click.ClickException("Project is not properly configured or connected.")
+        err = "Project is not properly configured or connected."
+        raise click.ClickException(err)
 
 
 @click.command(name="list")

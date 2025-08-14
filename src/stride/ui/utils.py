@@ -55,10 +55,13 @@ def str_to_rgba(rgba_str: str) -> tuple[int, int, int, float]:
     if rgb is not None:
         return tuple(*rgb.groups(), *(1))  # type: ignore
 
-    raise ValueError(f"Not a valid rgb(a) string {rgba_str}")
+    verr = f"Not a valid rgb(a) string {rgba_str}"
+    raise ValueError(verr)
 
 
-def create_scenario_colors(scenarios: list[str], color_generator: Callable[[str], str]) -> dict[str, dict[str, str]]:
+def create_scenario_colors(
+    scenarios: list[str], color_generator: Callable[[str], str]
+) -> dict[str, dict[str, str]]:
     """
     Create background and border colors for scenario checkboxes.
 
@@ -98,7 +101,7 @@ def create_scenario_colors(scenarios: list[str], color_generator: Callable[[str]
 
         scenario_colors[scenario] = {
             "bg": rgba_to_str(r, g, b, 0.2),
-            "border": rgba_to_str(r, g, b, 0.8)
+            "border": rgba_to_str(r, g, b, 0.8),
         }
 
     return scenario_colors
@@ -120,15 +123,15 @@ def generate_scenario_css(scenario_colors: dict[str, dict[str, str]]) -> str:
     """
     css_rules = []
 
-    for scenario, colors in scenario_colors.items():
+    for scenario, scolors in scenario_colors.items():
         # Escape scenario name for CSS selector (replace spaces, special chars)
-        escaped_scenario = scenario.replace(' ', '\\ ').replace('(', '\\(').replace(')', '\\)')
+        escaped_scenario = scenario.replace(" ", "\\ ").replace("(", "\\(").replace(")", "\\)")
 
         css_rule = f"""
         .scenario-checklist .form-check-input[value='{escaped_scenario}']:checked + .form-check-label {{
-            background-color: {colors['bg']} !important;
-            border-color: {colors['border']} !important;
+            background-color: {scolors['bg']} !important;
+            border-color: {scolors['border']} !important;
         }}"""
         css_rules.append(css_rule)
 
-    return '\n'.join(css_rules)
+    return "\n".join(css_rules)
