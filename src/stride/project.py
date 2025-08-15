@@ -40,14 +40,15 @@ class Project:
         config: ProjectConfig,
         project_path: Path,
         table_overrides: CalculatedTableOverrides | None = None,
+        **connection_kwargs: Any,
     ) -> None:
         self._config = config
         self._path = project_path
-        self._con = self._connect()
+        self._con = self._connect(**connection_kwargs)
         self._table_overrides = table_overrides or CalculatedTableOverrides()
 
-    def _connect(self) -> DuckDBPyConnection:
-        return duckdb.connect(self._path / REGISTRY_DATA_DIR / DATABASE_FILE)
+    def _connect(self, **connection_kwargs: Any) -> DuckDBPyConnection:
+        return duckdb.connect(self._path / REGISTRY_DATA_DIR / DATABASE_FILE, **connection_kwargs)
 
     @classmethod
     def create(cls, config_file: Path, base_dir: Path = Path(), overwrite: bool = False) -> Self:
@@ -70,8 +71,23 @@ class Project:
         return project
 
     @classmethod
-    def load(cls, project_path: Path | str) -> Self:
-        """Load a project from a serialized directory."""
+    def load(cls, project_path: Path | str, **connection_kwargs: Any) -> Self:
+        """Load a project from a serialized directory.
+
+        Parameters
+        ----------
+        project_path
+            Directory containing an existing project.
+        connection_kwargs
+            Keyword arguments to be forwarded to the DuckDB connect call.
+            Pass read_only=True if you will not be mutating the database
+            so that multiple stride processes can access the database simultaneously.
+
+        Examples
+        --------
+        >>> from stride import Project
+        >>> project = Project.load("my_project_path", read_only=True)
+        """
         path = Path(project_path)
         config_file = path / CONFIG_FILE
         db_file = path / "registry_data" / DATABASE_FILE
@@ -81,7 +97,11 @@ class Project:
         config = ProjectConfig.from_file(config_file)
         overrides_file = path / TABLE_OVERRIDES_FILE
         overrides = CalculatedTableOverrides.from_file(overrides_file)
-        return cls(config, path, table_overrides=overrides)
+        return cls(config, path, table_overrides=overrides, **connection_kwargs)
+
+    def close(self) -> None:
+        """Close the connection to the database."""
+        self._con.close()
 
     @property
     def con(self) -> DuckDBPyConnection:
