@@ -25,8 +25,8 @@ Lingering Questions/Comments:
 
 import threading
 from pathlib import Path
-from typing import TYPE_CHECKING
 import pandas as pd
+from stride.project import Project
 from loguru import logger
 import duckdb
 
@@ -39,10 +39,6 @@ from .utils import (
     SecondaryMetric,
     WeatherVar,
 )
-
-if TYPE_CHECKING:
-    from stride.models import ProjectConfig
-
 
 # TODO
 # Secondary metric queries (GDP per capita is slightly different.)
@@ -95,131 +91,28 @@ class APIClient:
 
     def __new__(
         cls,
-        path_or_conn: str | Path | "duckdb.DuckDBPyConnection" | None = None,
-        project_config: "ProjectConfig | None" = None,
+        project: Project | None = None,
     ) -> APIClient:
         # Always create a new instance instead of singleton for development
         return super().__new__(cls)
 
     def __init__(
         self,
-        path_or_conn: str | Path | "duckdb.DuckDBPyConnection" | None = None,
-        project_config: "ProjectConfig | None" = None,
+        project: Project,
     ):
-        logger.debug(
-            f"APIClient.__init__ called with project_config: {project_config is not None}"
-        )
+        logger.debug(f"APIClient.__init__ called with project_config: {project is not None}")
         # Remove singleton behavior during development
-        self.project_config = project_config
+
+        self.project = project
 
         # Set table name and country from config or defaults
-        if project_config:
-            self.energy_proj_table = "energy_projection"
-            self.project_country = project_config.country
-        else:
-            # Fallback to original hardcoded values
-            self.energy_proj_table = "energy_projection"
-            self.project_country = "country_1"
+        self.energy_proj_table = "energy_projection"
+        self.project_country = self.project.config.country
 
         self._years: list[int] | None = None
         self._scenarios: list[str] | None = None
-        self._initialize_connection(path_or_conn)
 
-    def _close_existing_connection(self) -> None:
-        """Close the existing database connection if it exists."""
-        if self.db:
-            try:
-                self.db.close()
-                logger.debug("Database connection closed")
-                pass
-            except Exception as e:
-                logger.error(f"Error closing connection: {e}")
-                pass
-
-    def _connect_from_path(self, db_path: Path) -> None:
-        # Create DuckDB connection
-        try:
-            # Try read-only connection first to avoid locks
-            logger.debug(f"Attempting read-only connection to: {db_path}")
-            self.db = duckdb.connect(str(db_path), read_only=True)
-            logger.info(f"Successfully connected to database: {db_path}")
-        except duckdb.IOException as e:
-            if "lock" in str(e).lower():
-                logger.error(f"Database is locked. Error: {e}")
-                logger.error(
-                    "Try killing the process mentioned in the error or use 'pkill -f python'"
-                )
-                err = f"Database is locked by another process. {e}"
-                raise ConnectionError(err)
-            else:
-                err = f"Failed to connect to database at {db_path}: {e}"
-                raise ConnectionError(err)
-        except ImportError:
-            err = "duckdb package is required but not installed"
-            raise ImportError(err)
-        except Exception as e:
-            err = f"Failed to connect to database at {db_path}: {e}"
-            raise ConnectionError(err)
-
-    def _initialize_connection(
-        self, path_or_conn: str | Path | "duckdb.DuckDBPyConnection" | None
-    ) -> None:
-        """
-        Initialize the database connection.
-
-        Parameters
-        ----------
-        path_or_conn : str | Path | duckdb.DuckDBPyConnection
-            Database path string, Path object, or existing DuckDB connection
-
-        Raises
-        ------
-        ValueError
-            If path_or_conn is None or invalid connection object
-        FileNotFoundError
-            If database file doesn't exist
-        ConnectionError
-            If database connection fails
-        ImportError
-            If duckdb package is not installed
-        """
-        if path_or_conn is None:
-            err = "Database connection, path, or connection string must be provided."
-            raise ValueError(err)
-
-        # Close any existing connection first
-        self._close_existing_connection()
-
-        # If type is str, convert to path, check
-        #
-        if not isinstance(path_or_conn, (str, Path)):
-            # Assume we have a DuckDB connection obj.
-            try:
-                # Basic validation - check for execute method
-                if not hasattr(path_or_conn, "execute"):
-                    err = "Invalid database connection object - missing execute method"
-                    raise ValueError(err)
-                self.db = path_or_conn
-                return
-            except Exception as e:
-                err = f"Invalid database connection: {e}"
-                raise ValueError(err)
-
-        # Convert to Path object and normalize
-        db_path = Path(path_or_conn).resolve()
-
-        if not db_path.exists():
-            err = f"Database file not found: {db_path}"
-            raise FileNotFoundError(err)
-        if not db_path.is_file():
-            err = f"Path is not a file: {db_path}"
-            raise ValueError(err)
-
-        self._connect_from_path(db_path)
-
-    def __del__(self) -> None:
-        """Cleanup on object destruction."""
-        self._close_existing_connection()
+        self.db = self.project.con
 
     @property
     def years(self) -> list[int]:
@@ -266,13 +159,13 @@ class APIClient:
         list[int]
             Sorted list of unique model years from the database
         """
-        sql = f"""
+        sql = """
         SELECT DISTINCT model_year as year
-        FROM {self.energy_proj_table}
-        WHERE geography = '{self.project_country}'
+        FROM energy_projection
+        WHERE geography = ?
         ORDER BY model_year
         """
-        result = self.db.execute(sql).fetchall()
+        result = self.db.execute(sql, [self.project_country]).fetchall()
         return [row[0] for row in result]
 
     def _fetch_scenarios(self) -> list[str]:
@@ -284,13 +177,13 @@ class APIClient:
         list[str]
             Sorted list of unique scenarios from the database
         """
-        sql = f"""
+        sql = """
         SELECT DISTINCT scenario
-        FROM {self.energy_proj_table}
-        WHERE geography = '{self.project_country}'
+        FROM energy_projection
+        WHERE geography = ?
         ORDER BY scenario
         """
-        result = self.db.execute(sql).fetchall()
+        result = self.db.execute(sql, [self.project_country]).fetchall()
         return [row[0] for row in result]
 
     def _validate_scenarios(self, scenarios: list[str]) -> None:
@@ -430,28 +323,32 @@ class APIClient:
                 group_col = "metric"
             else:  # group_by == "Sector"
                 group_col = "sector"
+
             sql = f"""
             SELECT scenario, model_year as year, {group_col}, SUM(value) as value
-            FROM {self.energy_proj_table}
-            WHERE geography = '{self.project_country}'
-            AND scenario IN ('{"','".join(scenarios)}')
-            AND model_year IN ({','.join(map(str, years))})
+            FROM energy_projection
+            WHERE geography = ?
+            AND scenario = ANY(?)
+            AND model_year = ANY(?)
             GROUP BY scenario, model_year, {group_col}
             ORDER BY scenario, model_year, {group_col}
             """
+            params = [self.project_country, scenarios, years]
         else:
-            sql = f"""
+            sql = """
             SELECT scenario, model_year as year, SUM(value) as value
-            FROM {self.energy_proj_table}
-            WHERE geography = '{self.project_country}'
-            AND scenario IN ('{"','".join(scenarios)}')
-            AND model_year IN ({','.join(map(str, years))})
+            FROM energy_projection
+            WHERE geography = ?
+            AND scenario = ANY(?)
+            AND model_year = ANY(?)
             GROUP BY scenario, model_year
             ORDER BY scenario, model_year
             """
+            params = [self.project_country, scenarios, years]
+
         # Execute query and return DataFrame
         logger.debug(f"SQL Query:\n{sql}")
-        df = self.db.execute(sql).df()
+        df = self.db.execute(sql, params).df()
         logger.debug(f"Returning {len(df)} rows.")
         return df
 
@@ -541,10 +438,10 @@ class APIClient:
                         model_year,
                         timestamp,
                         SUM(value) as total_demand
-                    FROM {self.energy_proj_table}
-                    WHERE geography = '{self.project_country}'
-                    AND scenario IN ('{"','".join(scenarios)}')
-                    AND model_year IN ({','.join(map(str, years))})
+                    FROM energy_projection
+                    WHERE geography = ?
+                    AND scenario = ANY(?)
+                    AND model_year = ANY(?)
                     GROUP BY scenario, model_year, timestamp
                 ) totals
             )
@@ -553,20 +450,28 @@ class APIClient:
                 t.model_year as year,
                 t.{group_col},
                 t.value
-            FROM {self.energy_proj_table} t
+            FROM energy_projection t
             INNER JOIN peak_hours p ON
                 t.scenario = p.scenario
                 AND t.model_year = p.year
                 AND t.timestamp = p.timestamp
                 AND p.rn = 1
-            WHERE t.geography = '{self.project_country}'
-            AND t.scenario IN ('{"','".join(scenarios)}')
-            AND t.model_year IN ({','.join(map(str, years))})
+            WHERE t.geography = ?
+            AND t.scenario = ANY(?)
+            AND t.model_year = ANY(?)
             ORDER BY t.scenario, t.model_year, t.{group_col}
             """
+            params = [
+                self.project_country,
+                scenarios,
+                years,
+                self.project_country,
+                scenarios,
+                years,
+            ]
         else:
             # Just get peak totals without breakdown
-            sql = f"""
+            sql = """
             SELECT
                 scenario,
                 model_year as year,
@@ -577,19 +482,20 @@ class APIClient:
                     model_year,
                     timestamp,
                     SUM(value) as total_demand
-                FROM {self.energy_proj_table}
-                WHERE geography = '{self.project_country}'
-                AND scenario IN ('{"','".join(scenarios)}')
-                AND model_year IN ({','.join(map(str, years))})
+                FROM energy_projection
+                WHERE geography = ?
+                AND scenario = ANY(?)
+                AND model_year = ANY(?)
                 GROUP BY scenario, model_year, timestamp
             ) totals
             GROUP BY scenario, model_year
             ORDER BY scenario, model_year
             """
+            params = [self.project_country, scenarios, years]
 
         # Execute query and return DataFrame
         logger.debug(f"SQL Query:\n{sql}")
-        df = self.db.execute(sql).df()
+        df = self.db.execute(sql, params).df()
         logger.debug(f"Returning {len(df)} rows.")
         return df
 
@@ -713,42 +619,48 @@ class APIClient:
         if len(years) > 1:
             # Multiple years, single scenario - pivot on year
             pivot_cols = [str(year) for year in years]
+            year_pivot_list = ",".join([str(year) for year in years])
+
             sql = f"""
             WITH hourly_totals AS (
                 SELECT model_year as year, timestamp, SUM(value) as total_demand
-                FROM {self.energy_proj_table}
-                WHERE geography = '{self.project_country}'
-                AND model_year IN ({','.join(map(str, years))})
-                AND scenario = '{scenarios[0]}'
+                FROM energy_projection
+                WHERE geography = ?
+                AND model_year = ANY(?)
+                AND scenario = ?
                 GROUP BY model_year, timestamp
             )
-            SELECT {', '.join([f'"{col}"' for col in pivot_cols])}
+            SELECT {", ".join([f'"{col}"' for col in pivot_cols])}
             FROM hourly_totals
             PIVOT (
-                SUM(total_demand) FOR year IN ({', '.join(map(str, years))})
+                SUM(total_demand) FOR year IN ({year_pivot_list})
             )
             """
+            params = [self.project_country, years, scenarios[0]]
         else:
             # Single year, multiple scenarios - pivot on scenario
             pivot_cols = scenarios
+            scenario_pivot_list = ",".join([f"'{s}'" for s in scenarios])
+
             sql = f"""
             WITH hourly_totals AS (
                 SELECT scenario, timestamp, SUM(value) as total_demand
-                FROM {self.energy_proj_table}
-                WHERE geography = '{self.project_country}'
-                AND model_year = {years[0]}
-                AND scenario IN ('{"','".join(scenarios)}')
+                FROM energy_projection
+                WHERE geography = ?
+                AND model_year = ?
+                AND scenario = ANY(?)
                 GROUP BY scenario, timestamp
             )
-            SELECT {', '.join([f'"{col}"' for col in pivot_cols])}
+            SELECT {", ".join([f'"{col}"' for col in pivot_cols])}
             FROM hourly_totals
             PIVOT (
-                SUM(total_demand) FOR scenario IN ('{"','".join(scenarios)}')
+                SUM(total_demand) FOR scenario IN ({scenario_pivot_list})
             )
             """
+            params = [self.project_country, years[0], scenarios]
 
         logger.debug(f"SQL Query:\n{sql}")
-        df = self.db.execute(sql).df()
+        df = self.db.execute(sql, params).df()
 
         # Sort each column from highest to lowest
         for col in pivot_cols:
@@ -950,13 +862,14 @@ class APIClient:
                 {time_period_calc} as time_period,
                 {group_col},
                 AVG(value) as value
-            FROM {self.energy_proj_table}
-            WHERE geography = '{self.project_country}'
-                AND scenario = '{scenario}'
-                AND model_year IN ({','.join(map(str, years))})
+            FROM energy_projection
+            WHERE geography = ?
+                AND scenario = ?
+                AND model_year = ANY(?)
             GROUP BY scenario, model_year, {time_period_calc}, {group_col}
             ORDER BY scenario, model_year, time_period, {group_col}
             """
+            params = [self.project_country, scenario, years]
         else:
             sql = f"""
             SELECT
@@ -964,16 +877,17 @@ class APIClient:
                 model_year as year,
                 {time_period_calc} as time_period,
                 SUM(value) as value
-            FROM {self.energy_proj_table}
-            WHERE geography = '{self.project_country}'
-                AND scenario = '{scenario}'
-                AND model_year IN ({','.join(map(str, years))})
+            FROM energy_projection
+            WHERE geography = ?
+                AND scenario = ?
+                AND model_year = ANY(?)
             GROUP BY scenario, model_year, {time_period_calc}
             ORDER BY scenario, model_year, time_period
             """
+            params = [self.project_country, scenario, years]
 
         logger.debug(f"SQL Query:\n{sql}")
-        df = self.db.execute(sql).df()
+        df = self.db.execute(sql, params).df()
         pd.DataFrame(df)
         logger.debug(f"Returning {len(df)} rows.")
         return df
@@ -1052,7 +966,7 @@ class APIClient:
         self._validate_years(years)
 
         # Build and execute query using utility function
-        sql = build_seasonal_query(
+        sql, params = build_seasonal_query(
             table_name=self.energy_proj_table,
             country=self.project_country,
             scenario=scenario,
@@ -1062,7 +976,7 @@ class APIClient:
         )
 
         logger.debug(f"SQL Query:\n{sql}")
-        df = self.db.execute(sql).df()
+        df = self.db.execute(sql, params).df()
         logger.debug(f"Returning {len(df)} rows.")
         return df
 
@@ -1135,7 +1049,7 @@ class APIClient:
         self._validate_years([year])
 
         # Build and execute query using utility function
-        sql = build_seasonal_query(
+        sql, params = build_seasonal_query(
             table_name=self.energy_proj_table,
             country=self.project_country,
             scenario=scenario,
@@ -1146,6 +1060,6 @@ class APIClient:
         )
 
         logger.debug(f"SQL Query:\n{sql}")
-        df = self.db.execute(sql).df()
+        df = self.db.execute(sql, params).df()
         logger.debug(f"Returning {len(df)} rows.")
         return df

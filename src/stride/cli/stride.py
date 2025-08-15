@@ -179,14 +179,11 @@ def view(ctx: click.Context, project_path: Path, host: str, port: int, debug: bo
 
     project = safe_get_project_from_context(ctx, project_path)
 
-    if project.config is not None and project.con is not None:
-        data_handler = APIClient(path_or_conn=project.con, project_config=project.config)
-        app = create_app(data_handler=data_handler)
-        # Run in single threaded mode to avoid data races.
-        app.run(host=host, port=port, debug=debug, threaded=False)
-    else:
-        err = "Project is not properly configured or connected."
-        raise click.ClickException(err)
+    data_handler = APIClient(project=project)
+
+    app = create_app(data_handler=data_handler)
+    # Run in single threaded mode to avoid data races.
+    app.run(host=host, port=port, debug=debug, threaded=False)
 
 
 @click.command(name="list")

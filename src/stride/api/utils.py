@@ -188,68 +188,129 @@ def build_seasonal_query(
     group_by: TimeGroup,
     agg: TimeGroupAgg,
     breakdown: ConsumptionBreakdown | None = None,
-) -> str:
+) -> tuple[str, list]:
     """
-    Build a complete SQL query for seasonal load analysis.
+    Build a parameterized SQL query for seasonal load analysis.
 
     Parameters
     ----------
     table_name : str
         Name of the energy projection table
     country : str
-        Project country identifier
+        Country identifier
     scenario : str
         Scenario name
     years : list[int]
-        List of years to include
+        List of model years
     group_by : TimeGroup
         Time grouping option
     agg : TimeGroupAgg
-        Aggregation function
+        Aggregation method
     breakdown : ConsumptionBreakdown, optional
-        Optional breakdown by sector/end use
+        Optional breakdown by sector or end use
 
     Returns
     -------
-    str
-        Complete SQL query string
+    tuple[str, list]
+        Tuple containing the SQL query string and list of parameters
     """
-    # Base expressions
-    hour_of_year_expr = "EXTRACT(DOY FROM timestamp) * 24 + EXTRACT(HOUR FROM timestamp) - 24"
-    hour_of_day_expr = "EXTRACT(HOUR FROM timestamp)"
+    # Base parameters
+    params = [country, scenario, years]
 
-    # Base columns
-    select_cols = ["scenario", "model_year as year", f"{hour_of_day_expr} as hour_of_day"]
-    group_by_cols = ["scenario", "model_year", f"{hour_of_day_expr}"]
+    # Build WHERE clause using ANY for years
+    where_clause = """
+    WHERE geography = ?
+    AND scenario = ?
+    AND model_year = ANY(?)
+    """
 
-    # Add breakdown if specified
-    if breakdown:
-        breakdown_col = get_breakdown_column(breakdown)
-        select_cols.append(breakdown_col)
-        group_by_cols.append(breakdown_col)
+    # Seasonal mapping
+    season_case = """
+    CASE
+        WHEN EXTRACT(MONTH FROM timestamp) IN (12, 1, 2) THEN 'Winter'
+        WHEN EXTRACT(MONTH FROM timestamp) IN (3, 4, 5) THEN 'Spring'
+        WHEN EXTRACT(MONTH FROM timestamp) IN (6, 7, 8) THEN 'Summer'
+        WHEN EXTRACT(MONTH FROM timestamp) IN (9, 10, 11) THEN 'Fall'
+    END as season
+    """
 
-    # Add time grouping columns
-    time_select_cols, time_group_cols = build_time_grouping_columns(group_by, hour_of_year_expr)
-    select_cols.extend(time_select_cols)
-    group_by_cols.extend(time_group_cols)
+    # Day type mapping
+    day_type_case = """
+    CASE
+        WHEN EXTRACT(DAYOFWEEK FROM timestamp) IN (1, 7) THEN 'Weekend'
+        ELSE 'Weekday'
+    END as day_type
+    """
 
-    # Get aggregation function
+    # Hour extraction
+    hour_extract = "EXTRACT(HOUR FROM timestamp) as hour_of_day"
+
+    # Determine aggregation function using the existing helper
     agg_func = get_aggregation_function(agg)
 
-    # Build clauses
-    select_clause = ", ".join(select_cols)
-    group_by_clause = ", ".join(group_by_cols)
-    order_by_clause = build_order_by_clause(group_by, breakdown)
-    years_clause = ",".join(map(str, years))
+    # Build SELECT and GROUP BY clauses based on options
+    cte_select_cols = ["scenario", "model_year as year"]
+    cte_group_cols = ["scenario", "model_year"]
 
-    return f"""
-    SELECT
-        {select_clause},
-        {agg_func}(value) as value
-    FROM {table_name}
-    WHERE geography = '{country}'
-        AND scenario = '{scenario}'
-        AND model_year IN ({years_clause})
-    GROUP BY {group_by_clause}
-    ORDER BY {order_by_clause}
-    """
+    outer_select_cols = ["scenario", "year"]
+    outer_group_cols = ["scenario", "year"]
+
+    if "Seasonal" in group_by:
+        cte_select_cols.append(season_case)
+        cte_group_cols.append("season")
+        outer_select_cols.append("season")
+        outer_group_cols.append("season")
+
+    if "Weekday/Weekend" in group_by:
+        cte_select_cols.append(day_type_case)
+        cte_group_cols.append("day_type")
+        outer_select_cols.append("day_type")
+        outer_group_cols.append("day_type")
+
+    cte_select_cols.append(hour_extract)
+    cte_group_cols.append("hour_of_day")
+    outer_select_cols.append("hour_of_day")
+    outer_group_cols.append("hour_of_day")
+
+    if breakdown:
+        breakdown_col = "metric" if breakdown == "End Use" else "sector"
+        cte_select_cols.append(breakdown_col)
+        cte_group_cols.append(breakdown_col)
+        outer_select_cols.append(breakdown_col)
+        outer_group_cols.append(breakdown_col)
+
+        # For breakdown queries, aggregate values directly
+        cte_select_cols.append("SUM(value) as total_value")
+        outer_select_cols.append(f"{agg_func}(total_value) as value")
+
+        sql = f"""
+        WITH hourly_totals AS (
+            SELECT {", ".join(cte_select_cols)}
+            FROM {table_name}
+            {where_clause}
+            GROUP BY {", ".join(cte_group_cols)}
+        )
+        SELECT {", ".join(outer_select_cols)}
+        FROM hourly_totals
+        GROUP BY {", ".join(outer_group_cols)}
+        ORDER BY {", ".join(outer_group_cols)}
+        """
+    else:
+        # For non-breakdown queries, we need to sum first, then aggregate
+        cte_select_cols.append("SUM(value) as total_value")
+        outer_select_cols.append(f"{agg_func}(total_value) as value")
+
+        sql = f"""
+        WITH hourly_totals AS (
+            SELECT {", ".join(cte_select_cols)}
+            FROM {table_name}
+            {where_clause}
+            GROUP BY {", ".join(cte_group_cols)}
+        )
+        SELECT {", ".join(outer_select_cols)}
+        FROM hourly_totals
+        GROUP BY {", ".join(outer_group_cols)}
+        ORDER BY {", ".join(outer_group_cols)}
+        """
+
+    return sql, params

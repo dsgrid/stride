@@ -77,8 +77,8 @@ class ColorManager:
 
             css_rule = f"""
             .scenario-checklist .form-check-input[value='{escaped_scenario}']:checked + .form-check-label {{
-                background-color: {scolors['bg']} !important;
-                border-color: {scolors['border']} !important;
+                background-color: {scolors["bg"]} !important;
+                border-color: {scolors["border"]} !important;
             }}"""
             css_rules.append(css_rule)
 

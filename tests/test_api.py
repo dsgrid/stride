@@ -13,14 +13,11 @@ class TestAPIClient:
 
     def test_singleton_behavior(self, default_project: Project) -> None:
         """Test that APIClient follows singleton pattern."""
-        client1 = APIClient(
-            path_or_conn=default_project.con, project_config=default_project.config
-        )
+        client1 = APIClient(project=default_project)
+
         # Reset singleton for clean test
         APIClient._instance = None
-        client2 = APIClient(
-            path_or_conn=default_project.con, project_config=default_project.config
-        )
+        client2 = APIClient(project=default_project)
         # Note: In real usage, both would be same instance
         assert isinstance(client1, APIClient)
         assert isinstance(client2, APIClient)
