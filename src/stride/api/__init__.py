@@ -29,6 +29,7 @@ import pandas as pd
 from stride.project import Project
 from loguru import logger
 import duckdb
+from typing import Any
 
 from .utils import (
     build_seasonal_query,
@@ -636,7 +637,7 @@ class APIClient:
                 SUM(total_demand) FOR year IN ({year_pivot_list})
             )
             """
-            params = [self.project_country, years, scenarios[0]]
+            params: list[Any] = [self.project_country, years, scenarios[0]]
         else:
             # Single year, multiple scenarios - pivot on scenario
             pivot_cols = scenarios
@@ -869,7 +870,7 @@ class APIClient:
             GROUP BY scenario, model_year, {time_period_calc}, {group_col}
             ORDER BY scenario, model_year, time_period, {group_col}
             """
-            params = [self.project_country, scenario, years]
+            params: list[Any] = [self.project_country, scenario, years]
         else:
             sql = f"""
             SELECT

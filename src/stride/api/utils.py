@@ -188,7 +188,7 @@ def build_seasonal_query(
     group_by: TimeGroup,
     agg: TimeGroupAgg,
     breakdown: ConsumptionBreakdown | None = None,
-) -> tuple[str, list]:
+) -> tuple[str, list[Any]]:
     """
     Build a parameterized SQL query for seasonal load analysis.
 
@@ -211,11 +211,11 @@ def build_seasonal_query(
 
     Returns
     -------
-    tuple[str, list]
+    tuple[str, list[Any]]
         Tuple containing the SQL query string and list of parameters
     """
     # Base parameters
-    params = [country, scenario, years]
+    params: list[Any] = [country, scenario, years]
 
     # Build WHERE clause using ANY for years
     where_clause = """
@@ -245,72 +245,72 @@ def build_seasonal_query(
     # Hour extraction
     hour_extract = "EXTRACT(HOUR FROM timestamp) as hour_of_day"
 
+    # Day of year extraction for proper daily aggregation
+    day_of_year_extract = "EXTRACT(DOY FROM timestamp) as day_of_year"
+
     # Determine aggregation function using the existing helper
     agg_func = get_aggregation_function(agg)
 
-    # Build SELECT and GROUP BY clauses based on options
+    # Build CTE SELECT and GROUP BY clauses
     cte_select_cols = ["scenario", "model_year as year"]
     cte_group_cols = ["scenario", "model_year"]
-
-    outer_select_cols = ["scenario", "year"]
-    outer_group_cols = ["scenario", "year"]
 
     if "Seasonal" in group_by:
         cte_select_cols.append(season_case)
         cte_group_cols.append("season")
-        outer_select_cols.append("season")
-        outer_group_cols.append("season")
 
     if "Weekday/Weekend" in group_by:
         cte_select_cols.append(day_type_case)
         cte_group_cols.append("day_type")
-        outer_select_cols.append("day_type")
-        outer_group_cols.append("day_type")
 
+    # Add day of year and hour to CTE for proper daily aggregation
+    cte_select_cols.append(day_of_year_extract)
     cte_select_cols.append(hour_extract)
+    cte_group_cols.append("day_of_year")
     cte_group_cols.append("hour_of_day")
-    outer_select_cols.append("hour_of_day")
-    outer_group_cols.append("hour_of_day")
 
     if breakdown:
         breakdown_col = "metric" if breakdown == "End Use" else "sector"
         cte_select_cols.append(breakdown_col)
         cte_group_cols.append(breakdown_col)
+
+    # Sum values by day and hour in the CTE
+    cte_select_cols.append("SUM(value) as total_value")
+
+    # Build outer query SELECT and GROUP BY clauses (excluding day_of_year)
+    outer_select_cols = ["scenario", "year"]
+    outer_group_cols = ["scenario", "year"]
+
+    if "Seasonal" in group_by:
+        outer_select_cols.append("season")
+        outer_group_cols.append("season")
+
+    if "Weekday/Weekend" in group_by:
+        outer_select_cols.append("day_type")
+        outer_group_cols.append("day_type")
+
+    outer_select_cols.append("hour_of_day")
+    outer_group_cols.append("hour_of_day")
+
+    if breakdown:
+        breakdown_col = "metric" if breakdown == "End Use" else "sector"
         outer_select_cols.append(breakdown_col)
         outer_group_cols.append(breakdown_col)
 
-        # For breakdown queries, aggregate values directly
-        cte_select_cols.append("SUM(value) as total_value")
-        outer_select_cols.append(f"{agg_func}(total_value) as value")
+    # Apply aggregation function to the daily values (aggregating across day_of_year)
+    outer_select_cols.append(f"{agg_func}(total_value) as value")
 
-        sql = f"""
-        WITH hourly_totals AS (
-            SELECT {", ".join(cte_select_cols)}
-            FROM {table_name}
-            {where_clause}
-            GROUP BY {", ".join(cte_group_cols)}
-        )
-        SELECT {", ".join(outer_select_cols)}
-        FROM hourly_totals
-        GROUP BY {", ".join(outer_group_cols)}
-        ORDER BY {", ".join(outer_group_cols)}
-        """
-    else:
-        # For non-breakdown queries, we need to sum first, then aggregate
-        cte_select_cols.append("SUM(value) as total_value")
-        outer_select_cols.append(f"{agg_func}(total_value) as value")
-
-        sql = f"""
-        WITH hourly_totals AS (
-            SELECT {", ".join(cte_select_cols)}
-            FROM {table_name}
-            {where_clause}
-            GROUP BY {", ".join(cte_group_cols)}
-        )
-        SELECT {", ".join(outer_select_cols)}
-        FROM hourly_totals
-        GROUP BY {", ".join(outer_group_cols)}
-        ORDER BY {", ".join(outer_group_cols)}
-        """
+    sql = f"""
+    WITH hourly_totals AS (
+        SELECT {", ".join(cte_select_cols)}
+        FROM {table_name}
+        {where_clause}
+        GROUP BY {", ".join(cte_group_cols)}
+    )
+    SELECT {", ".join(outer_select_cols)}
+    FROM hourly_totals
+    GROUP BY {", ".join(outer_group_cols)}
+    ORDER BY {", ".join(outer_group_cols)}
+    """
 
     return sql, params
