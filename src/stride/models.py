@@ -38,6 +38,7 @@ class DatasetConfig(DSGBaseModel):  # type: ignore
     dimension_columns: dict[str, DimensionType] = {}
     trivial_dimensions: list[DimensionType] = []
     dimensions: list[dict[str, Any]]
+    missing_associations_file: Path | None = None
     value_column: str = "value"
 
     @field_validator("dimension_columns")

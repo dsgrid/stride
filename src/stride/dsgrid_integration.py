@@ -1,4 +1,5 @@
 import os
+import shutil
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -21,7 +22,6 @@ from dsgrid.registry.common import DataStoreType, DatabaseConnection
 from dsgrid.registry.registry_manager import RegistryManager
 from loguru import logger
 
-import stride
 from stride.io import create_table_from_file
 from stride.models import DatasetConfig
 
@@ -70,14 +70,9 @@ def _make_bulk_registration_config(
     dataset_paths: list[dict[str, Any]],
 ) -> RegistrationModel:
     """Create a bulk registration config file from a project and datasets."""
-    data_path = Path(next(iter(stride.__path__))).parents[1] / "tests" / "data"
     project_file = _project_config_path(base_path)
     project_config = json5.loads(project_file.read_text(encoding="utf-8"))
     project_id = project_config["project_id"]
-    missing_associations = {
-        "energy_intensity": data_path / "energy_intensity_missing_associations.csv",
-        "load_shapes": data_path / "load_shapes_missing_associations.csv",
-    }
     return RegistrationModel(
         projects=[
             ProjectRegistrationModel(
@@ -90,7 +85,6 @@ def _make_bulk_registration_config(
                 dataset_id=x["dataset_id"],
                 config_file=x["config_file"],
                 dataset_path=x["dataset_path"],
-                missing_dimension_associations_file=missing_associations.get(x["base_dataset_id"]),
             )
             for x in dataset_paths
         ],
@@ -205,6 +199,12 @@ def write_datasets_to_dsgrid_format(
 
         dst = dataset_data_path / "table.parquet"
         rel.to_parquet(str(dst))
+        if dataset.missing_associations_file is not None:
+            dst = (
+                dataset_data_path
+                / f"missing_associations{dataset.missing_associations_file.suffix}"
+            )
+            shutil.copyfile(dataset.missing_associations_file, dst)
         logger.info("Wrote dataset {} to dsgrid format at {}", dataset.dataset_id, dst)
 
         config_file = _dataset_config_path(base_path, dataset.dataset_id)
