@@ -71,6 +71,7 @@ def energy_intensity_dataset(
     return DatasetConfig(
         dataset_id=f"{scenario_name}__energy_intensity",
         path=filename,
+        missing_associations_file=filename.parent / "energy_intensity_missing_associations.csv",
         metric_class="EnergyIntensityRegression",
         metric_dimension_name=metrics_map["EnergyIntensityRegression"],
         dimension_columns={
@@ -284,6 +285,7 @@ def load_shapes_dataset(
     return DatasetConfig(
         dataset_id=f"{scenario_name}__load_shapes",
         path=filename,
+        missing_associations_file=filename.parent / "load_shapes_missing_associations.csv",
         metric_class="EnergyEndUse",
         metric_dimension_name=metrics_map["EnergyEndUse"],
         time_columns=["month", "is_weekday", "hour"],
