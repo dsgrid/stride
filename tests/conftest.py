@@ -33,11 +33,9 @@ def default_project(tmp_path_factory: TempPathFactory) -> Project:
 
 
 @pytest.fixture
-def api_client(default_project):
+def api_client(default_project: Project) -> APIClient:
     """Create APIClient instance with test project."""
     # Reset singleton to ensure clean state
     APIClient._instance = None
     client = APIClient(path_or_conn=default_project.con, project_config=default_project.config)
-    yield client
-    # Cleanup
-    APIClient._instance = None
+    return client

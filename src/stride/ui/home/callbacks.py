@@ -1,9 +1,10 @@
-from dash import Input, Output, callback, State
+from dash import Input, Output, callback
 
 from stride.ui.plotting import StridePlots
 from stride.ui.color_manager import ColorManager
-
-from typing import TYPE_CHECKING
+from stride.api.utils import ConsumptionBreakdown, SecondaryMetric, ChartType
+from typing import TYPE_CHECKING, Any, Literal
+import plotly.graph_objects as go
 
 if TYPE_CHECKING:
     from stride.api import APIClient
@@ -11,7 +12,7 @@ if TYPE_CHECKING:
     from stride.ui.color_manager import ColorManager
 
 
-def save_home_state(*values):
+def save_home_state(*values: object) -> dict[str, Any]:
     """
     Save the current state of all home tab inputs.
 
@@ -46,9 +47,9 @@ def update_home_scenario_comparison(
     data_handler: "APIClient",
     plotter: "StridePlots",
     selected_scenarios: list[str],
-    breakdown: str,
-    secondary_metric: str,
-):
+    breakdown: ConsumptionBreakdown | Literal["None"],
+    secondary_metric: SecondaryMetric | Literal["None"],
+) -> go.Figure | dict[str, Any]:
     """
     Update the home scenario comparison chart showing annual electricity consumption.
 
@@ -88,11 +89,8 @@ def update_home_scenario_comparison(
 
         # Create the main plot
         if breakdown_value:
-            if breakdown_value == "End Use":
-                breakdown_value = "metric"
-            fig = plotter.grouped_stacked_bars(
-                df, stack_col=breakdown_value.lower(), value_col="value"
-            )
+            stack_col = "metric" if breakdown_value == "End Use" else str(breakdown_value)
+            fig = plotter.grouped_stacked_bars(df, stack_col=stack_col.lower(), value_col="value")
         else:
             fig = plotter.grouped_single_bars(df, "scenario")
 
@@ -117,9 +115,9 @@ def update_home_sector_breakdown(
     data_handler: "APIClient",
     plotter: "StridePlots",
     selected_scenarios: list[str],
-    breakdown: str,
-    secondary_metric: str,
-):
+    breakdown: ConsumptionBreakdown | Literal["None"],
+    secondary_metric: SecondaryMetric | Literal["None"],
+) -> go.Figure | dict[str, Any]:
     """
     Update the home sector breakdown chart showing annual peak demand.
 
@@ -161,11 +159,9 @@ def update_home_sector_breakdown(
 
         # Create the main plot
         if breakdown_value:
-            if breakdown_value == "End Use":
-                breakdown_value = "metric"
-            fig = plotter.grouped_stacked_bars(
-                df, stack_col=breakdown_value.lower(), value_col="value"
-            )
+            stack_col = "metric" if breakdown_value == "End Use" else str(breakdown_value)
+
+            fig = plotter.grouped_stacked_bars(df, stack_col=stack_col.lower(), value_col="value")
         else:
             fig = plotter.grouped_single_bars(df, "scenario")
 
@@ -191,7 +187,7 @@ def update_home_load_duration(
     plotter: "StridePlots",
     selected_scenarios: list[str],
     selected_year: int,
-):
+) -> go.Figure | dict[str, Any]:
     """
     Update the home load duration curve chart.
 
@@ -222,10 +218,10 @@ def update_home_scenario_timeseries(
     data_handler: "APIClient",
     plotter: "StridePlots",
     selected_scenarios: list[str],
-    chart_type: str,
-    breakdown: str,
-    secondary_metric: str,
-):
+    chart_type: ChartType,
+    breakdown: ConsumptionBreakdown | Literal["None"],
+    secondary_metric: SecondaryMetric | Literal["None"],
+) -> go.Figure | dict[str, Any]:
     """
     Update the home scenario timeseries chart.
 
@@ -267,13 +263,13 @@ def update_home_scenario_timeseries(
 
         print(f"Retrieved timeseries data with shape: {df.shape}")
 
-        if breakdown_value == "End Use":
-            breakdown_value = "metric"
+        stack_col = "metric" if breakdown_value == "End Use" else str(breakdown_value)
+
         # Create the faceted plot
         fig = plotter.faceted_time_series(
             df,
             chart_type=chart_type,
-            group_by=breakdown_value.lower() if breakdown_value else None,
+            group_by=stack_col.lower() if breakdown_value else None,
             value_col="value",
         )
 
@@ -294,7 +290,7 @@ def register_home_callbacks(
     sectors: list[str],
     years: list[int],
     color_manager: "ColorManager",
-):
+) -> None:
     """
     Register all callbacks for the home module.
 
@@ -336,18 +332,8 @@ def register_home_callbacks(
         [Input(input_id, "value") for input_id in home_input_ids],
         prevent_initial_call=True,
     )
-    def _save_home_state_callback(*values):
+    def _save_home_state_callback(*values: Any) -> dict[str, Any]:
         return save_home_state(*values)
-
-    # Tab content callback with state restoration
-    @callback(
-        Output("tab-content", "children"),
-        Input("main-tabs", "active_tab"),
-        State("home-state-store", "data"),
-        *[State(f"scenario-{scenario}-state-store", "data") for scenario in scenarios],
-    )
-    def _update_tab_content_callback(active_tab, home_state, *scenario_states):
-        return  # update_tab_content(active_tab, home_state, scenario_states, scenarios, sectors, years, color_manager, data_handler)
 
     # Home tab callbacks
     @callback(
@@ -356,7 +342,11 @@ def register_home_callbacks(
         Input("home-consumption-breakdown", "value"),
         Input("home-secondary-metric", "value"),
     )
-    def _update_home_scenario_comparison_callback(selected_scenarios, breakdown, secondary_metric):
+    def _update_home_scenario_comparison_callback(
+        selected_scenarios: list[str],
+        breakdown: ConsumptionBreakdown | Literal["None"],
+        secondary_metric: SecondaryMetric | Literal["None"],
+    ) -> go.Figure | dict[str, Any]:
         return update_home_scenario_comparison(
             data_handler, plotter, selected_scenarios, breakdown, secondary_metric
         )
@@ -367,7 +357,11 @@ def register_home_callbacks(
         Input("home-peak-breakdown", "value"),
         Input("home-peak-secondary-metric", "value"),
     )
-    def _update_home_sector_breakdown_callback(selected_scenarios, breakdown, secondary_metric):
+    def _update_home_sector_breakdown_callback(
+        selected_scenarios: list[str],
+        breakdown: ConsumptionBreakdown | Literal["None"],
+        secondary_metric: SecondaryMetric | Literal["None"],
+    ) -> go.Figure | dict[str, Any]:
         return update_home_sector_breakdown(
             data_handler, plotter, selected_scenarios, breakdown, secondary_metric
         )
@@ -377,7 +371,9 @@ def register_home_callbacks(
         Input("home-scenarios-3-checklist", "value"),
         Input("home-year-dropdown", "value"),
     )
-    def _update_home_load_duration_callback(selected_scenarios, selected_year):
+    def _update_home_load_duration_callback(
+        selected_scenarios: list[str], selected_year: int
+    ) -> go.Figure | dict[str, Any]:
         return update_home_load_duration(data_handler, plotter, selected_scenarios, selected_year)
 
     @callback(
@@ -388,8 +384,11 @@ def register_home_callbacks(
         Input("home-timeseries-secondary-metric", "value"),
     )
     def _update_home_scenario_timeseries_callback(
-        selected_scenarios, chart_type, breakdown, secondary_metric
-    ):
+        selected_scenarios: list[str],
+        chart_type: ChartType,
+        breakdown: ConsumptionBreakdown | Literal["None"],
+        secondary_metric: SecondaryMetric | Literal["None"],
+    ) -> go.Figure | dict[str, Any]:
         return update_home_scenario_timeseries(
             data_handler, plotter, selected_scenarios, chart_type, breakdown, secondary_metric
         )

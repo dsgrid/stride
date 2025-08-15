@@ -1,12 +1,18 @@
+from typing import Any
+
 from dash import html, dcc
-import dash_bootstrap_components as dbc
-from stride.api import literal_to_list, SecondaryMetric
+import dash_bootstrap_components as dbc  # type: ignore
+
+from stride.api.utils import literal_to_list, SecondaryMetric
 from stride.ui.color_manager import ColorManager
 
 
 def create_home_layout(
-    scenarios: list[str], years: list[int], color_manager: ColorManager, stored_state: dict = None
-):
+    scenarios: list[str],
+    years: list[int],
+    color_manager: ColorManager,
+    stored_state: dict[str, Any] | None = None,
+) -> html.Div:
     """Home tab for comparing scenarios"""
 
     # Get stored values or use defaults
@@ -15,7 +21,7 @@ def create_home_layout(
     # Generate scenario CSS from ColorManager
     scenario_css = color_manager.generate_scenario_css()
 
-    def create_styled_checklist(scenarios_list, checklist_id):
+    def create_styled_checklist(scenarios_list: list[str], checklist_id: Any) -> html.Div:
         # Get stored value or default
         stored_value = stored_state.get(
             checklist_id, scenarios_list[:2] if len(scenarios_list) >= 2 else scenarios_list

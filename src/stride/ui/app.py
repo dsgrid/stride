@@ -1,6 +1,6 @@
 from pathlib import Path
 from dash import Dash, html, dcc, Input, Output, callback
-import dash_bootstrap_components as dbc
+import dash_bootstrap_components as dbc  # type: ignore
 
 
 from stride.ui.home import create_home_layout, register_home_callbacks
@@ -8,7 +8,8 @@ from stride.ui.scenario import create_scenario_layout, register_scenario_callbac
 
 from stride.ui.color_manager import get_color_manager
 from stride.ui.plotting import StridePlots
-from stride.api import APIClient, Sectors, literal_to_list
+from stride.api import APIClient
+from stride.api.utils import literal_to_list, Sectors
 
 
 assets_path = Path(__file__).parent.absolute() / "assets"
@@ -21,7 +22,7 @@ app = Dash(
 )
 
 
-def create_app(data_handler: APIClient):
+def create_app(data_handler: APIClient) -> Dash:
     """
     Create the Dash application.
 
@@ -93,7 +94,7 @@ def create_app(data_handler: APIClient):
         Output("scenario-view", "hidden"),
         Input("view-selector", "value"),
     )
-    def _toggle_views(selected_view):
+    def _toggle_views(selected_view: str) -> tuple[bool, bool]:
         if selected_view == "compare":
             return False, True  # Show home, hide scenario
         else:

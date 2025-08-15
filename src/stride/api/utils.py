@@ -1,9 +1,24 @@
-from typing import Literal, get_args
+from typing import Literal, get_args, Any
 
 # Re-export types that will be used by utils
 ConsumptionBreakdown = Literal["End Use", "Sector"]
 TimeGroup = Literal["Seasonal", "Seasonal and Weekday/Weekend", "Weekday/Weekend"]
 TimeGroupAgg = Literal["Average Day", "Peak Day", "Minimum Day", "Median Day"]
+Unit = Literal["kW", "MW", "TW", "TWh"]
+SecondaryMetric = Literal[
+    "GDP",
+    "GDP Per Capita",
+    "Human Development Index",
+    "Percent EV Adoption",
+    "Population",
+    "Stock",
+]
+WeatherVar = Literal["Humidity", "Temperature"]
+Sectors = Literal["Commercial", "Industrial", "Residential", "Transportation", "Other"]
+ChartType = Literal["Area", "Line"]
+ResampleOptions = Literal["Daily Mean", "Weekly Mean"]
+Season = Literal["Spring", "Summer", "Fall", "Winter"]
+
 
 # Season and time constants
 SPRING_DAY_START = 31 + 28 + 20
@@ -14,7 +29,10 @@ DEFAULT_FIRST_SATURDAY_HOUR = 5 * 24
 HOURS_PER_WEEK = 168
 
 
-def literal_to_list(literal, include_none_str=False, prefix=None) -> list[str]:
+# FIXME I've tried many ways to fix the typing for "literal" without luck. Type[ConsumptionBreakdonw] | Type[...]
+def literal_to_list(
+    literal: Any, include_none_str: bool = False, prefix: str | None = None
+) -> list[str]:
     """
     Convert a Literal type to a list of strings.
 
@@ -143,7 +161,9 @@ def build_time_grouping_columns(
     return select_cols, group_by_cols
 
 
-def build_order_by_clause(group_by: TimeGroup, breakdown: ConsumptionBreakdown = None) -> str:
+def build_order_by_clause(
+    group_by: TimeGroup, breakdown: ConsumptionBreakdown | None = None
+) -> str:
     """Build ORDER BY clause for seasonal queries."""
     order_cols = ["scenario", "year"]
 
@@ -167,7 +187,7 @@ def build_seasonal_query(
     years: list[int],
     group_by: TimeGroup,
     agg: TimeGroupAgg,
-    breakdown: ConsumptionBreakdown = None,
+    breakdown: ConsumptionBreakdown | None = None,
 ) -> str:
     """
     Build a complete SQL query for seasonal load analysis.

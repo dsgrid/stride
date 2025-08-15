@@ -1,12 +1,16 @@
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+from typing import Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from stride.ui.color_manager import ColorManager
 
 TRANSPARENT = "rgba(0, 0, 0, 0)"
 DEFAULT_BAR_COLOR = "rgba(0,0,200,0.8)"
 
 
-def determine_facet_layout(df: pd.DataFrame):
+def determine_facet_layout(df: pd.DataFrame) -> dict[str, Any]:
     """
     Determine faceting layout based on available columns in DataFrame.
     Returns
@@ -75,7 +79,7 @@ def determine_facet_layout(df: pd.DataFrame):
         }
 
 
-def create_seasonal_annotations(layout_config):
+def create_seasonal_annotations(layout_config: dict[str, Any]) -> list[dict[str, Any]]:
     """
     Create annotations for seasonal plots based on layout configuration.
     Returns
@@ -202,7 +206,9 @@ def numbers_under_each_bar(
     return fig
 
 
-def get_time_series_breakdown_info(df: pd.DataFrame, group_by: str = None):
+def get_time_series_breakdown_info(
+    df: pd.DataFrame, group_by: str | None = None
+) -> dict[str, Any]:
     """
     Determine breakdown column and data structure for time series plotting.
 
@@ -238,7 +244,9 @@ def get_time_series_breakdown_info(df: pd.DataFrame, group_by: str = None):
         return {"breakdown_col": None, "has_breakdown": False, "years": years, "invalid": True}
 
 
-def create_time_series_line_traces(df: pd.DataFrame, color_generator, breakdown_info: dict):
+def create_time_series_line_traces(
+    df: pd.DataFrame, color_generator: "ColorManager", breakdown_info: dict[str, Any]
+) -> list[go.Scatter]:
     """
     Create line traces for time series data.
 
@@ -313,7 +321,9 @@ def create_time_series_line_traces(df: pd.DataFrame, color_generator, breakdown_
     return traces
 
 
-def create_time_series_area_traces(df: pd.DataFrame, color_generator, breakdown_info: dict):
+def create_time_series_area_traces(
+    df: pd.DataFrame, color_generator: "ColorManager", breakdown_info: dict[str, Any]
+) -> list[go.Scatter]:
     """
     Create area traces for time series data.
 
@@ -383,7 +393,7 @@ def create_time_series_area_traces(df: pd.DataFrame, color_generator, breakdown_
     return traces
 
 
-def calculate_subplot_layout(n_items: int):
+def calculate_subplot_layout(n_items: int) -> tuple[int, int]:
     """
     Calculate optimal subplot layout for given number of items.
 
@@ -405,14 +415,31 @@ def calculate_subplot_layout(n_items: int):
         return 3, 3
 
 
+def _determine_breakdown_config(df: pd.DataFrame) -> tuple[str | None, list[str]]:
+    """Determine breakdown column and categories for area charts."""
+    breakdown_col = None
+    if "sector" in df.columns:
+        breakdown_col = "sector"
+    elif "end_use" in df.columns:
+        breakdown_col = "end_use"
+    elif "metric" in df.columns:
+        breakdown_col = "metric"
+
+    breakdown_categories = []
+    if breakdown_col:
+        breakdown_categories = sorted(df[breakdown_col].unique())
+
+    return breakdown_col, breakdown_categories
+
+
 def create_faceted_traces(
     df: pd.DataFrame,
-    scenarios: list,
-    color_generator,
+    scenarios: list[str],
+    color_generator: "ColorManager",
     chart_type: str,
-    group_by: str = None,
+    group_by: str | None = None,
     value_col: str = "value",
-):
+) -> list[tuple[go.Scatter, int, int]]:
     """
     Create traces for faceted time series plots.
 
@@ -484,15 +511,15 @@ def create_faceted_traces(
 def _create_single_trace(
     data_df: pd.DataFrame,
     name: str,
-    color_generator,
+    color_generator: "ColorManager",
     chart_type: str,
     value_col: str,
     stack_index: int,
     show_legend: bool,
     legend_group: str,
-):
+) -> go.Scatter:
     """Create a single trace for faceted plots."""
-    base_kwargs = {
+    base_kwargs: dict[str, Any] = {
         "x": data_df["year"],
         "y": data_df[value_col],
         "name": name,
@@ -519,7 +546,7 @@ def _create_single_trace(
     return go.Scatter(**base_kwargs)
 
 
-def update_faceted_layout(fig: go.Figure, rows: int, group_by: str = None):
+def update_faceted_layout(fig: go.Figure, rows: int, group_by: str | None = None) -> None:
     """
     Update layout for faceted time series plots.
 

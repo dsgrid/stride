@@ -1,5 +1,4 @@
-from typing import Dict, List
-from functools import lru_cache
+from typing import Dict, List, Self
 from itertools import cycle
 from plotly import colors
 import re
@@ -10,27 +9,32 @@ class ColorManager:
 
     _instance = None
 
-    def __new__(cls):
+    def __new__(cls) -> Self:
         if cls._instance is None:
             cls._instance = super(ColorManager, cls).__new__(cls)
             cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self):
+    def __init__(self) -> None:
         if self._initialized:
             return
 
-        self._color_palette = colors.qualitative.Prism
+        self._color_palette = colors.qualitative.Prism  # type: ignore[attr-defined]
         self._color_iterator = cycle(self._color_palette)
         self._color_cache: Dict[str, str] = {}
         self._scenario_colors: Dict[str, Dict[str, str]] = {}
-        self._initialized = True
+        self._initialized: bool = True
 
     def initialize_colors(
-        self, scenarios: List[str], sectors: List[str], end_uses: List[str] = None
-    ):
+        self,
+        scenarios: List[str],
+        sectors: List[str] | None = None,
+        end_uses: List[str] | None = None,
+    ) -> None:
         """Initialize colors for all entities at once to ensure consistency."""
-        all_keys = scenarios + sectors
+        all_keys = scenarios.copy()
+        if sectors:
+            all_keys.extend(sectors)
         if end_uses:
             all_keys.extend(end_uses)
 
@@ -41,7 +45,6 @@ class ColorManager:
         # Generate scenario styling colors
         self._generate_scenario_colors(scenarios)
 
-    @lru_cache(maxsize=None)
     def get_color(self, key: str) -> str:
         """Get consistent RGBA color for a given key."""
         if key not in self._color_cache:
@@ -81,7 +84,7 @@ class ColorManager:
 
         return "\n".join(css_rules)
 
-    def _generate_scenario_colors(self, scenarios: List[str]):
+    def _generate_scenario_colors(self, scenarios: List[str]) -> None:
         """Generate background and border colors for scenarios."""
         for scenario in scenarios:
             base_color = self.get_color(scenario)

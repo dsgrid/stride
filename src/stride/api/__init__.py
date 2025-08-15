@@ -25,65 +25,28 @@ Lingering Questions/Comments:
 
 import threading
 from pathlib import Path
-from typing import Literal, TYPE_CHECKING, get_args
+from typing import TYPE_CHECKING
 import pandas as pd
 from loguru import logger
+import duckdb
 
 from .utils import (
-    literal_to_list,
-    generate_season_case_statement,
-    generate_weekday_weekend_case_statement,
     build_seasonal_query,
     ConsumptionBreakdown,
     TimeGroup,
     TimeGroupAgg,
+    ResampleOptions,
+    SecondaryMetric,
+    WeatherVar,
 )
 
 if TYPE_CHECKING:
-    import duckdb
     from stride.models import ProjectConfig
-
-
-# Remove duplicate type definitions - now imported from utils
-Unit = Literal["kW", "MW", "TW", "TWh"]
-SecondaryMetric = Literal[
-    "GDP",
-    "GDP Per Capita",
-    "Human Development Index",
-    "Percent EV Adoption",
-    "Population",
-    "Stock",
-]
-WeatherVar = Literal["Humidity", "Temperature"]
-Sectors = Literal["Commercial", "Industrial", "Residential", "Transportation", "Other"]
-ChartType = Literal["Area", "Line"]
-ResampleOptions = Literal["Daily Mean", "Weekly Mean"]
-Season = Literal["Spring", "Summer", "Fall", "Winter"]
-
-
-# Default Day of Year for equinoxes.
-SPRING_DAY_START = 31 + 28 + 20  # Always falls on march 20 or 21 (19 for a leap year)
-SPRING_DAY_END = 31 + 28 + 31 + 30 + 31  # Always falls on May 31st
-FALL_DAY_START = 31 + 28 + 31 + 30 + 31 + 30 + 31 + 22  # Always on September 22nd or 23rd.
-FALL_DAY_END = (
-    31 + 28 + 31 + 30 + 31 + 30 + 31 + 30 + 31 + 30 + 21
-)  # always on December 21st or 22nd
-
-
-# NOTE HOUR 0 == Monday at 12/1 am?
-DEFAULT_FIRST_SATURDAY_HOUR = 5 * 24
-HOURS_PER_WEEK = 168
-HOURS_PER_DAY = 24
 
 
 # TODO
 # Secondary metric queries (GDP per capita is slightly different.)
 # Weather (Temp and humidity). Waiting on what that schema looks like.
-
-
-# Remove duplicate functions now in utils
-# def _generate_season_case_statement(hour_col: str = "hour") -> str:
-# def _generate_weekday_weekend_case_statement(hour_col: str = "hour") -> str:
 
 
 class APIClient:
@@ -134,7 +97,7 @@ class APIClient:
         cls,
         path_or_conn: str | Path | "duckdb.DuckDBPyConnection" | None = None,
         project_config: "ProjectConfig | None" = None,
-    ):
+    ) -> APIClient:
         # Always create a new instance instead of singleton for development
         return super().__new__(cls)
 
@@ -158,25 +121,24 @@ class APIClient:
             self.energy_proj_table = "energy_projection"
             self.project_country = "country_1"
 
-        self._years = None
-        self._scenarios = None
+        self._years: list[int] | None = None
+        self._scenarios: list[str] | None = None
         self._initialize_connection(path_or_conn)
 
-    def _close_existing_connection(self):
+    def _close_existing_connection(self) -> None:
         """Close the existing database connection if it exists."""
-        if hasattr(self, "db") and self.db:
+        if self.db:
             try:
                 self.db.close()
                 logger.debug("Database connection closed")
+                pass
             except Exception as e:
                 logger.error(f"Error closing connection: {e}")
                 pass
 
-    def _connect_from_path(self, db_path: Path):
+    def _connect_from_path(self, db_path: Path) -> None:
         # Create DuckDB connection
         try:
-            import duckdb
-
             # Try read-only connection first to avoid locks
             logger.debug(f"Attempting read-only connection to: {db_path}")
             self.db = duckdb.connect(str(db_path), read_only=True)
@@ -199,7 +161,9 @@ class APIClient:
             err = f"Failed to connect to database at {db_path}: {e}"
             raise ConnectionError(err)
 
-    def _initialize_connection(self, path_or_conn: str | Path | "duckdb.DuckDBPyConnection"):
+    def _initialize_connection(
+        self, path_or_conn: str | Path | "duckdb.DuckDBPyConnection" | None
+    ) -> None:
         """
         Initialize the database connection.
 
@@ -253,7 +217,7 @@ class APIClient:
 
         self._connect_from_path(db_path)
 
-    def __del__(self):
+    def __del__(self) -> None:
         """Cleanup on object destruction."""
         self._close_existing_connection()
 
@@ -270,11 +234,6 @@ class APIClient:
         if self._years is None:
             self._years = self._fetch_years()
         return self._years
-
-    @property
-    def end_uses(self):
-        """TODO Need end use data"""
-        return []
 
     @property
     def scenarios(self) -> list[str]:
@@ -683,9 +642,8 @@ class APIClient:
         self._validate_scenarios([scenario])
         self._validate_years(years)
 
-        # Placeholder implementation
-        logger.warning("get_secondary_metric is not implemented.")
-        return NotImplemented
+        err = "get_secondary_metric is not implemented yet."
+        raise NotImplementedError(err)
 
     def get_load_duration_curve(
         self,
@@ -898,7 +856,8 @@ class APIClient:
         self._validate_years([year])
 
         # Placeholder implementation
-        return NotImplemented
+        err = "get_weather_metric is not implemented yet."
+        raise NotImplementedError(err)
 
     # NOTE we don't restrict the user to two model years here in case they use the api outside of the UI.
     # NOTE for weekly mean, depending on the year, the weekends will not be at the start or end of the week.
@@ -1015,6 +974,7 @@ class APIClient:
 
         logger.debug(f"SQL Query:\n{sql}")
         df = self.db.execute(sql).df()
+        pd.DataFrame(df)
         logger.debug(f"Returning {len(df)} rows.")
         return df
 

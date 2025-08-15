@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import TYPE_CHECKING
 import pandas as pd
 import plotly.graph_objects as go
 
@@ -11,9 +11,12 @@ from .utils import (
     create_time_series_area_traces,
 )
 
+if TYPE_CHECKING:
+    from stride.ui.color_manager import ColorManager
+
 
 def grouped_single_bars(
-    df: pd.DataFrame, group: str, color_generator: Callable[[str], str], use_color_manager=True
+    df: pd.DataFrame, group: str, color_generator: "ColorManager", use_color_manager: bool = True
 ) -> go.Figure:
     """
     Create a bar plot with 2 levels of x axis.
@@ -69,10 +72,10 @@ def grouped_single_bars(
 
 def grouped_multi_bars(
     df: pd.DataFrame,
-    color_generator: Callable[[str], str],
+    color_generator: "ColorManager",
     x_group: str = "scenario",
     y_group: str = "end_use",
-):
+) -> go.Figure:
     """
     Create grouped and multi-level bar chart.
 
@@ -127,7 +130,7 @@ def grouped_multi_bars(
 
 def grouped_stacked_bars(
     df: pd.DataFrame,
-    color_generator: Callable[[str], str],
+    color_generator: "ColorManager",
     year_col: str = "year",
     group_col: str = "scenario",
     stack_col: str = "metric",
@@ -165,6 +168,9 @@ def grouped_stacked_bars(
     groups = sorted(df[group_col].unique())
     stack_categories = sorted(df[stack_col].unique())
 
+    # Track which legend gropus have been added.
+    added_legend_groups = set()
+
     # Create traces for each combination of group and stack category
     for group in groups:
         for stack_cat in stack_categories:
@@ -178,9 +184,10 @@ def grouped_stacked_bars(
                     legendgroup=stack_cat,
                     marker_color=color_generator.get_color(stack_cat),
                     offsetgroup=group,
-                    showlegend=stack_cat not in [trace.legendgroup for trace in fig.data],
+                    showlegend=stack_cat not in added_legend_groups,
                 )
             )
+            added_legend_groups.add(stack_cat)
 
     fig.update_layout(
         plot_bgcolor=TRANSPARENT,
@@ -201,8 +208,8 @@ def grouped_stacked_bars(
 
 def time_series(
     df: pd.DataFrame,
-    color_generator: Callable[[str], str],
-    group_by: str = None,
+    color_generator: "ColorManager",
+    group_by: str | None = None,
     chart_type: str = "Line",
 ) -> go.Figure:
     """
@@ -263,7 +270,7 @@ def time_series(
     return fig
 
 
-def demand_curve(df: pd.DataFrame, color_generator: Callable[[str], str]):
+def demand_curve(df: pd.DataFrame, color_generator: "ColorManager") -> go.Figure:
     """
     Create a load duration curve plot.
 
@@ -306,10 +313,10 @@ def demand_curve(df: pd.DataFrame, color_generator: Callable[[str], str]):
 
 def area_plot(
     df: pd.DataFrame,
-    color_generator: Callable[[str], str],
+    color_generator: "ColorManager",
     scenario_name: str,
     metric: str = "demand",
-):
+) -> go.Figure:
     """
     Create a stacked area plot for a single scenario.
 

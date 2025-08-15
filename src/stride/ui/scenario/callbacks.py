@@ -1,7 +1,9 @@
-from dash import Input, Output, callback, no_update
+from dash import Input, Output, callback
+import plotly.graph_objects as go
+
 from loguru import logger
 
-from stride.api import (
+from stride.api.utils import (
     ConsumptionBreakdown,
     SecondaryMetric,
     ResampleOptions,
@@ -10,14 +12,16 @@ from stride.api import (
     TimeGroupAgg,
 )
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, Any
 
 if TYPE_CHECKING:
     from stride.api import APIClient
     from stride.ui.plotting import StridePlots
 
 
-def update_summary_stats(data_handler: "APIClient", scenario: str, selected_year: int):
+def update_summary_stats(
+    data_handler: "APIClient", scenario: str, selected_year: int
+) -> tuple[str, str, str]:
     """
     Update summary statistics for a given scenario and year.
 
@@ -85,9 +89,9 @@ def update_consumption_plot(
     data_handler: "APIClient",
     plotter: "StridePlots",
     scenario: str,
-    breakdown: ConsumptionBreakdown,
-    secondary_metric: SecondaryMetric,
-):
+    breakdown: ConsumptionBreakdown | Literal["None"] | None,
+    secondary_metric: SecondaryMetric | Literal["None"] | None,
+) -> go.Figure | dict[str, Any]:
     """
     Update the annual electricity consumption plot.
 
@@ -138,9 +142,9 @@ def update_peak_plot(
     data_handler: "APIClient",
     plotter: "StridePlots",
     scenario: str,
-    breakdown: ConsumptionBreakdown,
-    secondary_metric: SecondaryMetric,
-):
+    breakdown: ConsumptionBreakdown | Literal["None"] | None,
+    secondary_metric: SecondaryMetric | Literal["None"] | None,
+) -> go.Figure | dict[str, Any]:
     """
     Update the annual peak demand plot.
 
@@ -164,7 +168,7 @@ def update_peak_plot(
     """
 
     if scenario not in data_handler.scenarios:
-        return no_update
+        return {"data": [], "layout": {"title": f"Error: {str(scenario)} not found"}}
     try:
         # Convert "None" to None
         breakdown_value = None if breakdown == "None" else breakdown
@@ -189,11 +193,11 @@ def update_timeseries_plot(
     data_handler: "APIClient",
     plotter: "StridePlots",
     scenario: str,
-    breakdown: ConsumptionBreakdown,
+    breakdown: ConsumptionBreakdown | Literal["None"] | None,
     resample: ResampleOptions,
-    weather_var: WeatherVar,
-    selected_years: list[int],
-):
+    weather_var: WeatherVar | Literal["None"] | None,
+    selected_years: int | list[int],
+) -> go.Figure | dict[str, Any]:
     """
     Update the timeseries comparison plot for multiple years.
 
@@ -209,7 +213,7 @@ def update_timeseries_plot(
         Breakdown type ("None", "Sector", or "End Use")
     resample : ResampleOptions
         Resampling option ("Daily Mean" or "Weekly Mean")
-    weather_var : WeatherVar
+    weather_var : WeatherVar | "None" | None
         Weather variable for secondary axis (not yet implemented)
     selected_years : list[int]
         List of selected years to display
@@ -220,25 +224,27 @@ def update_timeseries_plot(
         Plotly figure object or error dictionary
     """
 
+    if isinstance(selected_years, int):
+        selected_years = [selected_years]
+
     if not selected_years or scenario not in data_handler.scenarios:
         return {"data": [], "layout": {"title": "Select years to view data"}}
     try:
         # Convert "None" to None and years to int
         breakdown_value = None if breakdown == "None" else breakdown
+
         selected_years_int = [int(year) for year in selected_years]
-        # Get timeseries data
+        # Get timeseries data. Need to pass "End Use" Literal Hera
         df = data_handler.get_timeseries_comparison(
             scenario=scenario,
             years=selected_years_int,
             group_by=breakdown_value,
             resample=resample,
         )
-        if breakdown_value == "End Use":
-            breakdown_value = "metric"
+        # Need to assign to new variable for typing.
+        stack_col = "metric" if breakdown_value == "End Use" else str(breakdown_value)
         # Use the new time_series function for better multi-year visualization
-        fig = plotter.time_series(
-            df, group_by=breakdown_value.lower() if breakdown_value else None
-        )
+        fig = plotter.time_series(df, group_by=stack_col.lower() if breakdown_value else None)
         return fig
     except Exception as e:
         print(f"Error in timeseries plot: {e}")
@@ -249,11 +255,11 @@ def update_yearly_plot(
     data_handler: "APIClient",
     plotter: "StridePlots",
     scenario: str,
-    breakdown: ConsumptionBreakdown,
+    breakdown: ConsumptionBreakdown | Literal["None"] | None,
     resample: ResampleOptions,
-    weather_var: WeatherVar,
+    weather_var: WeatherVar | Literal["None"] | None,
     selected_year: int | list[int],
-):
+) -> go.Figure | dict[str, Any]:
     """
     Update the yearly area plot for a single year.
 
@@ -269,7 +275,7 @@ def update_yearly_plot(
         Breakdown type ("None", "Sector", or "End Use")
     resample : ResampleOptions
         Resampling option ("Daily Mean" or "Weekly Mean")
-    weather_var : WeatherVar
+    weather_var : WeatherVar | "None" | None
         Weather variable for secondary axis (not yet implemented)
     selected_year : list[int]
         Selected year to display (should be single year)
@@ -281,7 +287,7 @@ def update_yearly_plot(
     """
 
     if isinstance(selected_year, int):
-        selected_year = list[selected_year]
+        selected_year = [selected_year]
 
     if not selected_year or scenario not in data_handler.scenarios:
         return {"data": [], "layout": {"title": "Select a year to view data"}}
@@ -292,11 +298,12 @@ def update_yearly_plot(
         df = data_handler.get_timeseries_comparison(
             scenario=scenario, years=selected_year, group_by=breakdown_value, resample=resample
         )
-        if breakdown_value == "End Use":
-            breakdown_value = "metric"
+
+        stack_col = "metric" if breakdown_value == "End Use" else str(breakdown_value)
+
         # Use the time_series function with area chart type
         fig = plotter.time_series(
-            df, group_by=breakdown_value.lower() if breakdown_value else None, chart_type="Area"
+            df, group_by=stack_col.lower() if breakdown_value else None, chart_type="Area"
         )
         return fig
     except Exception as e:
@@ -312,8 +319,8 @@ def update_seasonal_lines_plot(
     scenario: str,
     timegroup: TimeGroup,
     agg: TimeGroupAgg,
-    weather_var: WeatherVar,
-):
+    weather_var: WeatherVar | Literal["None"] | None,
+) -> go.Figure | dict[str, Any]:
     """
     Update the seasonal load lines plot.
 
@@ -339,7 +346,7 @@ def update_seasonal_lines_plot(
     """
 
     if scenario not in data_handler.scenarios:
-        return no_update
+        return {"data": [], "layout": {"title": f"Error: {str(scenario)} not found"}}
     try:
         # Get seasonal load lines data
         df = data_handler.get_seasonal_load_lines(
@@ -360,12 +367,12 @@ def update_seasonal_area_plot(
     data_handler: "APIClient",
     plotter: "StridePlots",
     scenario: str,
-    breakdown: ConsumptionBreakdown,
+    breakdown: ConsumptionBreakdown | Literal["None"] | None,
     selected_year: int,
     timegroup: TimeGroup,
     agg: TimeGroupAgg,
-    weather_var: WeatherVar,
-):
+    weather_var: WeatherVar | Literal["None"] | None,
+) -> go.Figure | dict[str, Any]:
     """
     Update the seasonal load area plot with optional breakdown.
 
@@ -385,7 +392,7 @@ def update_seasonal_area_plot(
         Time grouping option ("Seasonal", "Weekday/Weekend", or "Seasonal and Weekday/Weekend")
     agg : TimeGroupAgg
         Aggregation method ("Average Day", "Peak Day", "Minimum Day", or "Median Day")
-    weather_var : WeatherVar
+    weather_var : WeatherVar | "None" | None
         Weather variable for secondary axis (not yet implemented)
 
     Returns
@@ -416,8 +423,11 @@ def update_seasonal_area_plot(
 
 
 def update_load_duration_plot(
-    data_handler: "APIClient", plotter: "StridePlots", scenario: str, selected_years: list[int]
-):
+    data_handler: "APIClient",
+    plotter: "StridePlots",
+    scenario: str,
+    selected_years: int | list[int],
+) -> go.Figure | dict[str, Any]:
     """
     Update the load duration curve plot.
 
@@ -438,6 +448,9 @@ def update_load_duration_plot(
         Plotly figure object or error dictionary
     """
 
+    if isinstance(selected_years, int):
+        selected_years = [selected_years]
+
     if not selected_years or scenario not in data_handler.scenarios:
         return {"data": [], "layout": {"title": "Select years to view data"}}
     try:
@@ -451,7 +464,7 @@ def update_load_duration_plot(
         return {"data": [], "layout": {"title": f"Error: {str(e)}"}}
 
 
-def _register_summary_callbacks(data_handler: "APIClient", plotter: "StridePlots"):
+def _register_summary_callbacks(data_handler: "APIClient", plotter: "StridePlots") -> None:
     """Register summary statistics callbacks."""
 
     @callback(
@@ -462,18 +475,19 @@ def _register_summary_callbacks(data_handler: "APIClient", plotter: "StridePlots
         ],
         [Input("view-selector", "value"), Input("scenario-summary-year", "value")],
     )
-    def _update_summary_stats_callback(scenario, selected_year):
+    def _update_summary_stats_callback(scenario: str, selected_year: int) -> tuple[str, str, str]:
         return update_summary_stats(data_handler, scenario, selected_year)
 
     @callback(Output("scenario-title", "children"), Input("view-selector", "value"))
-    def _update_scenario_title(selected_view):
+    def _update_scenario_title(selected_view: str) -> str:
         scenarios = data_handler.scenarios  # Get from data_handler
         if selected_view in scenarios:
             return f"{selected_view}"
+        # TODO make literal of Scenario or Home
         return "Scenario"
 
 
-def _register_consumption_callbacks(data_handler: "APIClient", plotter: "StridePlots"):
+def _register_consumption_callbacks(data_handler: "APIClient", plotter: "StridePlots") -> None:
     """Register consumption and peak demand callbacks."""
 
     @callback(
@@ -484,7 +498,11 @@ def _register_consumption_callbacks(data_handler: "APIClient", plotter: "StrideP
             Input("scenario-consumption-secondary", "value"),
         ],
     )
-    def _update_consumption_plot_callback(scenario, breakdown, secondary_metric):
+    def _update_consumption_plot_callback(
+        scenario: str,
+        breakdown: ConsumptionBreakdown | Literal["None"],
+        secondary_metric: SecondaryMetric | Literal["None"],
+    ) -> go.Figure | dict[str, Any]:
         return update_consumption_plot(
             data_handler, plotter, scenario, breakdown, secondary_metric
         )
@@ -497,11 +515,15 @@ def _register_consumption_callbacks(data_handler: "APIClient", plotter: "StrideP
             Input("scenario-peak-secondary", "value"),
         ],
     )
-    def _update_peak_plot_callback(scenario, breakdown, secondary_metric):
+    def _update_peak_plot_callback(
+        scenario: str,
+        breakdown: ConsumptionBreakdown | Literal["None"],
+        secondary_metric: SecondaryMetric | Literal["None"],
+    ) -> go.Figure | dict[str, Any]:
         return update_peak_plot(data_handler, plotter, scenario, breakdown, secondary_metric)
 
 
-def _register_timeseries_callbacks(data_handler: "APIClient", plotter: "StridePlots"):
+def _register_timeseries_callbacks(data_handler: "APIClient", plotter: "StridePlots") -> None:
     """Register timeseries and yearly plot callbacks."""
 
     @callback(
@@ -515,8 +537,12 @@ def _register_timeseries_callbacks(data_handler: "APIClient", plotter: "StridePl
         ],
     )
     def _update_timeseries_plot_callback(
-        scenario, breakdown, resample, weather_var, selected_years
-    ):
+        scenario: str,
+        breakdown: ConsumptionBreakdown | Literal["None"],
+        resample: ResampleOptions,
+        weather_var: WeatherVar | Literal["None"] | None,
+        selected_years: list[int] | int,
+    ) -> go.Figure | dict[str, Any]:
         return update_timeseries_plot(
             data_handler, plotter, scenario, breakdown, resample, weather_var, selected_years
         )
@@ -531,13 +557,19 @@ def _register_timeseries_callbacks(data_handler: "APIClient", plotter: "StridePl
             Input("scenario-yearly-year", "value"),
         ],
     )
-    def _update_yearly_plot_callback(scenario, breakdown, resample, weather_var, selected_year):
+    def _update_yearly_plot_callback(
+        scenario: str,
+        breakdown: ConsumptionBreakdown | Literal["None"],
+        resample: ResampleOptions,
+        weather_var: WeatherVar | Literal["None"] | None,
+        selected_year: int,
+    ) -> go.Figure | dict[str, Any]:
         return update_yearly_plot(
             data_handler, plotter, scenario, breakdown, resample, weather_var, selected_year
         )
 
 
-def _register_seasonal_callbacks(data_handler: "APIClient", plotter: "StridePlots"):
+def _register_seasonal_callbacks(data_handler: "APIClient", plotter: "StridePlots") -> None:
     """Register seasonal plot callbacks."""
 
     @callback(
@@ -549,7 +581,12 @@ def _register_seasonal_callbacks(data_handler: "APIClient", plotter: "StridePlot
             Input("scenario-seasonal-lines-weather", "value"),
         ],
     )
-    def _update_seasonal_lines_plot_callback(scenario, timegroup, agg, weather_var):
+    def _update_seasonal_lines_plot_callback(
+        scenario: str,
+        timegroup: TimeGroup,
+        agg: TimeGroupAgg,
+        weather_var: WeatherVar | Literal["None"] | None,
+    ) -> go.Figure | dict[str, Any]:
         return update_seasonal_lines_plot(
             data_handler, plotter, scenario, timegroup, agg, weather_var
         )
@@ -566,25 +603,32 @@ def _register_seasonal_callbacks(data_handler: "APIClient", plotter: "StridePlot
         ],
     )
     def _update_seasonal_area_plot_callback(
-        scenario, breakdown, selected_year, agg, timegroup, weather_var
-    ):
+        scenario: str,
+        breakdown: ConsumptionBreakdown | Literal["None"],
+        selected_year: int,
+        agg: TimeGroupAgg,
+        timegroup: TimeGroup,
+        weather_var: WeatherVar | Literal["None"] | None,
+    ) -> go.Figure | dict[str, Any]:
         return update_seasonal_area_plot(
             data_handler, plotter, scenario, breakdown, selected_year, timegroup, agg, weather_var
         )
 
 
-def _register_load_duration_callbacks(data_handler: "APIClient", plotter: "StridePlots"):
+def _register_load_duration_callbacks(data_handler: "APIClient", plotter: "StridePlots") -> None:
     """Register load duration curve callbacks."""
 
     @callback(
         Output("scenario-load-duration-plot", "figure"),
         [Input("view-selector", "value"), Input("scenario-load-duration-years", "value")],
     )
-    def _update_load_duration_plot_callback(scenario, selected_years):
+    def _update_load_duration_plot_callback(
+        scenario: str, selected_years: list[int] | int
+    ) -> go.Figure | dict[str, Any]:
         return update_load_duration_plot(data_handler, plotter, scenario, selected_years)
 
 
-def _register_state_callback():
+def _register_state_callback() -> None:
     """Register state management callback."""
     scenario_input_ids = [
         "scenario-summary-year",
@@ -616,13 +660,13 @@ def _register_state_callback():
         [Input(input_id, "value") for input_id in scenario_input_ids],
         prevent_initial_call=True,
     )
-    def _save_scenario_state(*values):
+    def _save_scenario_state(*values: Any) -> dict[str, Any]:
         return dict(zip(scenario_input_ids, values))
 
 
 def register_scenario_callbacks(
     scenarios: list[str], years: list[int], data_handler: "APIClient", plotter: "StridePlots"
-):
+) -> None:
     """
     Register all callbacks for the single scenario view.
 

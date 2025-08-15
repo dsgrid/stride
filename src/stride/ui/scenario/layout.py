@@ -1,6 +1,7 @@
+from typing import Any
 from dash import html, dcc
-import dash_bootstrap_components as dbc
-from stride.api import (
+import dash_bootstrap_components as dbc  # type: ignore
+from stride.api.utils import (
     literal_to_list,
     SecondaryMetric,
     ResampleOptions,
@@ -12,8 +13,8 @@ from stride.ui.color_manager import ColorManager
 
 
 def create_scenario_layout(
-    years: list[int], color_manager: ColorManager, stored_state: dict = None
-):
+    years: list[int], color_manager: ColorManager, stored_state: dict[Any, Any] | None = None
+) -> html.Div:
     """
     Create the layout for the individual scenario view based on scenario_tab_design.md.
 
@@ -41,8 +42,8 @@ def create_scenario_layout(
     scenario_css = color_manager.generate_scenario_css()
 
     def create_styled_checklist(
-        items_list, checklist_id: str, default_selection: list | None = None
-    ):
+        items_list: list[Any], checklist_id: str, default_selection: list[Any] | None = None
+    ) -> html.Div:
         """
         Create a styled checklist similar to home tab.
 
@@ -90,7 +91,7 @@ def create_scenario_layout(
         )
 
     # Create summary stat card helper
-    def create_summary_stat_card(stat_id, title):
+    def create_summary_stat_card(stat_id: str, title: str) -> dbc.Card:
         """
         Create a summary statistic card.
 

@@ -1,5 +1,0 @@
-LIGHT_GRAY_1 = "rgba(128, 128, 128, .1)"
-LIGHT_GRAY_2 = "rgba(128, 128, 128, .2)"
-TRANSPARENT = "rgba(0, 0, 0, 0)"
-CLICK_TIME_MS = 200
-

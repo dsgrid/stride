@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import TYPE_CHECKING, Any
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -12,8 +12,16 @@ from .utils import (
     update_faceted_layout,
 )
 
+if TYPE_CHECKING:
+    from stride.ui.color_manager import ColorManager
 
-def add_seasonal_line_traces(fig, df, layout_config, color_generator: Callable[[str], str]):
+
+def add_seasonal_line_traces(
+    fig: go.Figure,
+    df: pd.DataFrame,
+    layout_config: dict[str, Any],
+    color_generator: "ColorManager",
+) -> None:
     """Add line traces for seasonal load plots."""
     years = sorted(df["year"].unique())
     line_styles = ["solid", "dash", "dot", "dashdot"]
@@ -49,7 +57,7 @@ def add_seasonal_line_traces(fig, df, layout_config, color_generator: Callable[[
                 fig.add_trace(go.Scatter(**trace_kwargs))
 
 
-def seasonal_load_lines(df: pd.DataFrame, color_generator: Callable[[str], str]):
+def seasonal_load_lines(df: pd.DataFrame, color_generator: "ColorManager") -> go.Figure:
     """Create faceted subplots for seasonal load lines."""
     if df.empty:
         fig = go.Figure()
@@ -154,7 +162,7 @@ def seasonal_load_lines(df: pd.DataFrame, color_generator: Callable[[str], str])
     return fig
 
 
-def _determine_breakdown_config(df: pd.DataFrame):
+def _determine_breakdown_config(df: pd.DataFrame) -> tuple[str | None, list[str]]:
     """Determine breakdown column and categories for area charts."""
     breakdown_col = None
     if "sector" in df.columns:
@@ -172,8 +180,13 @@ def _determine_breakdown_config(df: pd.DataFrame):
 
 
 def _add_stacked_area_traces(
-    fig, df, layout_config, color_generator, breakdown_col, breakdown_categories
-):
+    fig: go.Figure,
+    df: pd.DataFrame,
+    layout_config: dict[str, Any],
+    color_generator: "ColorManager",
+    breakdown_col: str | None,
+    breakdown_categories: list[str],
+) -> None:
     """Add stacked area traces to the figure for each facet."""
     for i, facet_value in enumerate(layout_config["facet_categories"]):
         if layout_config["facet_col"]:
@@ -238,7 +251,7 @@ def _add_stacked_area_traces(
                 fig.add_trace(go.Scatter(**trace_kwargs))
 
 
-def seasonal_load_area(df: pd.DataFrame, color_generator: Callable[[str], str]) -> go.Figure:
+def seasonal_load_area(df: pd.DataFrame, color_generator: "ColorManager") -> go.Figure:
     """Create faceted area charts for seasonal load patterns."""
     if df.empty:
         fig = go.Figure()
@@ -331,11 +344,11 @@ def seasonal_load_area(df: pd.DataFrame, color_generator: Callable[[str], str]) 
 
 def faceted_time_series(
     df: pd.DataFrame,
-    color_generator: Callable[[str], str],
+    color_generator: "ColorManager",
     chart_type: str = "Line",
-    group_by: str = None,
+    group_by: str | None = None,
     value_col: str = "value",
-):
+) -> go.Figure:
     """
     Create faceted subplots for each scenario with shared legend.
 
