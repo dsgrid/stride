@@ -213,7 +213,9 @@ def update_home_load_duration(
         return {}
 
     try:
-        df = data_handler.get_load_duration_curve(years=selected_year, scenarios=selected_scenarios)
+        df = data_handler.get_load_duration_curve(
+            years=selected_year, scenarios=selected_scenarios
+        )
         return plotter.demand_curve(df)
     except Exception as e:
         logger.trace(e)
