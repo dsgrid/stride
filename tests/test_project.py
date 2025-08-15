@@ -14,22 +14,6 @@ from stride.project import CONFIG_FILE
 from stride.cli.stride import cli
 
 
-@pytest.fixture(scope="module")
-def default_project(tmp_path_factory: TempPathFactory, project_config_file: Path) -> Project:
-    """Create the default test project.
-    Callers must not mutate any data because this is a shared fixture.
-    """
-    tmp_path = tmp_path_factory.mktemp("tmpdir")
-    project_dir = tmp_path / "test_project"
-    assert not project_dir.exists()
-    cmd = ["projects", "create", str(project_config_file), "--directory", str(tmp_path)]
-    runner = CliRunner()
-    result = runner.invoke(cli, cmd)
-    assert result.exit_code == 0
-    assert project_dir.exists()
-    return Project.load(project_dir)
-
-
 def test_has_table(default_project: Project) -> None:
     project = default_project
     assert project.has_table("energy_projection")
@@ -92,14 +76,13 @@ def test_override_calculated_table(
     tmp_path = tmp_path_factory.mktemp("tmpdir")
     new_path = tmp_path / "project2"
     shutil.copytree(default_project.path, new_path)
-    project = Project.load(new_path)
-    orig_total = (
-        project.get_energy_projection()
-        .filter("sector = 'residential' and scenario = 'alternate_gdp'")
-        .to_df()["value"]
-        .sum()
-    )
-    project.con.close()
+    with Project.load(new_path) as project:
+        orig_total = (
+            project.get_energy_projection()
+            .filter("sector = 'residential' and scenario = 'alternate_gdp'")
+            .to_df()["value"]
+            .sum()
+        )
 
     data_file = tmp_path / "data.parquet"
     cmd = [
@@ -143,14 +126,14 @@ def test_override_calculated_table(
     ]
     result = runner.invoke(cli, cmd)
     assert result.exit_code == 0
-    project2 = Project.load(new_path)
-    new_total = (
-        project2.get_energy_projection()
-        .filter("sector = 'residential' and scenario = 'alternate_gdp'")
-        .to_df()["value"]
-        .sum()
-    )
-    assert new_total == orig_total * 3
+    with Project.load(new_path, read_only=True) as project2:
+        new_total = (
+            project2.get_energy_projection()
+            .filter("sector = 'residential' and scenario = 'alternate_gdp'")
+            .to_df()["value"]
+            .sum()
+        )
+        assert new_total == orig_total * 3
 
     cmd = ["calculated-tables", "list", str(project2.path)]
     result = runner.invoke(cli, cmd)
@@ -178,21 +161,21 @@ def test_override_calculated_table(
     ]
     result = runner.invoke(cli, cmd)
     assert result.exit_code == 0
-    project3 = Project.load(new_path)
-    with pytest.raises(InvalidOperation):
-        project3.override_calculated_table(
-            "alternate_gdp",
-            "energy_projection_res_load_shapes_override",
-            data_file,
-        )
-    with pytest.raises(InvalidParameter):
-        project3.override_calculated_table(
-            "invalid_scenario",
-            "energy_projection_res_load_shapes",
-            data_file,
-        )
-    with pytest.raises(InvalidParameter):
-        project3.override_calculated_table("alternate_gdp", "invalid_calc_table", data_file)
+    with Project.load(new_path) as project3:
+        with pytest.raises(InvalidOperation):
+            project3.override_calculated_table(
+                "alternate_gdp",
+                "energy_projection_res_load_shapes_override",
+                data_file,
+            )
+        with pytest.raises(InvalidParameter):
+            project3.override_calculated_table(
+                "invalid_scenario",
+                "energy_projection_res_load_shapes",
+                data_file,
+            )
+        with pytest.raises(InvalidParameter):
+            project3.override_calculated_table("alternate_gdp", "invalid_calc_table", data_file)
 
 
 def test_override_calculated_table_extra_column(
@@ -201,8 +184,6 @@ def test_override_calculated_table_extra_column(
     tmp_path = tmp_path_factory.mktemp("tmpdir")
     new_path = tmp_path / "project2"
     shutil.copytree(default_project.path, new_path)
-    project = Project.load(new_path)
-    project.con.close()
 
     data_file = tmp_path / "data.parquet"
     cmd = [
@@ -224,13 +205,13 @@ def test_override_calculated_table_extra_column(
     out_file = data_file.with_suffix(".csv")
     # The index columns makes this operation invalid.
     df.to_csv(out_file, header=True, index=True)
-    project2 = Project.load(new_path)
-    with pytest.raises(InvalidParameter):
-        project2.override_calculated_table(
-            "alternate_gdp",
-            "energy_projection_res_load_shapes",
-            out_file,
-        )
+    with Project.load(new_path) as project2:
+        with pytest.raises(InvalidParameter):
+            project2.override_calculated_table(
+                "alternate_gdp",
+                "energy_projection_res_load_shapes",
+                out_file,
+            )
 
 
 def test_override_calculated_table_mismatched_column(
@@ -239,8 +220,6 @@ def test_override_calculated_table_mismatched_column(
     tmp_path = tmp_path_factory.mktemp("tmpdir")
     new_path = tmp_path / "project2"
     shutil.copytree(default_project.path, new_path)
-    project = Project.load(new_path)
-    project.con.close()
 
     data_file = tmp_path / "data.parquet"
     cmd = [
@@ -261,10 +240,10 @@ def test_override_calculated_table_mismatched_column(
     df = pd.read_parquet(data_file)
     df.rename(columns={"timestamp": "timestamp2"}, inplace=True)
     df.to_parquet(data_file, index=False)
-    project2 = Project.load(new_path)
-    with pytest.raises(InvalidParameter):
-        project2.override_calculated_table(
-            "alternate_gdp",
-            "energy_projection_res_load_shapes",
-            data_file,
-        )
+    with Project.load(new_path) as project2:
+        with pytest.raises(InvalidParameter):
+            project2.override_calculated_table(
+                "alternate_gdp",
+                "energy_projection_res_load_shapes",
+                data_file,
+            )

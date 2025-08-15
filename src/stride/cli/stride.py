@@ -123,7 +123,7 @@ def show_dataset(
     ctx: click.Context, project_path: Path, scenario: str, dataset_id: str, limit: int
 ) -> None:
     """List the datasets stored in the project."""
-    project = safe_get_project_from_context(ctx, project_path)
+    project = safe_get_project_from_context(ctx, project_path, read_only=True)
     project.show_dataset(dataset_id, scenario=scenario, limit=limit)
 
 
@@ -137,7 +137,7 @@ def scenarios() -> None:
 @click.pass_context
 def list_scenarios(ctx: click.Context, project_path: Path) -> None:
     """List the scenarios stored in the project."""
-    project = safe_get_project_from_context(ctx, project_path)
+    project = safe_get_project_from_context(ctx, project_path, read_only=True)
     scenarios = project.list_scenario_names()
     print(f"Scenarios in project with project_id={project.config.project_id}:")
     for scenario in scenarios:
@@ -160,7 +160,7 @@ def calculated_tables() -> None:
 @click.pass_context
 def list_calculated_tables(ctx: click.Context, project_path: Path, scenario: str | None) -> None:
     """List the calculated tables in the project and whether they are being overridden."""
-    project = safe_get_project_from_context(ctx, project_path)
+    project = safe_get_project_from_context(ctx, project_path, read_only=True)
     scenarios = project.list_scenario_names() if scenario is None else [scenario]
     table_overrides = project.get_table_overrides()
     table_override_map: dict[tuple[str, str], bool] = {}
@@ -279,7 +279,7 @@ def export_calculated_table(
 def _export_calculated_table(
     project_path: Path, scenario: str, table_name: str, filename: Path, overwrite: bool
 ) -> None:
-    project = Project.load(project_path)
+    project = Project.load(project_path, read_only=True)
     project.export_calculated_table(scenario, table_name, filename, overwrite=overwrite)
 
 
@@ -302,8 +302,10 @@ def handle_stride_exception(
         return res, 1
 
 
-def safe_get_project_from_context(ctx: click.Context, project_path: Path) -> Project:
-    res = handle_stride_exception(ctx, Project.load, project_path)
+def safe_get_project_from_context(
+    ctx: click.Context, project_path: Path, read_only: bool = False
+) -> Project:
+    res = handle_stride_exception(ctx, Project.load, project_path, read_only=read_only)
     if res[1] != 0:
         ctx.exit(res[1])
     project = res[0]
