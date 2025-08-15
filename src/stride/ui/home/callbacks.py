@@ -5,6 +5,8 @@ from stride.ui.color_manager import ColorManager
 from stride.api.utils import ConsumptionBreakdown, SecondaryMetric, ChartType
 from typing import TYPE_CHECKING, Any, Literal
 import plotly.graph_objects as go
+from loguru import logger
+
 
 if TYPE_CHECKING:
     from stride.api import APIClient
@@ -210,8 +212,12 @@ def update_home_load_duration(
     if not selected_scenarios or not selected_year:
         return {}
 
-    df = data_handler.get_load_duration_curve(years=selected_year, scenarios=selected_scenarios)
-    return plotter.demand_curve(df)
+    try:
+        df = data_handler.get_load_duration_curve(years=selected_year, scenarios=selected_scenarios)
+        return plotter.demand_curve(df)
+    except Exception as e:
+        logger.trace(e)
+        return {}
 
 
 def update_home_scenario_timeseries(

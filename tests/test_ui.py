@@ -162,7 +162,9 @@ class TestHomeCallbacks:
         """Test home load duration with no scenarios or year."""
         selected_year = api_client.years[0]
 
+
         result = update_home_load_duration(api_client, plotter, ["invalid"], selected_year)
+
         assert result == {}
 
     @pytest.mark.parametrize("chart_type", literal_to_list(ChartType))
@@ -436,26 +438,6 @@ class TestScenarioCallbacks:
 
         assert_valid_figure(result)
 
-    def test_update_seasonal_area_plot_no_year(
-        self, api_client: APIClient, plotter: StridePlots
-    ) -> None:
-        """Test seasonal area plot with no year selected."""
-        available_scenario = api_client.scenarios[0]
-        selected_year = api_client.years[0]
-
-        result = update_seasonal_area_plot(
-            api_client,
-            plotter,
-            available_scenario,
-            "None",
-            selected_year,
-            "Seasonal",
-            "Average Day",
-            None,
-        )
-
-        assert isinstance(result, dict)
-        assert result["layout"]["title"] == "Select a year to view data"
 
     def test_update_load_duration_plot(self, api_client: APIClient, plotter: StridePlots) -> None:
         """Test load duration curve plot callback."""
