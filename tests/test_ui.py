@@ -89,6 +89,7 @@ class TestHomeCallbacks:
         self, api_client: APIClient, plotter: StridePlots
     ) -> None:
         """Test scenario comparison with no scenarios selected."""
+        # Note: api_client is session-scoped, do not mutate
         result = update_home_scenario_comparison(api_client, plotter, [], "None", "GDP")
 
         assert isinstance(result, dict)
@@ -206,6 +207,7 @@ class TestScenarioCallbacks:
 
     def test_update_summary_stats_valid_inputs(self, api_client: APIClient) -> None:
         """Test summary stats with valid inputs."""
+        # Note: api_client is session-scoped, do not mutate
         available_scenario = api_client.scenarios[0]
         available_year = api_client.years[-1]  # Use last year for growth calculation
 
@@ -483,6 +485,7 @@ class TestErrorHandling:
 
     def test_home_callback_api_error(self, api_client: APIClient, plotter: StridePlots) -> None:
         """Test home callback handles API errors gracefully."""
+        # Note: api_client is session-scoped, do not mutate
         # Use invalid scenario to trigger error
         result = update_home_scenario_comparison(
             api_client, plotter, ["invalid_scenario"], "None", "GDP"

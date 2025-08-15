@@ -13,12 +13,11 @@ class TestAPIClient:
 
     def test_singleton_behavior(self, default_project: Project) -> None:
         """Test that APIClient follows singleton pattern."""
+        # Test that we can create APIClient instances
         client1 = APIClient(project=default_project)
-
-        # Reset singleton for clean test
-        APIClient._instance = None
         client2 = APIClient(project=default_project)
-        # Note: In real usage, both would be same instance
+
+        # Both should be APIClient instances (same singleton in real usage)
         assert isinstance(client1, APIClient)
         assert isinstance(client2, APIClient)
 
