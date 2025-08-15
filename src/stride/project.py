@@ -50,6 +50,13 @@ class Project:
     def _connect(self, **connection_kwargs: Any) -> DuckDBPyConnection:
         return duckdb.connect(self._path / REGISTRY_DATA_DIR / DATABASE_FILE, **connection_kwargs)
 
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, *args: Any, **kwargs: Any) -> None:
+        if hasattr(self, "_con") and self._con is not None:
+            self._con.close()
+
     @classmethod
     def create(cls, config_file: Path, base_dir: Path = Path(), overwrite: bool = False) -> Self:
         """Create a project from a config file."""
@@ -86,7 +93,8 @@ class Project:
         Examples
         --------
         >>> from stride import Project
-        >>> project = Project.load("my_project_path", read_only=True)
+        >>> with Project.load("my_project_path", read_only=True) as project:
+            project.list_scenario_names()
         """
         path = Path(project_path)
         config_file = path / CONFIG_FILE

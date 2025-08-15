@@ -76,16 +76,13 @@ def test_override_calculated_table(
     tmp_path = tmp_path_factory.mktemp("tmpdir")
     new_path = tmp_path / "project2"
     shutil.copytree(default_project.path, new_path)
-    project = Project.load(new_path)
-    try:
+    with Project.load(new_path) as project:
         orig_total = (
             project.get_energy_projection()
             .filter("sector = 'residential' and scenario = 'alternate_gdp'")
             .to_df()["value"]
             .sum()
         )
-    finally:
-        project.close()
 
     data_file = tmp_path / "data.parquet"
     cmd = [
@@ -129,8 +126,7 @@ def test_override_calculated_table(
     ]
     result = runner.invoke(cli, cmd)
     assert result.exit_code == 0
-    project2 = Project.load(new_path, read_only=True)
-    try:
+    with Project.load(new_path, read_only=True) as project2:
         new_total = (
             project2.get_energy_projection()
             .filter("sector = 'residential' and scenario = 'alternate_gdp'")
@@ -138,8 +134,6 @@ def test_override_calculated_table(
             .sum()
         )
         assert new_total == orig_total * 3
-    finally:
-        project2.close()
 
     cmd = ["calculated-tables", "list", str(project2.path)]
     result = runner.invoke(cli, cmd)
@@ -167,8 +161,7 @@ def test_override_calculated_table(
     ]
     result = runner.invoke(cli, cmd)
     assert result.exit_code == 0
-    project3 = Project.load(new_path)
-    try:
+    with Project.load(new_path) as project3:
         with pytest.raises(InvalidOperation):
             project3.override_calculated_table(
                 "alternate_gdp",
@@ -183,8 +176,6 @@ def test_override_calculated_table(
             )
         with pytest.raises(InvalidParameter):
             project3.override_calculated_table("alternate_gdp", "invalid_calc_table", data_file)
-    finally:
-        project3.close()
 
 
 def test_override_calculated_table_extra_column(
@@ -214,16 +205,13 @@ def test_override_calculated_table_extra_column(
     out_file = data_file.with_suffix(".csv")
     # The index columns makes this operation invalid.
     df.to_csv(out_file, header=True, index=True)
-    project2 = Project.load(new_path)
-    try:
+    with Project.load(new_path) as project2:
         with pytest.raises(InvalidParameter):
             project2.override_calculated_table(
                 "alternate_gdp",
                 "energy_projection_res_load_shapes",
                 out_file,
             )
-    finally:
-        project2.close()
 
 
 def test_override_calculated_table_mismatched_column(
@@ -252,13 +240,10 @@ def test_override_calculated_table_mismatched_column(
     df = pd.read_parquet(data_file)
     df.rename(columns={"timestamp": "timestamp2"}, inplace=True)
     df.to_parquet(data_file, index=False)
-    project2 = Project.load(new_path)
-    try:
+    with Project.load(new_path) as project2:
         with pytest.raises(InvalidParameter):
             project2.override_calculated_table(
                 "alternate_gdp",
                 "energy_projection_res_load_shapes",
                 data_file,
             )
-    finally:
-        project2.close()
