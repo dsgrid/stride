@@ -31,12 +31,8 @@ def default_project(
     result = runner.invoke(cli, cmd)
     assert result.exit_code == 0
     assert project_dir.exists()
-    project = Project.load(project_dir, read_only=True)
-    try:
+    with Project.load(project_dir, read_only=True) as project:
         yield project
-    finally:
-        project.close()
-
 
 @pytest.fixture(scope="session")
 def api_client(default_project: Project) -> APIClient:
