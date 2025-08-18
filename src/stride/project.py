@@ -154,6 +154,48 @@ class Project:
         self.compute_energy_projection()
         self.persist()
 
+    def remove_calculated_table_override(self, scenario_name: str, table_name: str) -> None:
+        """Override a calculated table for a scenario.
+
+        Parameters
+        ----------
+        scenario_name
+            Remove the override table for this scenario.
+        table_name
+            Override table to remove. Including "_override" in the name is optional.
+
+        Examples
+        --------
+        >>> project.remove_calculated_table_override(
+        ...     "baseline", "energy_projection_res_load_shapes"
+        ... )
+        >>> project.remove_calculated_table_override(
+        ...     "baseline", "energy_projection_res_load_shapes_override"
+        ... )
+        """
+        base_name, override_name = _get_base_and_override_names(table_name)
+        self._check_scenario_present(scenario_name)
+        self._check_calculated_table_present(scenario_name, override_name)
+        index = None
+        for i, table in enumerate(self._table_overrides.tables):
+            if table.scenario == scenario_name and table.table_name == base_name:
+                index = i
+                break
+        if index is None:
+            msg = f"Bug: did not find override for table name {scenario_name=} {base_name=}"
+            raise Exception(msg)
+
+        override_full_name = f"{scenario_name}.{override_name}"
+        self._con.sql(f"DROP VIEW {override_full_name}")
+        self._table_overrides.tables.pop(index)
+        override_file = self._path / DBT_DIR / "models" / f"{override_name}.sql"
+        override_file.unlink()
+        logger.info("Removed override table {} from scenario {}", base_name, scenario_name)
+        # TODO: we don't need to rebuild all scenarios, but dbt caching should help.
+        # If the user has many tables to add, we could add them in a batch and rebuild once.
+        self.compute_energy_projection()
+        self.persist()
+
     def copy_dbt_template(self) -> None:
         """Copy the dbt template for all scenarios."""
         stride_base_dir = Path(next(iter(stride.__path__)))
@@ -351,3 +393,16 @@ class Project:
             {"column_name": x[0], "column_type": x[1]}
             for x in self._con.sql(f"DESCRIBE {table_name}").fetchall()
         ]
+
+
+def _get_base_and_override_names(table_name: str) -> tuple[str, str]:
+    if table_name.endswith("_override"):
+        base_name = table_name.replace("_override", "", 1)
+        if "override" in base_name:
+            msg = f"'override' is still present in '{base_name}'. {table_name=} is unexpected"
+            raise InvalidParameter(msg)
+        override_name = table_name
+    else:
+        base_name = table_name
+        override_name = f"{table_name}_override"
+    return base_name, override_name
