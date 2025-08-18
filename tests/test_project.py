@@ -1,5 +1,4 @@
 from pathlib import Path
-import re
 
 import pandas as pd
 import pytest
@@ -103,7 +102,7 @@ def test_override_calculated_table(
     cmd = ["calculated-tables", "list", str(new_path)]
     result = runner.invoke(cli, cmd)
     assert result.exit_code == 0
-    assert "true" not in result.stdout
+    assert "energy_projection_res_load_shapes_override" not in result.stdout
 
     df = pd.read_parquet(data_file)
     df["value"] *= 3
@@ -138,12 +137,7 @@ def test_override_calculated_table(
     cmd = ["calculated-tables", "list", str(project2.path)]
     result = runner.invoke(cli, cmd)
     assert result.exit_code == 0
-    found = False
-    regex = re.compile(r"energy_projection_res_load_shapes.*true")
-    for line in result.stdout.splitlines():
-        if regex.search(line) is not None:
-            found = True
-    assert found
+    assert "energy_projection_res_load_shapes_override" in result.stdout
 
     # Try to override an override table, which isn't allowed.
     data_file = tmp_path / "data.parquet"

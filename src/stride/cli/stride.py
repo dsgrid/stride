@@ -8,8 +8,6 @@ from chronify.loggers import setup_logging
 from dsgrid.exceptions import DSGBaseException
 from dsgrid.cli.common import path_callback
 from loguru import logger
-from rich.console import Console
-from rich.table import Table
 
 from stride import Project
 
@@ -151,36 +149,29 @@ def calculated_tables() -> None:
 
 @click.command(name="list")
 @click.argument("project-path", type=click.Path(exists=True), callback=path_callback)
-@click.option(
-    "-s",
-    "--scenario",
-    type=str,
-    help="List tables for only this scenario. Defaults to all scenarios.",
-)
 @click.pass_context
-def list_calculated_tables(ctx: click.Context, project_path: Path, scenario: str | None) -> None:
+def list_calculated_tables(ctx: click.Context, project_path: Path) -> None:
     """List the calculated tables in the project and whether they are being overridden."""
     project = safe_get_project_from_context(ctx, project_path, read_only=True)
-    scenarios = project.list_scenario_names() if scenario is None else [scenario]
+    scenarios = project.list_scenario_names()
     table_overrides = project.get_table_overrides()
-    table_override_map: dict[tuple[str, str], bool] = {}
-    tables: list[str] = sorted(project.list_calculated_tables())
+    tables: list[str] = sorted(
+        [x for x in project.list_calculated_tables() if not x.endswith("_override")]
+    )
 
-    console_table = Table(show_header=True, title="Calculated tables, with overrides by scenario")
-    console_table.add_column("table")
-    for scenario in scenarios:
-        console_table.add_column(scenario)
-        overrides = set(table_overrides.get(scenario, []))
-        for table in tables:
-            table_override_map[(scenario, table)] = table in overrides
-
+    print("Calculated tables for all scenarios:")
     for table in tables:
-        row = [str(table_override_map[(x, table)]).lower() for x in scenarios]
-        console_table.add_row(table, *row)
+        print(f"  {table}")
 
-    console = Console()
-    print()
-    console.print(console_table)
+    print("\nOverride tables by scenario:")
+    for scenario in scenarios:
+        print(f"  Scenario: {scenario}")
+        if scenario in table_overrides:
+            for override in table_overrides[scenario]:
+                print(f"    {override}_override")
+        else:
+            print("    None")
+        print()
 
 
 _add_from_calculated_table_epilog = """
