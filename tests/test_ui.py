@@ -57,438 +57,413 @@ def assert_valid_figure(result: go.Figure | dict[str, Any]) -> None:
         assert "Select" not in result["layout"]["title"]  # Not a "Select data" message
 
 
-class TestHomeCallbacks:
-    """Test suite for home page callbacks."""
+# Home Callbacks Tests
+def test_save_home_state() -> None:
+    """Test home state saving functionality."""
+    test_values = [
+        "None",  # consumption-breakdown
+        "GDP",  # secondary-metric
+        ["baseline", "high_growth"],  # scenarios-checklist
+        "Sector",  # peak-breakdown
+        "GDP",  # peak-secondary-metric
+        ["baseline"],  # scenarios-2-checklist
+        2030,  # year-dropdown
+        ["high_growth"],  # scenarios-3-checklist
+        "Line",  # timeseries-chart-type
+        "End Use",  # timeseries-breakdown
+        "GDP Per Capita",  # timeseries-secondary-metric
+        ["baseline", "high_growth"],  # scenarios-4-checklist
+    ]
 
-    def test_save_home_state(self) -> None:
-        """Test home state saving functionality."""
-        test_values = [
-            "None",  # consumption-breakdown
-            "GDP",  # secondary-metric
-            ["baseline", "high_growth"],  # scenarios-checklist
-            "Sector",  # peak-breakdown
-            "GDP",  # peak-secondary-metric
-            ["baseline"],  # scenarios-2-checklist
-            2030,  # year-dropdown
-            ["high_growth"],  # scenarios-3-checklist
-            "Line",  # timeseries-chart-type
-            "End Use",  # timeseries-breakdown
-            "GDP Per Capita",  # timeseries-secondary-metric
-            ["baseline", "high_growth"],  # scenarios-4-checklist
-        ]
+    result = save_home_state(*test_values)
 
-        result = save_home_state(*test_values)
+    assert isinstance(result, dict)
+    assert len(result) == 12
+    assert result["home-consumption-breakdown"] == "None"
+    assert result["home-scenarios-checklist"] == ["baseline", "high_growth"]
+    assert result["home-year-dropdown"] == 2030
 
-        assert isinstance(result, dict)
-        assert len(result) == 12
-        assert result["home-consumption-breakdown"] == "None"
-        assert result["home-scenarios-checklist"] == ["baseline", "high_growth"]
-        assert result["home-year-dropdown"] == 2030
 
-    def test_update_home_scenario_comparison_no_scenarios(
-        self, api_client: APIClient, plotter: StridePlots
-    ) -> None:
-        """Test scenario comparison with no scenarios selected."""
-        # Note: api_client is session-scoped, do not mutate
-        result = update_home_scenario_comparison(api_client, plotter, [], "None", "GDP")
+def test_update_home_scenario_comparison_no_scenarios(
+    api_client: APIClient, plotter: StridePlots
+) -> None:
+    """Test scenario comparison with no scenarios selected."""
+    # Note: api_client is session-scoped, do not mutate
+    result = update_home_scenario_comparison(api_client, plotter, [], "None", "GDP")
 
-        assert isinstance(result, dict)
-        assert result["layout"]["title"] == "Select scenarios to view data"
+    assert isinstance(result, dict)
+    assert result["layout"]["title"] == "Select scenarios to view data"
 
-    @pytest.mark.parametrize(
-        "breakdown", literal_to_list(ConsumptionBreakdown, include_none_str=True)
+
+@pytest.mark.parametrize("breakdown", literal_to_list(ConsumptionBreakdown, include_none_str=True))
+@pytest.mark.parametrize(
+    "secondary_metric", literal_to_list(SecondaryMetric, include_none_str=True)
+)
+def test_update_home_scenario_comparison(
+    api_client: APIClient,
+    plotter: StridePlots,
+    breakdown: ConsumptionBreakdown | Literal["None"],
+    secondary_metric: SecondaryMetric | Literal["None"],
+) -> None:
+    """Test scenario comparison with different breakdown and secondary metric combinations."""
+    # Use actual scenarios from the API client
+    available_scenarios = (
+        api_client.scenarios[:2] if len(api_client.scenarios) >= 2 else api_client.scenarios
     )
-    @pytest.mark.parametrize(
-        "secondary_metric", literal_to_list(SecondaryMetric, include_none_str=True)
+
+    result = update_home_scenario_comparison(
+        api_client, plotter, available_scenarios, breakdown, secondary_metric
     )
-    def test_update_home_scenario_comparison(
-        self,
-        api_client: APIClient,
-        plotter: StridePlots,
-        breakdown: ConsumptionBreakdown | Literal["None"],
-        secondary_metric: SecondaryMetric | Literal["None"],
-    ) -> None:
-        """Test scenario comparison with different breakdown and secondary metric combinations."""
-        # Use actual scenarios from the API client
-        available_scenarios = (
-            api_client.scenarios[:2] if len(api_client.scenarios) >= 2 else api_client.scenarios
-        )
 
-        result = update_home_scenario_comparison(
-            api_client, plotter, available_scenarios, breakdown, secondary_metric
-        )
+    # Verify we get a valid plotly figure
+    assert_valid_figure(result)
 
-        # Verify we get a valid plotly figure
-        assert_valid_figure(result)
 
-    @pytest.mark.parametrize(
-        "breakdown", literal_to_list(ConsumptionBreakdown, include_none_str=True)
+@pytest.mark.parametrize("breakdown", literal_to_list(ConsumptionBreakdown, include_none_str=True))
+@pytest.mark.parametrize(
+    "secondary_metric", literal_to_list(SecondaryMetric, include_none_str=True)
+)
+def test_update_home_sector_breakdown(
+    api_client: APIClient,
+    plotter: StridePlots,
+    breakdown: ConsumptionBreakdown | Literal["None"],
+    secondary_metric: SecondaryMetric | Literal["None"],
+) -> None:
+    """Test home sector breakdown (peak demand) with different combinations."""
+    available_scenarios = api_client.scenarios[:1] if api_client.scenarios else []
+
+    result = update_home_sector_breakdown(
+        api_client, plotter, available_scenarios, breakdown, secondary_metric
     )
-    @pytest.mark.parametrize(
-        "secondary_metric", literal_to_list(SecondaryMetric, include_none_str=True)
+
+    assert_valid_figure(result)
+
+
+def test_update_home_load_duration(api_client: APIClient, plotter: StridePlots) -> None:
+    """Test home load duration callback."""
+    available_scenarios = (
+        api_client.scenarios[:2] if len(api_client.scenarios) >= 2 else api_client.scenarios
     )
-    def test_update_home_sector_breakdown(
-        self,
-        api_client: APIClient,
-        plotter: StridePlots,
-        breakdown: ConsumptionBreakdown | Literal["None"],
-        secondary_metric: SecondaryMetric | Literal["None"],
-    ) -> None:
-        """Test home sector breakdown (peak demand) with different combinations."""
-        available_scenarios = api_client.scenarios[:1] if api_client.scenarios else []
+    available_year = api_client.years[0]
 
-        result = update_home_sector_breakdown(
-            api_client, plotter, available_scenarios, breakdown, secondary_metric
-        )
+    result = update_home_load_duration(api_client, plotter, available_scenarios, available_year)
 
-        assert_valid_figure(result)
+    assert_valid_figure(result)
 
-    def test_update_home_load_duration(self, api_client: APIClient, plotter: StridePlots) -> None:
-        """Test home load duration callback."""
-        available_scenarios = (
-            api_client.scenarios[:2] if len(api_client.scenarios) >= 2 else api_client.scenarios
-        )
-        available_year = api_client.years[0]
 
-        result = update_home_load_duration(
-            api_client, plotter, available_scenarios, available_year
-        )
+def test_update_home_load_duration_no_data(api_client: APIClient, plotter: StridePlots) -> None:
+    """Test home load duration with no scenarios or year."""
+    selected_year = api_client.years[0]
 
-        assert_valid_figure(result)
+    result = update_home_load_duration(api_client, plotter, ["invalid"], selected_year)
 
-    def test_update_home_load_duration_no_data(
-        self, api_client: APIClient, plotter: StridePlots
-    ) -> None:
-        """Test home load duration with no scenarios or year."""
-        selected_year = api_client.years[0]
+    assert result == {}
 
-        result = update_home_load_duration(api_client, plotter, ["invalid"], selected_year)
 
-        assert result == {}
+@pytest.mark.parametrize("chart_type", literal_to_list(ChartType))
+@pytest.mark.parametrize("breakdown", literal_to_list(ConsumptionBreakdown, include_none_str=True))
+@pytest.mark.parametrize(
+    "secondary_metric", literal_to_list(SecondaryMetric, include_none_str=True)
+)
+def test_update_home_scenario_timeseries(
+    api_client: APIClient,
+    plotter: StridePlots,
+    chart_type: ChartType,
+    breakdown: ConsumptionBreakdown | Literal["None"],
+    secondary_metric: SecondaryMetric | Literal["None"],
+) -> None:
+    """Test home scenario timeseries with different combinations."""
+    available_scenarios = api_client.scenarios[:1] if api_client.scenarios else []
 
-    @pytest.mark.parametrize("chart_type", literal_to_list(ChartType))
-    @pytest.mark.parametrize(
-        "breakdown", literal_to_list(ConsumptionBreakdown, include_none_str=True)
+    result = update_home_scenario_timeseries(
+        api_client, plotter, available_scenarios, chart_type, breakdown, secondary_metric
     )
-    @pytest.mark.parametrize(
-        "secondary_metric", literal_to_list(SecondaryMetric, include_none_str=True)
+
+    assert_valid_figure(result)
+
+
+def test_update_home_scenario_timeseries_error_handling(
+    api_client: APIClient, plotter: StridePlots
+) -> None:
+    """Test error handling in home scenario timeseries."""
+    # Test with invalid scenario to trigger error handling
+    result = update_home_scenario_timeseries(
+        api_client, plotter, ["invalid_scenario"], "Line", "None", "GDP"
     )
-    def test_update_home_scenario_timeseries(
-        self,
-        api_client: APIClient,
-        plotter: StridePlots,
-        chart_type: ChartType,
-        breakdown: ConsumptionBreakdown | Literal["None"],
-        secondary_metric: SecondaryMetric | Literal["None"],
-    ) -> None:
-        """Test home scenario timeseries with different combinations."""
-        available_scenarios = api_client.scenarios[:1] if api_client.scenarios else []
 
-        result = update_home_scenario_timeseries(
-            api_client, plotter, available_scenarios, chart_type, breakdown, secondary_metric
-        )
-
-        assert_valid_figure(result)
-
-    def test_update_home_scenario_timeseries_error_handling(
-        self, api_client: APIClient, plotter: StridePlots
-    ) -> None:
-        """Test error handling in home scenario timeseries."""
-        # Test with invalid scenario to trigger error handling
-        result = update_home_scenario_timeseries(
-            api_client, plotter, ["invalid_scenario"], "Line", "None", "GDP"
-        )
-
-        assert isinstance(result, dict)
-        assert "Error" in result["layout"]["title"]
+    assert isinstance(result, dict)
+    assert "Error" in result["layout"]["title"]
 
 
-class TestScenarioCallbacks:
-    """Test suite for scenario page callbacks."""
+# Scenario Callbacks Tests
+def test_update_summary_stats_valid_inputs(api_client: APIClient) -> None:
+    """Test summary stats with valid inputs."""
+    # Note: api_client is session-scoped, do not mutate
+    available_scenario = api_client.scenarios[0]
+    available_year = api_client.years[-1]  # Use last year for growth calculation
 
-    def test_update_summary_stats_valid_inputs(self, api_client: APIClient) -> None:
-        """Test summary stats with valid inputs."""
-        # Note: api_client is session-scoped, do not mutate
-        available_scenario = api_client.scenarios[0]
-        available_year = api_client.years[-1]  # Use last year for growth calculation
+    total, growth, peak = update_summary_stats(api_client, available_scenario, available_year)
 
-        total, growth, peak = update_summary_stats(api_client, available_scenario, available_year)
+    # Should return formatted strings
+    assert isinstance(total, str)
+    assert isinstance(growth, str)
+    assert isinstance(peak, str)
 
-        # Should return formatted strings
-        assert isinstance(total, str)
-        assert isinstance(growth, str)
-        assert isinstance(peak, str)
+    # Should not be error values
+    assert total != "Error"
+    assert growth != "Error"
+    assert peak != "Error"
 
-        # Should not be error values
-        assert total != "Error"
-        assert growth != "Error"
-        assert peak != "Error"
 
-    def test_update_summary_stats_first_year(self, api_client: APIClient) -> None:
-        """Test summary stats for first year (no growth calculation)."""
-        available_scenario = api_client.scenarios[0]
-        first_year = api_client.years[0]
+def test_update_summary_stats_first_year(api_client: APIClient) -> None:
+    """Test summary stats for first year (no growth calculation)."""
+    available_scenario = api_client.scenarios[0]
+    first_year = api_client.years[0]
 
-        total, growth, peak = update_summary_stats(api_client, available_scenario, first_year)
+    total, growth, peak = update_summary_stats(api_client, available_scenario, first_year)
 
-        assert isinstance(total, str)
-        assert growth == "N/A"  # First year has no previous year
-        assert isinstance(peak, str)
+    assert isinstance(total, str)
+    assert growth == "N/A"  # First year has no previous year
+    assert isinstance(peak, str)
 
-    def test_update_summary_stats_invalid_inputs(self, api_client: APIClient) -> None:
-        """Test summary stats with invalid inputs."""
-        # Invalid scenario
-        total, growth, peak = update_summary_stats(api_client, "invalid", 2030)
-        assert total == "---"
-        assert growth == "---"
-        assert peak == "---"
 
-    @pytest.mark.parametrize(
-        "breakdown", literal_to_list(ConsumptionBreakdown, include_none_str=True)
+def test_update_summary_stats_invalid_inputs(api_client: APIClient) -> None:
+    """Test summary stats with invalid inputs."""
+    # Invalid scenario
+    total, growth, peak = update_summary_stats(api_client, "invalid", 2030)
+    assert total == "---"
+    assert growth == "---"
+    assert peak == "---"
+
+
+@pytest.mark.parametrize("breakdown", literal_to_list(ConsumptionBreakdown, include_none_str=True))
+@pytest.mark.parametrize(
+    "secondary_metric", literal_to_list(SecondaryMetric, include_none_str=True)
+)
+def test_update_consumption_plot(
+    api_client: APIClient,
+    plotter: StridePlots,
+    breakdown: ConsumptionBreakdown | Literal["None"],
+    secondary_metric: SecondaryMetric | Literal["None"],
+) -> None:
+    """Test consumption plot with different breakdown and secondary metric combinations."""
+    available_scenario = api_client.scenarios[0]
+
+    result = update_consumption_plot(
+        api_client, plotter, available_scenario, breakdown, secondary_metric
     )
-    @pytest.mark.parametrize(
-        "secondary_metric", literal_to_list(SecondaryMetric, include_none_str=True)
+
+    assert_valid_figure(result)
+
+
+@pytest.mark.parametrize("breakdown", literal_to_list(ConsumptionBreakdown, include_none_str=True))
+@pytest.mark.parametrize(
+    "secondary_metric", literal_to_list(SecondaryMetric, include_none_str=True)
+)
+def test_update_peak_plot(
+    api_client: APIClient,
+    plotter: StridePlots,
+    breakdown: ConsumptionBreakdown | Literal["None"],
+    secondary_metric: SecondaryMetric | Literal["None"],
+) -> None:
+    """Test peak demand plot with different breakdown and secondary metric combinations."""
+    available_scenario = api_client.scenarios[0]
+
+    result = update_peak_plot(api_client, plotter, available_scenario, breakdown, secondary_metric)
+
+    assert_valid_figure(result)
+
+
+@pytest.mark.parametrize("breakdown", literal_to_list(ConsumptionBreakdown, include_none_str=True))
+@pytest.mark.parametrize("resample", literal_to_list(ResampleOptions))
+@pytest.mark.parametrize("weather_var", literal_to_list(WeatherVar, include_none_str=True))
+def test_update_timeseries_plot(
+    api_client: APIClient,
+    plotter: StridePlots,
+    breakdown: ConsumptionBreakdown | Literal["None"],
+    resample: ResampleOptions,
+    weather_var: WeatherVar | Literal["None"],
+) -> None:
+    """Test timeseries plot with different parameter combinations."""
+    # Convert "None" to None for weather_var
+    weather_var_value = None if weather_var == "None" else weather_var
+
+    # Skip if weather data is specified (not implemented yet)
+    if weather_var_value is not None:
+        pytest.skip("Weather data functionality not implemented yet")
+
+    available_scenario = api_client.scenarios[0]
+    available_years = api_client.years[:2] if len(api_client.years) >= 2 else api_client.years
+
+    result = update_timeseries_plot(
+        api_client,
+        plotter,
+        available_scenario,
+        breakdown,
+        resample,
+        weather_var_value,
+        available_years,
     )
-    def test_update_consumption_plot(
-        self,
-        api_client: APIClient,
-        plotter: StridePlots,
-        breakdown: ConsumptionBreakdown | Literal["None"],
-        secondary_metric: SecondaryMetric | Literal["None"],
-    ) -> None:
-        """Test consumption plot with different breakdown and secondary metric combinations."""
-        available_scenario = api_client.scenarios[0]
 
-        result = update_consumption_plot(
-            api_client, plotter, available_scenario, breakdown, secondary_metric
-        )
+    assert_valid_figure(result)
 
-        assert_valid_figure(result)
 
-    @pytest.mark.parametrize(
-        "breakdown", literal_to_list(ConsumptionBreakdown, include_none_str=True)
+def test_update_timeseries_plot_no_years(api_client: APIClient, plotter: StridePlots) -> None:
+    """Test timeseries plot with no years selected."""
+    available_scenario = api_client.scenarios[0]
+
+    result = update_timeseries_plot(
+        api_client, plotter, available_scenario, "None", "Daily Mean", None, []
     )
-    @pytest.mark.parametrize(
-        "secondary_metric", literal_to_list(SecondaryMetric, include_none_str=True)
+
+    assert isinstance(result, dict)
+    assert result["layout"]["title"] == "Select years to view data"
+
+
+@pytest.mark.parametrize("breakdown", literal_to_list(ConsumptionBreakdown, include_none_str=True))
+@pytest.mark.parametrize("resample", literal_to_list(ResampleOptions))
+@pytest.mark.parametrize("weather_var", literal_to_list(WeatherVar, include_none_str=True))
+def test_update_yearly_plot(
+    api_client: APIClient,
+    plotter: StridePlots,
+    breakdown: ConsumptionBreakdown | Literal["None"],
+    resample: ResampleOptions,
+    weather_var: WeatherVar | Literal["None"],
+) -> None:
+    """Test yearly area plot with different parameter combinations."""
+    # Convert "None" to None for weather_var
+    weather_var_value = None if weather_var == "None" else weather_var
+
+    # Skip if weather data is specified (not implemented yet)
+    if weather_var_value is not None:
+        pytest.skip("Weather data functionality not implemented yet")
+
+    available_scenario = api_client.scenarios[0]
+    available_year = api_client.years[0]
+
+    result = update_yearly_plot(
+        api_client,
+        plotter,
+        available_scenario,
+        breakdown,
+        resample,
+        weather_var_value,
+        [available_year],
     )
-    def test_update_peak_plot(
-        self,
-        api_client: APIClient,
-        plotter: StridePlots,
-        breakdown: ConsumptionBreakdown | Literal["None"],
-        secondary_metric: SecondaryMetric | Literal["None"],
-    ) -> None:
-        """Test peak demand plot with different breakdown and secondary metric combinations."""
-        available_scenario = api_client.scenarios[0]
+    assert_valid_figure(result)
 
-        result = update_peak_plot(
-            api_client, plotter, available_scenario, breakdown, secondary_metric
-        )
 
-        assert_valid_figure(result)
+@pytest.mark.parametrize("timegroup", literal_to_list(TimeGroup))
+@pytest.mark.parametrize("agg", literal_to_list(TimeGroupAgg))
+@pytest.mark.parametrize("weather_var", literal_to_list(WeatherVar, include_none_str=True))
+def test_update_seasonal_lines_plot(
+    api_client: APIClient,
+    plotter: StridePlots,
+    timegroup: TimeGroup,
+    agg: TimeGroupAgg,
+    weather_var: WeatherVar | Literal["None"],
+) -> None:
+    """Test seasonal load lines plot with different parameter combinations."""
+    # Convert "None" to None for weather_var
+    weather_var_value = None if weather_var == "None" else weather_var
 
-    @pytest.mark.parametrize(
-        "breakdown", literal_to_list(ConsumptionBreakdown, include_none_str=True)
+    # Skip if weather data is specified (not implemented yet)
+    if weather_var_value is not None:
+        pytest.skip("Weather data functionality not implemented yet")
+
+    available_scenario = api_client.scenarios[0]
+
+    result = update_seasonal_lines_plot(
+        api_client, plotter, available_scenario, timegroup, agg, weather_var_value
     )
-    @pytest.mark.parametrize("resample", literal_to_list(ResampleOptions))
-    @pytest.mark.parametrize("weather_var", literal_to_list(WeatherVar, include_none_str=True))
-    def test_update_timeseries_plot(
-        self,
-        api_client: APIClient,
-        plotter: StridePlots,
-        breakdown: ConsumptionBreakdown | Literal["None"],
-        resample: ResampleOptions,
-        weather_var: WeatherVar | Literal["None"],
-    ) -> None:
-        """Test timeseries plot with different parameter combinations."""
-        # Convert "None" to None for weather_var
-        weather_var_value = None if weather_var == "None" else weather_var
 
-        # Skip if weather data is specified (not implemented yet)
-        if weather_var_value is not None:
-            pytest.skip("Weather data functionality not implemented yet")
+    assert_valid_figure(result)
 
-        available_scenario = api_client.scenarios[0]
-        available_years = api_client.years[:2] if len(api_client.years) >= 2 else api_client.years
 
-        result = update_timeseries_plot(
-            api_client,
-            plotter,
-            available_scenario,
-            breakdown,
-            resample,
-            weather_var_value,
-            available_years,
-        )
+@pytest.mark.parametrize("breakdown", literal_to_list(ConsumptionBreakdown, include_none_str=True))
+@pytest.mark.parametrize("timegroup", literal_to_list(TimeGroup))
+@pytest.mark.parametrize("agg", literal_to_list(TimeGroupAgg))
+@pytest.mark.parametrize("weather_var", literal_to_list(WeatherVar, include_none_str=True))
+def test_update_seasonal_area_plot(
+    api_client: APIClient,
+    plotter: StridePlots,
+    breakdown: ConsumptionBreakdown | Literal["None"],
+    timegroup: TimeGroup,
+    agg: TimeGroupAgg,
+    weather_var: WeatherVar | Literal["None"],
+) -> None:
+    """Test seasonal load area plot with different parameter combinations."""
+    # Convert "None" to None for weather_var
+    weather_var_value = None if weather_var == "None" else weather_var
 
-        assert_valid_figure(result)
+    # Skip if weather data is specified (not implemented yet)
+    if weather_var_value is not None:
+        pytest.skip("Weather data functionality not implemented yet")
 
-    def test_update_timeseries_plot_no_years(
-        self, api_client: APIClient, plotter: StridePlots
-    ) -> None:
-        """Test timeseries plot with no years selected."""
-        available_scenario = api_client.scenarios[0]
+    available_scenario = api_client.scenarios[0]
+    available_year = api_client.years[0]
 
-        result = update_timeseries_plot(
-            api_client, plotter, available_scenario, "None", "Daily Mean", None, []
-        )
-
-        assert isinstance(result, dict)
-        assert result["layout"]["title"] == "Select years to view data"
-
-    @pytest.mark.parametrize(
-        "breakdown", literal_to_list(ConsumptionBreakdown, include_none_str=True)
+    result = update_seasonal_area_plot(
+        api_client,
+        plotter,
+        available_scenario,
+        breakdown,
+        available_year,
+        timegroup,
+        agg,
+        weather_var_value,
     )
-    @pytest.mark.parametrize("resample", literal_to_list(ResampleOptions))
-    @pytest.mark.parametrize("weather_var", literal_to_list(WeatherVar, include_none_str=True))
-    def test_update_yearly_plot(
-        self,
-        api_client: APIClient,
-        plotter: StridePlots,
-        breakdown: ConsumptionBreakdown | Literal["None"],
-        resample: ResampleOptions,
-        weather_var: WeatherVar | Literal["None"],
-    ) -> None:
-        """Test yearly area plot with different parameter combinations."""
-        # Convert "None" to None for weather_var
-        weather_var_value = None if weather_var == "None" else weather_var
 
-        # Skip if weather data is specified (not implemented yet)
-        if weather_var_value is not None:
-            pytest.skip("Weather data functionality not implemented yet")
+    assert_valid_figure(result)
 
-        available_scenario = api_client.scenarios[0]
-        available_year = api_client.years[0]
 
-        result = update_yearly_plot(
-            api_client,
-            plotter,
-            available_scenario,
-            breakdown,
-            resample,
-            weather_var_value,
-            [available_year],
-        )
-        assert_valid_figure(result)
+def test_update_load_duration_plot(api_client: APIClient, plotter: StridePlots) -> None:
+    """Test load duration curve plot callback."""
+    available_scenario = api_client.scenarios[0]
+    available_years = api_client.years[:2] if len(api_client.years) >= 2 else api_client.years
 
-    @pytest.mark.parametrize("timegroup", literal_to_list(TimeGroup))
-    @pytest.mark.parametrize("agg", literal_to_list(TimeGroupAgg))
-    @pytest.mark.parametrize("weather_var", literal_to_list(WeatherVar, include_none_str=True))
-    def test_update_seasonal_lines_plot(
-        self,
-        api_client: APIClient,
-        plotter: StridePlots,
-        timegroup: TimeGroup,
-        agg: TimeGroupAgg,
-        weather_var: WeatherVar | Literal["None"],
-    ) -> None:
-        """Test seasonal load lines plot with different parameter combinations."""
-        # Convert "None" to None for weather_var
-        weather_var_value = None if weather_var == "None" else weather_var
+    result = update_load_duration_plot(api_client, plotter, available_scenario, available_years)
 
-        # Skip if weather data is specified (not implemented yet)
-        if weather_var_value is not None:
-            pytest.skip("Weather data functionality not implemented yet")
+    assert_valid_figure(result)
 
-        available_scenario = api_client.scenarios[0]
 
-        result = update_seasonal_lines_plot(
-            api_client, plotter, available_scenario, timegroup, agg, weather_var_value
-        )
+def test_update_load_duration_plot_no_years(api_client: APIClient, plotter: StridePlots) -> None:
+    """Test load duration plot with no years selected."""
+    available_scenario = api_client.scenarios[0]
 
-        assert_valid_figure(result)
+    result = update_load_duration_plot(api_client, plotter, available_scenario, [])
 
-    @pytest.mark.parametrize(
-        "breakdown", literal_to_list(ConsumptionBreakdown, include_none_str=True)
+    assert isinstance(result, dict)
+    assert result["layout"]["title"] == "Select years to view data"
+
+
+# Error Handling Tests
+def test_home_callback_api_error(api_client: APIClient, plotter: StridePlots) -> None:
+    """Test home callback handles API errors gracefully."""
+    # Note: api_client is session-scoped, do not mutate
+    # Use invalid scenario to trigger error
+    result = update_home_scenario_comparison(
+        api_client, plotter, ["invalid_scenario"], "None", "GDP"
     )
-    @pytest.mark.parametrize("timegroup", literal_to_list(TimeGroup))
-    @pytest.mark.parametrize("agg", literal_to_list(TimeGroupAgg))
-    @pytest.mark.parametrize("weather_var", literal_to_list(WeatherVar, include_none_str=True))
-    def test_update_seasonal_area_plot(
-        self,
-        api_client: APIClient,
-        plotter: StridePlots,
-        breakdown: ConsumptionBreakdown | Literal["None"],
-        timegroup: TimeGroup,
-        agg: TimeGroupAgg,
-        weather_var: WeatherVar | Literal["None"],
-    ) -> None:
-        """Test seasonal load area plot with different parameter combinations."""
-        # Convert "None" to None for weather_var
-        weather_var_value = None if weather_var == "None" else weather_var
 
-        # Skip if weather data is specified (not implemented yet)
-        if weather_var_value is not None:
-            pytest.skip("Weather data functionality not implemented yet")
-
-        available_scenario = api_client.scenarios[0]
-        available_year = api_client.years[0]
-
-        result = update_seasonal_area_plot(
-            api_client,
-            plotter,
-            available_scenario,
-            breakdown,
-            available_year,
-            timegroup,
-            agg,
-            weather_var_value,
-        )
-
-        assert_valid_figure(result)
-
-    def test_update_load_duration_plot(self, api_client: APIClient, plotter: StridePlots) -> None:
-        """Test load duration curve plot callback."""
-        available_scenario = api_client.scenarios[0]
-        available_years = api_client.years[:2] if len(api_client.years) >= 2 else api_client.years
-
-        result = update_load_duration_plot(
-            api_client, plotter, available_scenario, available_years
-        )
-
-        assert_valid_figure(result)
-
-    def test_update_load_duration_plot_no_years(
-        self, api_client: APIClient, plotter: StridePlots
-    ) -> None:
-        """Test load duration plot with no years selected."""
-        available_scenario = api_client.scenarios[0]
-
-        result = update_load_duration_plot(api_client, plotter, available_scenario, [])
-
-        assert isinstance(result, dict)
-        assert result["layout"]["title"] == "Select years to view data"
+    assert isinstance(result, dict)
+    assert "Error" in result["layout"]["title"]
 
 
-class TestErrorHandling:
-    """Test error handling across callbacks."""
+def test_scenario_callback_api_error(api_client: APIClient, plotter: StridePlots) -> None:
+    """Test scenario callback handles API errors gracefully."""
+    # Use invalid scenario to trigger error
+    result = update_consumption_plot(api_client, plotter, "invalid_scenario", "None", "GDP")
 
-    def test_home_callback_api_error(self, api_client: APIClient, plotter: StridePlots) -> None:
-        """Test home callback handles API errors gracefully."""
-        # Note: api_client is session-scoped, do not mutate
-        # Use invalid scenario to trigger error
-        result = update_home_scenario_comparison(
-            api_client, plotter, ["invalid_scenario"], "None", "GDP"
-        )
+    assert isinstance(result, dict)
+    assert "Error" in result["layout"]["title"]
 
-        assert isinstance(result, dict)
-        assert "Error" in result["layout"]["title"]
 
-    def test_scenario_callback_api_error(
-        self, api_client: APIClient, plotter: StridePlots
-    ) -> None:
-        """Test scenario callback handles API errors gracefully."""
-        # Use invalid scenario to trigger error
-        result = update_consumption_plot(api_client, plotter, "invalid_scenario", "None", "GDP")
+def test_summary_stats_exception(api_client: APIClient) -> None:
+    """Test summary stats handles exceptions."""
+    # Use invalid scenario to trigger error
+    total, growth, peak = update_summary_stats(api_client, "invalid_scenario", 2030)
 
-        assert isinstance(result, dict)
-        assert "Error" in result["layout"]["title"]
-
-    def test_summary_stats_exception(self, api_client: APIClient) -> None:
-        """Test summary stats handles exceptions."""
-        # Use invalid scenario to trigger error
-        total, growth, peak = update_summary_stats(api_client, "invalid_scenario", 2030)
-
-        assert total == "---"
-        assert growth == "---"
-        assert peak == "---"
+    assert total == "---"
+    assert growth == "---"
+    assert peak == "---"

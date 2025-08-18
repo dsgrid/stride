@@ -6,7 +6,7 @@ STRIDE UI Data API
 This module provides a unified interface for querying electricity load and demand data
 from a DuckDB database. The API offers methods
 for retrieving annual consumption metrics, peak demand analysis, load duration curves,
-timeseries comparisons, seasonal load patterns, and secondary metrics like economic
+time series comparisons, seasonal load patterns, and secondary metrics like economic
 indicators and weather data.
 
 Key Features:
@@ -14,21 +14,11 @@ Key Features:
 - Flexible time aggregation and grouping options
 - Integration with secondary metrics (GDP, population, weather, etc.)
 
-
-Lingering Questions/Comments:
-1. We need some way of determining the valid model years. Preferably a fast lookup of the project config. (DONE)
-2. For secondary metrics, how do we handle different versions of table overrides (e.g. Two versions of GDP)
-3. What is "Absolute Value" in the Scenario Summary Stats? (Assuming total consumption (TWh))
-4. In the timeseries charts, It seems like Daily or Weekly mean should be in separate dropdown category.
-5. For Comparing two timeseries, we need to handle displaying the secondary axis weather variable for both model years
 """
 
-import threading
-from pathlib import Path
 import pandas as pd
 from stride.project import Project
 from loguru import logger
-import duckdb
 from typing import Any
 
 from .utils import (
@@ -58,7 +48,7 @@ class APIClient:
     The client supports various data retrieval patterns including:
     - Annual consumption and peak demand metrics with optional breakdowns
     - Load duration curves for capacity planning analysis
-    - Timeseries data with flexible resampling and grouping
+    - Time series data with flexible resampling and grouping
     - Seasonal load pattern analysis
     - Secondary metrics integration (economic, demographic, weather data)
 
@@ -88,21 +78,24 @@ class APIClient:
     """
 
     _instance = None
-    _lock = threading.Lock()
 
     def __new__(
         cls,
         project: Project | None = None,
     ) -> APIClient:
-        # Always create a new instance instead of singleton for development
-        return super().__new__(cls)
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
 
     def __init__(
         self,
         project: Project,
     ):
+        # Only initialize once
+        if hasattr(self, "_initialized"):
+            return
+
         logger.debug(f"APIClient.__init__ called with project_config: {project is not None}")
-        # Remove singleton behavior during development
 
         self.project = project
 
@@ -114,6 +107,8 @@ class APIClient:
         self._scenarios: list[str] | None = None
 
         self.db = self.project.con
+
+        self._initialized = True
 
     @property
     def years(self) -> list[int]:
@@ -723,7 +718,7 @@ class APIClient:
         timegroup: TimeGroup | None = None,
     ) -> pd.DataFrame:
         """
-        Gets the weather timeseries data to use as a secondary axis. Optionally Resample to Daily or weekly mean
+        Gets the weather time series data to use as a secondary axis. Optionally Resample to Daily or weekly mean
 
         Parameters
         ----------
@@ -774,7 +769,7 @@ class APIClient:
 
     # NOTE we don't restrict the user to two model years here in case they use the api outside of the UI.
     # NOTE for weekly mean, depending on the year, the weekends will not be at the start or end of the week.
-    def get_timeseries_comparison(
+    def get_time_series_comparison(
         self,
         scenario: str,
         years: int | list[int],
@@ -798,7 +793,7 @@ class APIClient:
         Returns
         -------
         pd.DataFrame
-            DataFrame with electricity consumption timeseries data in tall format.
+            DataFrame with electricity consumption time series data in tall format.
 
             Columns:
             - scenario: str, scenario name
@@ -811,7 +806,7 @@ class APIClient:
         --------
         >>> client = APIClient(path_or_conn)
         >>> # With group_by specified
-        >>> df = client.get_timeseries_comparison("baseline", [2025, 2030], "Sector")
+        >>> df = client.get_time_series_comparison("baseline", [2025, 2030], "Sector")
 
         | scenario | year | time_period | sector      | value  |
         |----------|------|-------------|-------------|--------|
@@ -822,7 +817,7 @@ class APIClient:
         | baseline | 2030 | 1           | Commercial  | 1380.2 |
 
         >>> # Without group_by
-        >>> df = client.get_timeseries_comparison("baseline", [2025, 2030])
+        >>> df = client.get_time_series_comparison("baseline", [2025, 2030])
 
         | scenario | year | time_period | value  |
         |----------|------|-------------|--------|
@@ -832,7 +827,7 @@ class APIClient:
         | baseline | 2030 | 2           | 5666.5 |
         """
         logger.debug(
-            f"get_timeseries_comparison called with: scenario={scenario}, years={years}, group_by={group_by}, resample={resample}"
+            f"get_time_series_comparison called with: scenario={scenario}, years={years}, group_by={group_by}, resample={resample}"
         )
 
         if isinstance(years, int):
@@ -889,7 +884,6 @@ class APIClient:
 
         logger.debug(f"SQL Query:\n{sql}")
         df = self.db.execute(sql, params).df()
-        pd.DataFrame(df)
         logger.debug(f"Returning {len(df)} rows.")
         return df
 

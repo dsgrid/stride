@@ -29,7 +29,6 @@ DEFAULT_FIRST_SATURDAY_HOUR = 5 * 24
 HOURS_PER_WEEK = 168
 
 
-# FIXME I've tried many ways to fix the typing for "literal" without luck. Type[ConsumptionBreakdonw] | Type[...]
 def literal_to_list(
     literal: Any, include_none_str: bool = False, prefix: str | None = None
 ) -> list[str]:
@@ -60,31 +59,24 @@ def literal_to_list(
     return result
 
 
-def generate_season_case_statement(hour_col: str = "hour") -> str:
+def generate_season_case_statement(day_col: str = "day_of_year") -> str:
     """
-    Generate a SQL CASE statement to determine season based on hour of year.
+    Generate a SQL CASE statement to determine season based on day of year.
 
     Parameters
     ----------
-    hour_col : str, optional
-        Name of the hour column or expression, by default "hour"
+    day_col : str, optional
+        Name of the day of year column or expression, by default "day_of_year"
 
     Returns
     -------
     str
         SQL CASE statement that returns season name
     """
-    spring_hour_start = SPRING_DAY_START * 24
-    spring_hour_end = SPRING_DAY_END * 24
-    fall_hour_start = FALL_DAY_START * 24
-    fall_hour_end = FALL_DAY_END * 24
-
     return f"""CASE
-        WHEN ({hour_col}) >= 0 AND ({hour_col}) < {spring_hour_start} THEN 'Winter'
-        WHEN ({hour_col}) >= {spring_hour_start} AND ({hour_col}) < {spring_hour_end} THEN 'Spring'
-        WHEN ({hour_col}) >= {spring_hour_end} AND ({hour_col}) < {fall_hour_start} THEN 'Summer'
-        WHEN ({hour_col}) >= {fall_hour_start} AND ({hour_col}) < {fall_hour_end} THEN 'Fall'
-        WHEN ({hour_col}) >= {fall_hour_end} AND ({hour_col}) < 8760 THEN 'Winter'
+        WHEN ({day_col}) >= {SPRING_DAY_START} AND ({day_col}) < {SPRING_DAY_END} THEN 'Spring'
+        WHEN ({day_col}) >= {SPRING_DAY_END} AND ({day_col}) < {FALL_DAY_START} THEN 'Summer'
+        WHEN ({day_col}) >= {FALL_DAY_START} AND ({day_col}) < {FALL_DAY_END} THEN 'Fall'
         ELSE 'Winter'
     END"""
 
@@ -224,23 +216,18 @@ def build_seasonal_query(
     AND model_year = ANY(?)
     """
 
-    # Seasonal mapping
-    season_case = """
-    CASE
-        WHEN EXTRACT(MONTH FROM timestamp) IN (12, 1, 2) THEN 'Winter'
-        WHEN EXTRACT(MONTH FROM timestamp) IN (3, 4, 5) THEN 'Spring'
-        WHEN EXTRACT(MONTH FROM timestamp) IN (6, 7, 8) THEN 'Summer'
-        WHEN EXTRACT(MONTH FROM timestamp) IN (9, 10, 11) THEN 'Fall'
-    END as season
-    """
+    # Extract day of year from timestamp for season determination
+    day_of_year_expr = "EXTRACT(DOY FROM timestamp)"
+
+    # Seasonal mapping using day of year
+    season_case = generate_season_case_statement(day_of_year_expr)
 
     # Day type mapping
     day_type_case = """
     CASE
-        WHEN EXTRACT(DAYOFWEEK FROM timestamp) IN (1, 7) THEN 'Weekend'
+        WHEN EXTRACT(DAYOFWEEK FROM timestamp) IN (0, 6) THEN 'Weekend'
         ELSE 'Weekday'
-    END as day_type
-    """
+    END"""
 
     # Hour extraction
     hour_extract = "EXTRACT(HOUR FROM timestamp) as hour_of_day"
@@ -256,12 +243,12 @@ def build_seasonal_query(
     cte_group_cols = ["scenario", "model_year"]
 
     if "Seasonal" in group_by:
-        cte_select_cols.append(season_case)
-        cte_group_cols.append("season")
+        cte_select_cols.append(f"({season_case}) as season")
+        cte_group_cols.append(f"({season_case})")
 
     if "Weekday/Weekend" in group_by:
-        cte_select_cols.append(day_type_case)
-        cte_group_cols.append("day_type")
+        cte_select_cols.append(f"({day_type_case}) as day_type")
+        cte_group_cols.append(f"({day_type_case})")
 
     # Add day of year and hour to CTE for proper daily aggregation
     cte_select_cols.append(day_of_year_extract)

@@ -34,6 +34,7 @@ def default_project(
     with Project.load(project_dir, read_only=True) as project:
         yield project
 
+
 @pytest.fixture(scope="session")
 def api_client(default_project: Project) -> APIClient:
     """Create APIClient instance with session-scoped test project."""

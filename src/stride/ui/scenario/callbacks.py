@@ -235,7 +235,7 @@ def update_timeseries_plot(
 
         selected_years_int = [int(year) for year in selected_years]
         # Get timeseries data. Need to pass "End Use" Literal Hera
-        df = data_handler.get_timeseries_comparison(
+        df = data_handler.get_time_series_comparison(
             scenario=scenario,
             years=selected_years_int,
             group_by=breakdown_value,
@@ -295,7 +295,7 @@ def update_yearly_plot(
         # Convert "None" to None
         breakdown_value = None if breakdown == "None" else breakdown
         # Get timeseries data for single year
-        df = data_handler.get_timeseries_comparison(
+        df = data_handler.get_time_series_comparison(
             scenario=scenario, years=selected_year, group_by=breakdown_value, resample=resample
         )
 
