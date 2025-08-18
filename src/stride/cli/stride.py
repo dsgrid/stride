@@ -274,6 +274,44 @@ def _export_calculated_table(
     project.export_calculated_table(scenario, table_name, filename, overwrite=overwrite)
 
 
+_remove_calculated_table_epilog = """
+Examples:\n
+$ stride calculated-tables remove-override my_project \\ \n
+    --scenario=baseline \\ \n
+    --table-name=energy_intensity_res_hdi_population_load_shapes_override \\ \n
+"""
+
+
+@click.command(name="remove-override", epilog=_remove_calculated_table_epilog)
+@click.argument("project-path", type=click.Path(exists=True), callback=path_callback)
+@click.option("-s", "--scenario", type=str, required=True, help="Scenario name")
+@click.option(
+    "-t", "--table-name", type=str, required=True, help="Overridden calculated table name"
+)
+@click.pass_context
+def remove_calculated_table_override(
+    ctx: click.Context,
+    project_path: Path,
+    scenario: str,
+    table_name: str,
+) -> None:
+    """Remove the overridden calculated table."""
+    res = handle_stride_exception(
+        ctx,
+        _remove_calculated_table_override,
+        project_path,
+        scenario,
+        table_name,
+    )
+    if res[1] != 0:
+        ctx.exit(res[1])
+
+
+def _remove_calculated_table_override(project_path: Path, scenario: str, table_name: str) -> None:
+    project = Project.load(project_path)
+    project.remove_calculated_table_override(scenario, table_name)
+
+
 def handle_stride_exception(
     ctx: click.Context, func: Callable[..., Any], *args: Any, **kwargs: Any
 ) -> Any:
@@ -315,3 +353,4 @@ scenarios.add_command(list_scenarios)
 calculated_tables.add_command(list_calculated_tables)
 calculated_tables.add_command(override_calculated_table)
 calculated_tables.add_command(export_calculated_table)
+calculated_tables.add_command(remove_calculated_table_override)

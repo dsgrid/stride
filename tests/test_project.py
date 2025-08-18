@@ -9,7 +9,7 @@ from pytest import TempPathFactory
 
 from stride import Project
 from stride.models import Scenario
-from stride.project import CONFIG_FILE
+from stride.project import CONFIG_FILE, _get_base_and_override_names
 from stride.cli.stride import cli
 
 
@@ -171,6 +171,32 @@ def test_override_calculated_table(
         with pytest.raises(InvalidParameter):
             project3.override_calculated_table("alternate_gdp", "invalid_calc_table", data_file)
 
+    cmd = [
+        "calculated-tables",
+        "remove-override",
+        str(new_path),
+        "-s",
+        "alternate_gdp",
+        "-t",
+        "energy_projection_res_load_shapes_override",
+    ]
+    result = runner.invoke(cli, cmd)
+    assert result.exit_code == 0
+
+    cmd = ["calculated-tables", "list", str(project2.path)]
+    result = runner.invoke(cli, cmd)
+    assert result.exit_code == 0
+    assert "energy_projection_res_load_shapes_override" not in result.stdout
+
+    with Project.load(new_path) as project:
+        new_total = (
+            project.get_energy_projection()
+            .filter("sector = 'residential' and scenario = 'alternate_gdp'")
+            .to_df()["value"]
+            .sum()
+        )
+        assert new_total == orig_total
+
 
 def test_override_calculated_table_extra_column(
     tmp_path_factory: TempPathFactory, default_project: Project
@@ -241,3 +267,11 @@ def test_override_calculated_table_mismatched_column(
                 "energy_projection_res_load_shapes",
                 data_file,
             )
+
+
+def test_get_base_and_override_names() -> None:
+    expected = ("energy_projection_res_load_shapes", "energy_projection_res_load_shapes_override")
+    assert _get_base_and_override_names("energy_projection_res_load_shapes") == expected
+    assert _get_base_and_override_names("energy_projection_res_load_shapes_override") == expected
+    with pytest.raises(InvalidParameter):
+        _get_base_and_override_names("load_shapes_override_override")
