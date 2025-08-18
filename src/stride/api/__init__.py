@@ -685,8 +685,8 @@ class APIClient:
 
             Keys:
             - TOTAL_CONSUMPTION: float, total electricity consumption (TWh)
-            - PERC_GROWTH: float, percentage growth from base year
-            - PEAK_DMD: float, peak demand (MW)
+            - PERCENT_GROWTH: float, percentage growth from base year
+            - PEAK_DEMAND: float, peak demand (MW)
             - Additional KPIs to be defined
 
         Examples
@@ -696,8 +696,8 @@ class APIClient:
         >>> print(summary)
         {
             'TOTAL_CONSUMPTION': 45.2,
-            'PERC_GROWTH': 12.5,
-            'PEAK_DMD': 5500.0
+            'PERCENT_GROWTH': 12.5,
+            'PEAK_DEMAND': 5500.0
         }
         """
         logger.debug(f"get_scenario_summary called with: scenario={scenario}, year={year}")
@@ -707,7 +707,7 @@ class APIClient:
 
         # Placeholder implementation
         logger.warning("get_scenario_summary is not implemented.")
-        return {"TOTAL_CONSUMPTION": 0.0, "PERC_GROWTH": 0.0, "PEAK_DMD": 0.0}
+        return {"TOTAL_CONSUMPTION": 0.0, "PERCENT_GROWTH": 0.0, "PEAK_DEMAND": 0.0}
 
     def get_weather_metric(
         self,
