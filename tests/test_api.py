@@ -198,8 +198,8 @@ def test_get_scenario_summary(api_client: APIClient) -> None:
     summary = api_client.get_scenario_summary(valid_scenario, valid_year)
     assert isinstance(summary, dict)
     assert "TOTAL_CONSUMPTION" in summary
-    assert "PERC_GROWTH" in summary
-    assert "PEAK_DMD" in summary
+    assert "PERCENT_GROWTH" in summary
+    assert "PEAK_DEMAND" in summary
 
 
 def test_get_weather_metric(api_client: APIClient) -> None:
