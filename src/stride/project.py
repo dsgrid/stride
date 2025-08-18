@@ -1,12 +1,12 @@
-from collections import defaultdict
 import os
 import shutil
 import subprocess
+from collections import defaultdict
 from pathlib import Path
 from typing import Any, Self
 
-from chronify.exceptions import InvalidParameter, InvalidOperation
 import duckdb
+from chronify.exceptions import InvalidOperation, InvalidParameter
 from chronify.utils.path_utils import check_overwrite
 from dsgrid.utils.files import dump_json_file
 from duckdb import DuckDBPyConnection, DuckDBPyRelation
