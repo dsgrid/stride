@@ -59,23 +59,23 @@ class Scenario(DSGBaseModel):  # type: ignore
     """Allows the user to add custom tables to compare against the defaults."""
 
     name: str = Field(description="Name of the scenario")
-    energy_intensity: str | None = Field(
+    energy_intensity: Path | None = Field(
         default=None,
         description="Optional path to a user-provided energy intensity table",
     )
-    gdp: str | None = Field(
+    gdp: Path | None = Field(
         default=None,
         description="Optional path to a user-provided GDP table",
     )
-    hdi: str | None = Field(
+    hdi: Path | None = Field(
         default=None,
         description="Optional path to a user-provided HDI table",
     )
-    load_shapes: str | None = Field(
+    load_shapes: Path | None = Field(
         default=None,
         description="Optional path to a user-provided load shapes table",
     )
-    population: str | None = Field(
+    population: Path | None = Field(
         default=None,
         description="Optional path to a user-provided population table",
     )
@@ -104,7 +104,7 @@ class CalculatedTableOverride(DSGBaseModel):  # type: ignore
 
     scenario: str = Field(description="Scenario name")
     table_name: str = Field(description="Base name of calculated table being overridden")
-    filename: str | None = Field(
+    filename: Path | None = Field(
         default=None, description="Path to file containing the override data."
     )
 

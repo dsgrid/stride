@@ -163,7 +163,7 @@ def test_override_calculated_table(
                     CalculatedTableOverride(
                         scenario="alternate_gdp",
                         table_name="energy_projection_res_load_shapes_override",
-                        filename=str(data_file),
+                        filename=data_file,
                     )
                 ]
             )
@@ -173,7 +173,7 @@ def test_override_calculated_table(
                     CalculatedTableOverride(
                         scenario="invalid_scenario",
                         table_name="energy_projection_res_load_shapes",
-                        filename=str(data_file),
+                        filename=data_file,
                     )
                 ]
             )
@@ -183,7 +183,7 @@ def test_override_calculated_table(
                     CalculatedTableOverride(
                         scenario="alternate_gdp",
                         table_name="invalid_calc_table",
-                        filename=str(data_file),
+                        filename=data_file,
                     )
                 ]
             )
@@ -249,7 +249,7 @@ def test_override_calculated_table_extra_column(
                     CalculatedTableOverride(
                         scenario="alternate_gdp",
                         table_name="energy_projection_res_load_shapes",
-                        filename=str(out_file),
+                        filename=out_file,
                     )
                 ]
             )
@@ -288,7 +288,7 @@ def test_override_calculated_table_mismatched_column(
                     CalculatedTableOverride(
                         scenario="alternate_gdp",
                         table_name="energy_projection_res_load_shapes",
-                        filename=str(data_file),
+                        filename=data_file,
                     )
                 ]
             )

@@ -249,9 +249,7 @@ def _override_calculated_table(
     project_path: Path, filename: Path, scenario: str, table_name: str
 ) -> None:
     project = Project.load(project_path)
-    table = CalculatedTableOverride(
-        scenario=scenario, table_name=table_name, filename=str(filename)
-    )
+    table = CalculatedTableOverride(scenario=scenario, table_name=table_name, filename=filename)
     project.override_calculated_tables([table])
 
 
