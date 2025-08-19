@@ -1,0 +1,133 @@
+/* STRIDE title styling with underline - moved to left with padding */
+.stride-title {
+    border-bottom: 3px solid #000000;
+    padding-bottom: 0px;
+    padding-left: 40px;
+    margin-bottom: 0; /* Removed bottom margin */
+    text-align: left;
+}
+
+/* Scenario title styling - matches STRIDE title alignment */
+.scenario-title {
+    padding-bottom: 10px;
+    padding-left: 40px;
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+/* Radio button tabs styling - make radio buttons look like tabs */
+.nav-tabs .form-check {
+    margin: 0;
+    padding: 0;
+}
+
+.nav-tabs .form-check-input {
+    display: none; /* Hide the actual radio button */
+}
+
+.nav-tabs .form-check-label {
+    font-size: 1.2rem !important;
+    font-weight: 500 !important;
+    color: #495057 !important;
+    text-decoration: none !important;
+    border: 1px solid transparent !important;
+    padding: 12px 20px !important;
+    margin-right: 5px !important;
+    cursor: pointer !important;
+    display: inline-block !important;
+    border-radius: 4px 4px 0 0 !important;
+    background-color: #f8f9fa !important;
+    transition: all 0.2s ease !important;
+}
+
+/* Hover state for radio button tabs */
+.nav-tabs .form-check-label:hover {
+    text-decoration: none !important;
+    color: #007bff !important;
+    border-color: #e9ecef #e9ecef #dee2e6 !important;
+    background-color: #e9ecef !important;
+}
+
+/* Active/checked state for radio button tabs */
+.nav-tabs .form-check-input:checked + .form-check-label {
+    background-color: #007bff !important;
+    color: white !important;
+    border-color: #007bff #007bff #fff !important;
+    font-weight: 600 !important;
+}
+
+/* Tab container styling */
+.nav-tabs {
+    border-bottom: 2px solid #dee2e6 !important;
+    margin-bottom: 20px !important;
+    background-color: #e9ecef !important; /* Medium gray background */
+    padding-left: 0 !important; /* Full width */
+    padding-right: 0 !important; /* Full width */
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+    text-align: center; /* Center content */
+}
+
+.nav-tabs .btn-group {
+    justify-content: center;
+}
+
+/* Optional: Add some spacing and styling to cards */
+.card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: 1px solid #e9ecef;
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+}
+
+/* Optional: Style the checklist labels */
+.form-check-label {
+    font-size: 0.95rem;
+    margin-right: 15px;
+}
+
+/* Scenario checkbox styling - tab-like appearance */
+.scenario-checklist {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.scenario-checklist .form-check {
+    margin: 0;
+    padding: 0;
+}
+
+.scenario-checklist .form-check-input {
+    display: none;
+}
+
+.scenario-checklist .form-check-label {
+    background-color: #f8f9fa;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin: 2px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-block;
+    font-weight: 500;
+    font-size: 0.95rem;
+    user-select: none;
+}
+
+.scenario-checklist .form-check-label:hover {
+    background-color: #e9ecef;
+    border-color: #adb5bd;
+}
+
+/* Selected state using CSS variables for dynamic colors */
+.scenario-checklist .form-check-input:checked + .form-check-label {
+    background-color: var(--scenario-bg, #007bff33) !important;
+    border-color: var(--scenario-border, #007bffcc) !important;
+    color: #212529;
+    font-weight: bold;
+}

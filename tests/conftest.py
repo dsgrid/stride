@@ -1,12 +1,12 @@
 from pathlib import Path
 from typing import Generator
-
 import pytest
 from click.testing import CliRunner
 from pytest import TempPathFactory
 
 from stride.cli.stride import cli
 from stride.project import Project
+from stride.api import APIClient
 
 TEST_PROJECT_CONFIG = Path("tests") / "data" / "project_input.json5"
 
@@ -33,3 +33,12 @@ def default_project(
     assert project_dir.exists()
     with Project.load(project_dir, read_only=True) as project:
         yield project
+
+
+@pytest.fixture(scope="session")
+def api_client(default_project: Project) -> APIClient:
+    """Create APIClient instance with session-scoped test project."""
+    # Reset singleton to ensure clean state
+    APIClient._instance = None
+    client = APIClient(project=default_project)
+    return client

@@ -26,12 +26,15 @@ classifiers = [
 ]
 dependencies = [
     "click",
+    "dash>=3.2.0",
+    "dash-bootstrap-components>=2.0.3",
     "dbt-core >= 1.10.5, < 2",
     "dbt-duckdb",
     "dsgrid @ git+https://github.com/dsgrid/dsgrid.git@main",
     "duckdb >= 1.1, < 2",
     "loguru",
-    "pandas >= 2.2, < 3",
+    "pandas>=2.2,<3",
+    "plotly>=6.2.0",
     "pyarrow",
     "pydantic >= 2.7, < 3",
     "rich",
@@ -39,11 +42,12 @@ dependencies = [
 [project.optional-dependencies]
 
 dev = [
-    "mypy ~= 1.17.1",  # Sync with .pre-commit-config.yaml.
+    "mypy ~= 1.17.1", # Sync with .pre-commit-config.yaml.
     "pandas-stubs",
     "pre-commit",
     "pytest",
     "pytest-cov",
+    "pyyaml",
     "ruff",
     "furo",
     "myst_parser",
@@ -52,6 +56,7 @@ dev = [
     "autodoc_pydantic~=2.0",
     "sphinx-copybutton",
     "sphinx-tabs~=3.4",
+    "plotly-stubs>=0.0.6",
 ]
 
 [project.urls]
