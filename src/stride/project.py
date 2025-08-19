@@ -86,6 +86,9 @@ class Project:
         project.con.sql("CREATE SCHEMA stride")
         for scenario in config.scenarios:
             make_mapped_datasets(project.con, project_path, config.project_id, scenario.name)
+            for dataset in project.list_datasets():
+                # There is no reason to keep the user's dataset paths.
+                setattr(scenario, dataset, None)
         project.persist()
         project.copy_dbt_template()
         project.compute_energy_projection(use_table_overrides=False)
