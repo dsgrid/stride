@@ -1,6 +1,7 @@
 import os
 import shutil
 import subprocess
+import time
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Self
@@ -20,13 +21,11 @@ from stride.dsgrid_integration import deploy_to_dsgrid_registry, make_mapped_dat
 from stride.io import create_table_from_file, export_table
 from stride.models import (
     CalculatedTableOverride,
-    CalculatedTableOverrides,
     ProjectConfig,
     Scenario,
 )
 
 CONFIG_FILE = "project.json5"
-TABLE_OVERRIDES_FILE = "table_overrides.json5"
 DATABASE_FILE = "data.duckdb"
 REGISTRY_DATA_DIR = "registry_data"
 DBT_DIR = "dbt"
@@ -39,13 +38,11 @@ class Project:
         self,
         config: ProjectConfig,
         project_path: Path,
-        table_overrides: CalculatedTableOverrides | None = None,
         **connection_kwargs: Any,
     ) -> None:
         self._config = config
         self._path = project_path
         self._con = self._connect(**connection_kwargs)
-        self._table_overrides = table_overrides or CalculatedTableOverrides()
 
     def _connect(self, **connection_kwargs: Any) -> DuckDBPyConnection:
         return duckdb.connect(self._path / REGISTRY_DATA_DIR / DATABASE_FILE, **connection_kwargs)
@@ -58,8 +55,25 @@ class Project:
             self._con.close()
 
     @classmethod
-    def create(cls, config_file: Path, base_dir: Path = Path(), overwrite: bool = False) -> Self:
-        """Create a project from a config file."""
+    def create(
+        cls, config_file: Path | str, base_dir: Path = Path(), overwrite: bool = False
+    ) -> Self:
+        """Create a project from a config file.
+
+        Parameters
+        ----------
+        config_file
+            Defines the project inputs.
+        base_dir
+            Base dir in which to create the project directory, defaults to the current directory.
+            The project directory will be `base_dir / project_id`.
+        overwrite
+            Set to True to overwrite the project directory if it already exists.
+
+        Examples
+        --------
+        >>> Project.create("my_project.json5")
+        """
         config = ProjectConfig.from_file(config_file)
         project_path = base_dir / config.project_id
         check_overwrite(project_path, overwrite)
@@ -72,9 +86,19 @@ class Project:
         project.con.sql("CREATE SCHEMA stride")
         for scenario in config.scenarios:
             make_mapped_datasets(project.con, project_path, config.project_id, scenario.name)
+            for dataset in project.list_datasets():
+                # There is no reason to keep the user's dataset paths.
+                setattr(scenario, dataset, None)
         project.persist()
         project.copy_dbt_template()
-        project.compute_energy_projection()
+        project.compute_energy_projection(use_table_overrides=False)
+        if config.calculated_table_overrides:
+            overrides = config.calculated_table_overrides
+            # The override method will append to this list after a successful operation,
+            # so we need to reassign it first.
+            config.calculated_table_overrides = []
+            project.override_calculated_tables(overrides)
+
         return project
 
     @classmethod
@@ -103,9 +127,7 @@ class Project:
             msg = f"{path} does not contain a Stride project"
             raise InvalidParameter(msg)
         config = ProjectConfig.from_file(config_file)
-        overrides_file = path / TABLE_OVERRIDES_FILE
-        overrides = CalculatedTableOverrides.from_file(overrides_file)
-        return cls(config, path, table_overrides=overrides, **connection_kwargs)
+        return cls(config, path, **connection_kwargs)
 
     def close(self) -> None:
         """Close the connection to the database."""
@@ -126,73 +148,105 @@ class Project:
         """Return the project path."""
         return self._path
 
-    def override_calculated_table(
-        self, scenario_name: str, table_name: str, filename: Path
-    ) -> None:
-        """Override a calculated table for a scenario."""
-        if "_override" in table_name:
-            msg = f"Overriding an override table is not supported: {table_name=}"
-            raise InvalidOperation(msg)
-        self._check_scenario_present(scenario_name)
-        self._check_calculated_table_present(scenario_name, table_name)
-        existing_full_name = f"{scenario_name}.{table_name}"
-        override_name = f"{table_name}_override_table"
-        override_full_name = f"{scenario_name}.{override_name}"
-        dtypes = self._get_dtypes(filename)
-        create_table_from_file(
-            self._con, override_full_name, filename, replace=True, dtypes=dtypes
-        )  # noqa: F841
-        self._check_schemas(override_full_name, existing_full_name)
-        override_file = self._path / DBT_DIR / "models" / f"{table_name}_override.sql"
-        override_file.write_text(f"SELECT * FROM {override_full_name}")
-        self._table_overrides.tables.append(
-            CalculatedTableOverride(scenario=scenario_name, table_name=table_name)
-        )
-        logger.info("Added override table {} to scenario {}", table_name, scenario_name)
-        # TODO: we don't need to rebuild all scenarios, but dbt caching should help.
-        # If the user has many tables to add, we could add them in a batch and rebuild once.
+    def override_calculated_tables(self, overrides: list[CalculatedTableOverride]) -> None:
+        """Override one or more calculated tables."""
+        for table in overrides:
+            if table.filename is None:
+                msg = f"The file_path for a calculated_table_override cannot be None: {table}."
+                raise InvalidParameter(msg)
+            if "_override" in table.table_name:
+                msg = f"Overriding an override table is not supported: {table.table_name=}"
+                raise InvalidOperation(msg)
+
+        for table in overrides:
+            assert table.filename is not None
+            self._check_scenario_present(table.scenario)
+            self._check_calculated_table_present(table.scenario, table.table_name)
+            existing_full_name = f"{table.scenario}.{table.table_name}"
+            override_name = f"{table.table_name}_override_table"
+            override_full_name = f"{table.scenario}.{override_name}"
+            dtypes = self._get_dtypes(Path(table.filename))
+            create_table_from_file(
+                self._con, override_full_name, table.filename, replace=True, dtypes=dtypes
+            )  # noqa: F841
+            self._check_schemas(override_full_name, existing_full_name)
+            override_file = self._path / DBT_DIR / "models" / f"{table.table_name}_override.sql"
+            override_file.write_text(f"SELECT * FROM {override_full_name}")
+            self._config.calculated_table_overrides.append(
+                CalculatedTableOverride(scenario=table.scenario, table_name=table.table_name)
+            )
+            logger.info("Added override table {} to scenario {}", table.table_name, table.scenario)
+
+        # TODO: we don't need to rebuild all scenarios. Does dbt caching remove the need to worry?
         self.compute_energy_projection()
         self.persist()
 
-    def remove_calculated_table_override(self, scenario_name: str, table_name: str) -> None:
-        """Override a calculated table for a scenario.
+    def remove_calculated_table_overrides(self, overrides: list[CalculatedTableOverride]) -> None:
+        """Remove an overridden calculated table.
 
         Parameters
         ----------
-        scenario_name
-            Remove the override table for this scenario.
-        table_name
-            Override table to remove. Including "_override" in the name is optional.
+        overrides
+            Remove the specified overrides.
 
         Examples
         --------
         >>> project.remove_calculated_table_override(
-        ...     "baseline", "energy_projection_res_load_shapes"
+        ...     [
+        ...         CalculatedTableOverride(
+        ...             scenario="baseline",
+        ...             table_name="energy_projection_res_load_shapes",
+        ...         )
+        ...     ]
         ... )
         >>> project.remove_calculated_table_override(
-        ...     "baseline", "energy_projection_res_load_shapes_override"
+        ...     [
+        ...         CalculatedTableOverride(
+        ...             scenario="baseline",
+        ...             table_name="energy_projection_res_load_shapes_override",
+        ...         )
+        ...     ]
         ... )
         """
-        base_name, override_name = _get_base_and_override_names(table_name)
-        self._check_scenario_present(scenario_name)
-        self._check_calculated_table_present(scenario_name, override_name)
-        index = None
-        for i, table in enumerate(self._table_overrides.tables):
-            if table.scenario == scenario_name and table.table_name == base_name:
-                index = i
-                break
-        if index is None:
-            msg = f"Bug: did not find override for table name {scenario_name=} {base_name=}"
-            raise Exception(msg)
+        cache: dict[int, dict[str, Any]] = {}
+        for user_table in overrides:
+            base_name, override_name = _get_base_and_override_names(user_table.table_name)
+            override_full_name = f"{user_table.scenario}.{override_name}"
+            self._check_scenario_present(user_table.scenario)
+            self._check_calculated_table_present(user_table.scenario, override_name)
+            index = None
+            for i, config_table in enumerate(self._config.calculated_table_overrides):
+                if (
+                    config_table.scenario == user_table.scenario
+                    and config_table.table_name == base_name
+                ):
+                    index = i
+                    break
+            if index is None:
+                msg = f"Bug: did not find override for table name {user_table.scenario=} {base_name=}"
+                raise Exception(msg)
+            if index in cache:
+                msg = f"{override_full_name} was provided multiple times"
+                raise InvalidOperation(msg)
+            cache[index] = {
+                "base_name": base_name,
+                "override_name": override_name,
+                "override_full_name": override_full_name,
+            }
 
-        override_full_name = f"{scenario_name}.{override_name}"
-        self._con.sql(f"DROP VIEW {override_full_name}")
-        self._table_overrides.tables.pop(index)
-        override_file = self._path / DBT_DIR / "models" / f"{override_name}.sql"
-        override_file.unlink()
-        logger.info("Removed override table {} from scenario {}", base_name, scenario_name)
-        # TODO: we don't need to rebuild all scenarios, but dbt caching should help.
-        # If the user has many tables to add, we could add them in a batch and rebuild once.
+        indexes = reversed(cache.keys())
+        for index in indexes:
+            item = cache[index]
+            base_name = item["base_name"]
+            override_name = item["override_name"]
+            override_full_name = item["override_full_name"]
+            self._con.sql(f"DROP VIEW {override_full_name}")
+            self._config.calculated_table_overrides.pop(index)
+            override_file = self._path / DBT_DIR / "models" / f"{override_name}.sql"
+            override_file.unlink()
+            logger.info("Removed override table {}", override_full_name)
+
+        # TODO: we don't need to rebuild all scenarios. Does dbt caching remove the need to worry?
         self.compute_energy_projection()
         self.persist()
 
@@ -249,17 +303,21 @@ class Project:
     def persist(self) -> None:
         """Persist the project config to the project directory."""
         dump_json_file(self._config.model_dump(mode="json"), self._path / CONFIG_FILE, indent=2)
-        dump_json_file(
-            self._table_overrides.model_dump(mode="json"),
-            self._path / TABLE_OVERRIDES_FILE,
-            indent=2,
-        )
 
-    def compute_energy_projection(self) -> None:
-        """Compute the energy projection dataset for all scenarios."""
-        table_overrides = self.get_table_overrides()
+    def compute_energy_projection(self, use_table_overrides: bool = True) -> None:
+        """Compute the energy projection dataset for all scenarios.
+
+        This operation overwrites all tables and views in the database.
+
+        Parameters
+        ----------
+        use_table_overrides
+            If True, use compute results based on the table overrides specified in the project
+            config.
+        """
         orig = os.getcwd()
         model_years = ",".join((str(x) for x in self._config.list_model_years()))
+        table_overrides = self.get_table_overrides() if use_table_overrides else {}
         for i, scenario in enumerate(self._config.scenarios):
             overrides = table_overrides.get(scenario.name, [])
             override_strings = [f'"{x}_override": "{x}_override"' for x in overrides]
@@ -276,7 +334,10 @@ class Project:
             try:
                 os.chdir(self._path / DBT_DIR)
                 logger.info("Run scenario={} dbt models with '{}'", scenario.name, " ".join(cmd))
+                start = time.time()
                 subprocess.run(cmd, check=True)
+                duration = time.time() - start
+                logger.debug("Time to run dbt for scenario={}: {} s", scenario.name, duration)
             finally:
                 os.chdir(orig)
                 self._con = self._connect()
@@ -330,7 +391,7 @@ class Project:
     def get_table_overrides(self) -> dict[str, list[str]]:
         """Return a dictionary of tables being overridden for each scenario."""
         overrides: dict[str, list[str]] = defaultdict(list)
-        for override in self._table_overrides.tables:
+        for override in self._config.calculated_table_overrides:
             overrides[override.scenario].append(override.table_name)
         return overrides
 

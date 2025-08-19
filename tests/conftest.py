@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 from typing import Generator
 import pytest
@@ -42,3 +43,17 @@ def api_client(default_project: Project) -> APIClient:
     APIClient._instance = None
     client = APIClient(project=default_project)
     return client
+
+
+@pytest.fixture
+def copy_project_input_data(tmp_path: Path) -> tuple[Path, Path, Path]:
+    """Create a copy of the input data for the test project.
+
+    Returns
+    -------
+    tuple[Path, Path, Path]
+        (scratch directory for temp files, base directory of the inputs, project config file)
+    """
+    project_dir = tmp_path / "project_inputs"
+    shutil.copytree(TEST_PROJECT_CONFIG.parent, project_dir)
+    return tmp_path, project_dir, project_dir / "project_input.json5"

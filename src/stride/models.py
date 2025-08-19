@@ -2,6 +2,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any, Self
 
+from chronify.exceptions import InvalidParameter
 from pydantic import Field, field_validator
 
 from dsgrid.data_models import DSGBaseModel
@@ -59,23 +60,23 @@ class Scenario(DSGBaseModel):  # type: ignore
     """Allows the user to add custom tables to compare against the defaults."""
 
     name: str = Field(description="Name of the scenario")
-    energy_intensity: str | None = Field(
+    energy_intensity: Path | None = Field(
         default=None,
         description="Optional path to a user-provided energy intensity table",
     )
-    gdp: str | None = Field(
+    gdp: Path | None = Field(
         default=None,
         description="Optional path to a user-provided GDP table",
     )
-    hdi: str | None = Field(
+    hdi: Path | None = Field(
         default=None,
         description="Optional path to a user-provided HDI table",
     )
-    load_shapes: str | None = Field(
+    load_shapes: Path | None = Field(
         default=None,
         description="Optional path to a user-provided load shapes table",
     )
-    population: str | None = Field(
+    population: Path | None = Field(
         default=None,
         description="Optional path to a user-provided population table",
     )
@@ -99,6 +100,16 @@ class Scenario(DSGBaseModel):  # type: ignore
         return name
 
 
+class CalculatedTableOverride(DSGBaseModel):  # type: ignore
+    """Defines an override for a calculated table in a scenario."""
+
+    scenario: str = Field(description="Scenario name")
+    table_name: str = Field(description="Base name of calculated table being overridden")
+    filename: Path | None = Field(
+        default=None, description="Path to file containing the override data."
+    )
+
+
 class ProjectConfig(DSGBaseModel):  # type: ignore
     """Defines a Stride project."""
 
@@ -115,34 +126,42 @@ class ProjectConfig(DSGBaseModel):  # type: ignore
         description="Scenarios for the project. Users may add custom scenarios.",
         min_length=1,
     )
+    calculated_table_overrides: list[CalculatedTableOverride] = Field(
+        default=[],
+        description="Calculated tables to override",
+    )
 
     @classmethod
-    def from_file(cls, filename: Path) -> Self:
-        config = super().from_file(filename)
+    def from_file(cls, filename: Path | str) -> Self:
+        path = Path(filename)
+        config = super().from_file(path)
         for scenario in config.scenarios:
             for field in Scenario.model_fields:
                 if field != "name":
                     val = getattr(scenario, field)
-                    if val is not None and not Path(val).is_absolute():
-                        setattr(scenario, field, str(filename.parent / val))
+                    if val is not None and not val.is_absolute():
+                        setattr(scenario, field, path.parent / val)
+                    val = getattr(scenario, field)
+                    if val is not None and not val.exists():
+                        msg = (
+                            f"Scenario={scenario.name} dataset={field} filename={val} "
+                            f"does not exist"
+                        )
+                        raise InvalidParameter(msg)
+            for table in config.calculated_table_overrides:
+                if table.filename is not None and not table.filename.is_absolute():
+                    table.filename = path.parent / table.filename
+                if table.filename is not None and not table.filename.exists():
+                    msg = (
+                        f"Scenario={scenario.name} calculated_table={table.table_name} "
+                        f"filename={table.filename} does not exist"
+                    )
+                    raise InvalidParameter(msg)
         return config  # type: ignore
 
     def list_model_years(self) -> list[int]:
         """List the model years in the project."""
         return list(range(self.start_year, self.end_year + 1, self.step_year))
-
-
-class CalculatedTableOverride(DSGBaseModel):  # type: ignore
-    """Defines an override for a calculated table in a scenario."""
-
-    scenario: str = Field(description="Scenario name")
-    table_name: str = Field(description="Base name of calculated table being overridden")
-
-
-class CalculatedTableOverrides(DSGBaseModel):  # type: ignore
-    """Defines overrides for calculated tables in a scenario."""
-
-    tables: list[CalculatedTableOverride] = []
 
 
 """
