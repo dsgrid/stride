@@ -41,6 +41,20 @@ def test_show_dataset(default_project: Project) -> None:
         assert "country_1" in result.stdout
 
 
+def test_show_calculated_table(default_project: Project) -> None:
+    project = default_project
+    runner = CliRunner()
+    result = runner.invoke(cli, ["calculated-tables", "list", str(project.path)])
+    assert result.exit_code == 0
+    tables = [x.strip() for x in result.stdout.splitlines()][1:]
+    assert tables
+    result = runner.invoke(
+        cli, ["calculated-tables", "show", str(project.path), tables[0], "-l", "10"]
+    )
+    assert result.exit_code == 0
+    assert "country_1" in result.stdout
+
+
 def test_scenario_name() -> None:
     for name in (
         "dsgrid_data",

@@ -11,7 +11,6 @@ from loguru import logger
 
 from stride import Project
 from stride.models import CalculatedTableOverride
-from stride.models import CalculatedTableOverride
 
 
 LOGURU_LEVELS = ["TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"]
@@ -122,9 +121,9 @@ def list_datasets() -> None:
 def show_dataset(
     ctx: click.Context, project_path: Path, scenario: str, dataset_id: str, limit: int
 ) -> None:
-    """List the datasets stored in the project."""
+    """Print a limited number of rows of the dataset to the console."""
     project = safe_get_project_from_context(ctx, project_path, read_only=True)
-    project.show_dataset(dataset_id, scenario=scenario, limit=limit)
+    project.show_dataset(scenario, dataset_id, limit=limit)
 
 
 @click.group()
@@ -211,6 +210,29 @@ def list_calculated_tables(ctx: click.Context, project_path: Path) -> None:
         else:
             print("    None")
         print()
+
+
+@click.command(name="show")
+@click.argument("project-path", type=click.Path(exists=True), callback=path_callback)
+@click.argument("table", type=str)
+@click.option(
+    "-s", "--scenario", type=str, default="baseline", show_default=True, help="Project scenario"
+)
+@click.option(
+    "-l",
+    "--limit",
+    type=int,
+    default=20,
+    show_default=True,
+    help="Max number of rows in the table to show.",
+)
+@click.pass_context
+def show_calculated_table(
+    ctx: click.Context, project_path: Path, scenario: str, table: str, limit: int
+) -> None:
+    """Print a limited number of rows of the table to the console."""
+    project = safe_get_project_from_context(ctx, project_path, read_only=True)
+    project.show_calculated_table(scenario, table, limit=limit)
 
 
 _add_from_calculated_table_epilog = """
@@ -399,6 +421,7 @@ datasets.add_command(list_datasets)
 datasets.add_command(show_dataset)
 scenarios.add_command(list_scenarios)
 calculated_tables.add_command(list_calculated_tables)
+calculated_tables.add_command(show_calculated_table)
 calculated_tables.add_command(override_calculated_table)
 calculated_tables.add_command(export_calculated_table)
 calculated_tables.add_command(remove_calculated_table_override)
