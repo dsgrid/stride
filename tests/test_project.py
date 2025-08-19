@@ -318,7 +318,7 @@ def test_override_calculated_table_pre_registration(
         {
             "scenario": "alternate_gdp",
             "table_name": "energy_projection_res_load_shapes",
-            "filename": str(data_file),
+            "filename": str(data_file.with_stem("invalid")),
         }
     ]
     dump_json_file(config, project_config_file)
@@ -332,6 +332,12 @@ def test_override_calculated_table_pre_registration(
         str(new_base_dir),
     ]
     runner = CliRunner()
+    result = runner.invoke(cli, cmd)
+    assert result.exit_code != 0
+
+    config = load_json_file(project_config_file)
+    config["calculated_table_overrides"][0]["filename"] = str(data_file)
+    dump_json_file(config, project_config_file)
     result = runner.invoke(cli, cmd)
     assert result.exit_code == 0
 
