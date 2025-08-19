@@ -206,18 +206,21 @@ class Project:
         ... )
         """
         cache: dict[int, dict[str, Any]] = {}
-        for table in overrides:
-            base_name, override_name = _get_base_and_override_names(table.table_name)
-            override_full_name = f"{table.scenario}.{override_name}"
-            self._check_scenario_present(table.scenario)
-            self._check_calculated_table_present(table.scenario, override_name)
+        for user_table in overrides:
+            base_name, override_name = _get_base_and_override_names(user_table.table_name)
+            override_full_name = f"{user_table.scenario}.{override_name}"
+            self._check_scenario_present(user_table.scenario)
+            self._check_calculated_table_present(user_table.scenario, override_name)
             index = None
-            for i, table in enumerate(self._config.calculated_table_overrides):
-                if table.scenario == table.scenario and table.table_name == base_name:
+            for i, config_table in enumerate(self._config.calculated_table_overrides):
+                if (
+                    config_table.scenario == user_table.scenario
+                    and config_table.table_name == base_name
+                ):
                     index = i
                     break
             if index is None:
-                msg = f"Bug: did not find override for table name {table.scenario=} {base_name=}"
+                msg = f"Bug: did not find override for table name {user_table.scenario=} {base_name=}"
                 raise Exception(msg)
             if index in cache:
                 msg = f"{override_full_name} was provided multiple times"
