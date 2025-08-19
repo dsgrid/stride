@@ -28,7 +28,7 @@ LOGURU_LEVELS = ["TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITI
 @click.option(
     "-f",
     "--file-level",
-    default="INFO",
+    default="DEBUG",
     type=click.Choice(LOGURU_LEVELS),
     show_default=True,
     help="Console log level",
@@ -81,7 +81,7 @@ def create_project(ctx: click.Context, config_file: Path, directory: Path, overw
     setup_logging(
         filename="stride.log",
         console_level=ctx.find_root().params["console_level"],
-        file_level=ctx.find_root().params["console_level"],
+        file_level=ctx.find_root().params["file_level"],
         mode="a",
     )
     res = handle_stride_exception(
