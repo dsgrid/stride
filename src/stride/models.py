@@ -99,6 +99,16 @@ class Scenario(DSGBaseModel):  # type: ignore
         return name
 
 
+class CalculatedTableOverride(DSGBaseModel):  # type: ignore
+    """Defines an override for a calculated table in a scenario."""
+
+    scenario: str = Field(description="Scenario name")
+    table_name: str = Field(description="Base name of calculated table being overridden")
+    filename: str | None = Field(
+        default=None, description="Path to file containing the override data."
+    )
+
+
 class ProjectConfig(DSGBaseModel):  # type: ignore
     """Defines a Stride project."""
 
@@ -115,34 +125,26 @@ class ProjectConfig(DSGBaseModel):  # type: ignore
         description="Scenarios for the project. Users may add custom scenarios.",
         min_length=1,
     )
+    calculated_table_overrides: list[CalculatedTableOverride] = Field(
+        default=[],
+        description="Calculated tables to override",
+    )
 
     @classmethod
-    def from_file(cls, filename: Path) -> Self:
-        config = super().from_file(filename)
+    def from_file(cls, filename: Path | str) -> Self:
+        path = Path(filename)
+        config = super().from_file(path)
         for scenario in config.scenarios:
             for field in Scenario.model_fields:
                 if field != "name":
                     val = getattr(scenario, field)
                     if val is not None and not Path(val).is_absolute():
-                        setattr(scenario, field, str(filename.parent / val))
+                        setattr(scenario, field, str(path.parent / val))
         return config  # type: ignore
 
     def list_model_years(self) -> list[int]:
         """List the model years in the project."""
         return list(range(self.start_year, self.end_year + 1, self.step_year))
-
-
-class CalculatedTableOverride(DSGBaseModel):  # type: ignore
-    """Defines an override for a calculated table in a scenario."""
-
-    scenario: str = Field(description="Scenario name")
-    table_name: str = Field(description="Base name of calculated table being overridden")
-
-
-class CalculatedTableOverrides(DSGBaseModel):  # type: ignore
-    """Defines overrides for calculated tables in a scenario."""
-
-    tables: list[CalculatedTableOverride] = []
 
 
 """

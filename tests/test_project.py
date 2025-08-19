@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from dsgrid.utils.files import dump_json_file, load_json_file
 import pandas as pd
 import pytest
 import shutil
@@ -8,7 +9,7 @@ from chronify.exceptions import InvalidOperation, InvalidParameter
 from pytest import TempPathFactory
 
 from stride import Project
-from stride.models import Scenario
+from stride.models import CalculatedTableOverride, Scenario
 from stride.project import CONFIG_FILE, _get_base_and_override_names
 from stride.cli.stride import cli
 
@@ -157,19 +158,35 @@ def test_override_calculated_table(
     assert result.exit_code == 0
     with Project.load(new_path) as project3:
         with pytest.raises(InvalidOperation):
-            project3.override_calculated_table(
-                "alternate_gdp",
-                "energy_projection_res_load_shapes_override",
-                data_file,
+            project3.override_calculated_tables(
+                [
+                    CalculatedTableOverride(
+                        scenario="alternate_gdp",
+                        table_name="energy_projection_res_load_shapes_override",
+                        filename=str(data_file),
+                    )
+                ]
             )
         with pytest.raises(InvalidParameter):
-            project3.override_calculated_table(
-                "invalid_scenario",
-                "energy_projection_res_load_shapes",
-                data_file,
+            project3.override_calculated_tables(
+                [
+                    CalculatedTableOverride(
+                        scenario="invalid_scenario",
+                        table_name="energy_projection_res_load_shapes",
+                        filename=str(data_file),
+                    )
+                ]
             )
         with pytest.raises(InvalidParameter):
-            project3.override_calculated_table("alternate_gdp", "invalid_calc_table", data_file)
+            project3.override_calculated_tables(
+                [
+                    CalculatedTableOverride(
+                        scenario="alternate_gdp",
+                        table_name="invalid_calc_table",
+                        filename=str(data_file),
+                    )
+                ]
+            )
 
     cmd = [
         "calculated-tables",
@@ -227,10 +244,14 @@ def test_override_calculated_table_extra_column(
     df.to_csv(out_file, header=True, index=True)
     with Project.load(new_path) as project2:
         with pytest.raises(InvalidParameter):
-            project2.override_calculated_table(
-                "alternate_gdp",
-                "energy_projection_res_load_shapes",
-                out_file,
+            project2.override_calculated_tables(
+                [
+                    CalculatedTableOverride(
+                        scenario="alternate_gdp",
+                        table_name="energy_projection_res_load_shapes",
+                        filename=str(out_file),
+                    )
+                ]
             )
 
 
@@ -262,11 +283,66 @@ def test_override_calculated_table_mismatched_column(
     df.to_parquet(data_file, index=False)
     with Project.load(new_path) as project2:
         with pytest.raises(InvalidParameter):
-            project2.override_calculated_table(
-                "alternate_gdp",
-                "energy_projection_res_load_shapes",
-                data_file,
+            project2.override_calculated_tables(
+                [
+                    CalculatedTableOverride(
+                        scenario="alternate_gdp",
+                        table_name="energy_projection_res_load_shapes",
+                        filename=str(data_file),
+                    )
+                ]
             )
+
+
+def test_override_calculated_table_pre_registration(
+    default_project: Project, copy_project_input_data: tuple[Path, Path, Path]
+) -> None:
+    tmp_path, _, project_config_file = copy_project_input_data
+    orig_total = (
+        default_project.get_energy_projection()
+        .filter("sector = 'residential' and scenario = 'alternate_gdp'")
+        .to_df()["value"]
+        .sum()
+    )
+    data_file = tmp_path / "data.parquet"
+    default_project.export_calculated_table(
+        "baseline", "energy_projection_res_load_shapes", data_file
+    )
+    df = pd.read_parquet(data_file)
+    df["value"] *= 3
+    df.to_parquet(data_file)
+
+    config = load_json_file(project_config_file)
+    assert "calculated_table_overrides" not in config
+    config["calculated_table_overrides"] = [
+        {
+            "scenario": "alternate_gdp",
+            "table_name": "energy_projection_res_load_shapes",
+            "filename": str(data_file),
+        }
+    ]
+    dump_json_file(config, project_config_file)
+    new_base_dir = tmp_path / "project2"
+    new_base_dir.mkdir()
+    cmd = [
+        "projects",
+        "create",
+        str(project_config_file),
+        "-d",
+        str(new_base_dir),
+    ]
+    runner = CliRunner()
+    result = runner.invoke(cli, cmd)
+    assert result.exit_code == 0
+
+    with Project.load(new_base_dir / config["project_id"], read_only=True) as project:
+        new_total = (
+            project.get_energy_projection()
+            .filter("sector = 'residential' and scenario = 'alternate_gdp'")
+            .to_df()["value"]
+            .sum()
+        )
+        assert new_total == orig_total * 3
 
 
 def test_get_base_and_override_names() -> None:

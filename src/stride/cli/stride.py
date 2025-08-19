@@ -10,6 +10,7 @@ from dsgrid.cli.common import path_callback
 from loguru import logger
 
 from stride import Project
+from stride.models import CalculatedTableOverride
 
 
 LOGURU_LEVELS = ["TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"]
@@ -248,7 +249,10 @@ def _override_calculated_table(
     project_path: Path, filename: Path, scenario: str, table_name: str
 ) -> None:
     project = Project.load(project_path)
-    project.override_calculated_table(scenario, table_name, filename)
+    table = CalculatedTableOverride(
+        scenario=scenario, table_name=table_name, filename=str(filename)
+    )
+    project.override_calculated_tables([table])
 
 
 _export_calculated_table_epilog = """
@@ -346,7 +350,14 @@ def remove_calculated_table_override(
 
 def _remove_calculated_table_override(project_path: Path, scenario: str, table_name: str) -> None:
     project = Project.load(project_path)
-    project.remove_calculated_table_override(scenario, table_name)
+    project.remove_calculated_table_overrides(
+        [
+            CalculatedTableOverride(
+                scenario=scenario,
+                table_name=table_name,
+            )
+        ]
+    )
 
 
 def handle_stride_exception(
