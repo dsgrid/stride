@@ -9,7 +9,7 @@ from chronify.exceptions import InvalidOperation, InvalidParameter
 from pytest import TempPathFactory
 
 from stride import Project
-from stride.models import CalculatedTableOverride, Scenario
+from stride.models import CalculatedTableOverride, ProjectConfig, Scenario
 from stride.project import CONFIG_FILE, _get_base_and_override_names
 from stride.cli.stride import cli
 
@@ -318,7 +318,7 @@ def test_override_calculated_table_pre_registration(
         {
             "scenario": "alternate_gdp",
             "table_name": "energy_projection_res_load_shapes",
-            "filename": str(data_file.with_stem("invalid")),
+            "filename": str(data_file),
         }
     ]
     dump_json_file(config, project_config_file)
@@ -333,12 +333,6 @@ def test_override_calculated_table_pre_registration(
     ]
     runner = CliRunner()
     result = runner.invoke(cli, cmd)
-    assert result.exit_code != 0
-
-    config = load_json_file(project_config_file)
-    config["calculated_table_overrides"][0]["filename"] = str(data_file)
-    dump_json_file(config, project_config_file)
-    result = runner.invoke(cli, cmd)
     assert result.exit_code == 0
 
     with Project.load(new_base_dir / config["project_id"], read_only=True) as project:
@@ -349,6 +343,28 @@ def test_override_calculated_table_pre_registration(
             .sum()
         )
         assert new_total == orig_total * 3
+
+
+def test_invalid_data_tables(copy_project_input_data: tuple[Path, Path, Path]) -> None:
+    project_config_file = copy_project_input_data[2]
+    config = load_json_file(project_config_file)
+    orig = config["scenarios"][1]["gdp"]
+    config["scenarios"][1]["gdp"] += "invalid.csv"
+    dump_json_file(config, project_config_file)
+    with pytest.raises(InvalidParameter, match=r"Scenario.*dataset.*does not exist"):
+        ProjectConfig.from_file(project_config_file)
+
+    config["scenarios"][1]["gdp"] = orig
+    config["calculated_table_overrides"] = [
+        {
+            "scenario": "alternate_gdp",
+            "table_name": "energy_projection_res_load_shapes",
+            "filename": "invalid.csv",
+        }
+    ]
+    dump_json_file(config, project_config_file)
+    with pytest.raises(InvalidParameter, match=r"Scenario.*calculated_table.*does not exist"):
+        ProjectConfig.from_file(project_config_file)
 
 
 def test_get_base_and_override_names() -> None:
