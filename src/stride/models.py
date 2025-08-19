@@ -2,6 +2,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any, Self
 
+from chronify.exceptions import InvalidParameter
 from pydantic import Field, field_validator
 
 from dsgrid.data_models import DSGBaseModel
@@ -138,8 +139,24 @@ class ProjectConfig(DSGBaseModel):  # type: ignore
             for field in Scenario.model_fields:
                 if field != "name":
                     val = getattr(scenario, field)
-                    if val is not None and not Path(val).is_absolute():
-                        setattr(scenario, field, str(path.parent / val))
+                    if val is not None and not val.is_absolute():
+                        setattr(scenario, field, path.parent / val)
+                    val = getattr(scenario, field)
+                    if val is not None and not val.exists():
+                        msg = (
+                            f"Scenario={scenario.name} dataset={field} filename={val} "
+                            f"does not exist"
+                        )
+                        raise InvalidParameter(msg)
+            for table in config.calculated_table_overrides:
+                if table.filename is not None and not table.filename.is_absolute():
+                    table.filename = path.parent / table.filename
+                if table.filename is not None and not table.filename.exists():
+                    msg = (
+                        f"Scenario={scenario.name} calculated_table={table.table_name} "
+                        f"filename={table.filename} does not exist"
+                    )
+                    raise InvalidParameter(msg)
         return config  # type: ignore
 
     def list_model_years(self) -> list[int]:
