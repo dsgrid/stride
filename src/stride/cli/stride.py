@@ -44,6 +44,12 @@ LOGURU_LEVELS = ["TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITI
 @click.pass_context
 def cli(ctx: click.Context, console_level: str, file_level: str, reraise_exceptions: bool) -> None:
     """Stride comands"""
+    setup_logging(
+        filename="stride.log",
+        console_level=console_level,
+        file_level=file_level,
+        mode="a",
+    )
 
 
 @click.group()
@@ -78,17 +84,45 @@ $ stride projects create my_project.json5\n
 @click.pass_context
 def create_project(ctx: click.Context, config_file: Path, directory: Path, overwrite: bool) -> Any:
     """Create a Stride project."""
-    setup_logging(
-        filename="stride.log",
-        console_level=ctx.find_root().params["console_level"],
-        file_level=ctx.find_root().params["file_level"],
-        mode="a",
-    )
     res = handle_stride_exception(
         ctx, Project.create, config_file, base_dir=directory, overwrite=overwrite
     )
     if res[1] != 0:
         ctx.exit(res[1])
+
+
+_export_ep_epilog = """
+Examples:\n
+$ stride projects export-energy-projection test_project\n
+$ stride projects export-energy-projection test_project -f energy_projection.parquet \n
+"""
+
+
+@click.command(name="export-energy-projection", epilog=_export_ep_epilog)
+@click.argument("project_path", type=click.Path(exists=True), callback=path_callback)
+@click.option(
+    "-f",
+    "--filename",
+    type=click.Path(),
+    default="energy_projection.csv",
+    show_default=True,
+    help="Exported filename. Supports .csv and .parquet.",
+    callback=path_callback,
+)
+@click.option(
+    "--overwrite",
+    default=False,
+    show_default=True,
+    is_flag=True,
+    help="Overwrite the exported filename if it exists.",
+)
+@click.pass_context
+def export_energy_projection(
+    ctx: click.Context, project_path: Path, filename: Path, overwrite: bool
+) -> None:
+    """Export the energy projection table to a file."""
+    project = safe_get_project_from_context(ctx, project_path, read_only=True)
+    project.export_energy_projection(filename=filename, overwrite=overwrite)
 
 
 @click.group()
@@ -121,9 +155,9 @@ def list_datasets() -> None:
 def show_dataset(
     ctx: click.Context, project_path: Path, scenario: str, dataset_id: str, limit: int
 ) -> None:
-    """List the datasets stored in the project."""
+    """Print a limited number of rows of the dataset to the console."""
     project = safe_get_project_from_context(ctx, project_path, read_only=True)
-    project.show_dataset(dataset_id, scenario=scenario, limit=limit)
+    project.show_dataset(scenario, dataset_id, limit=limit)
 
 
 @click.group()
@@ -210,6 +244,29 @@ def list_calculated_tables(ctx: click.Context, project_path: Path) -> None:
         else:
             print("    None")
         print()
+
+
+@click.command(name="show")
+@click.argument("project-path", type=click.Path(exists=True), callback=path_callback)
+@click.argument("table", type=str)
+@click.option(
+    "-s", "--scenario", type=str, default="baseline", show_default=True, help="Project scenario"
+)
+@click.option(
+    "-l",
+    "--limit",
+    type=int,
+    default=20,
+    show_default=True,
+    help="Max number of rows in the table to show.",
+)
+@click.pass_context
+def show_calculated_table(
+    ctx: click.Context, project_path: Path, scenario: str, table: str, limit: int
+) -> None:
+    """Print a limited number of rows of the table to the console."""
+    project = safe_get_project_from_context(ctx, project_path, read_only=True)
+    project.show_calculated_table(scenario, table, limit=limit)
 
 
 _add_from_calculated_table_epilog = """
@@ -394,10 +451,12 @@ cli.add_command(scenarios)
 cli.add_command(calculated_tables)
 cli.add_command(view)
 projects.add_command(create_project)
+projects.add_command(export_energy_projection)
 datasets.add_command(list_datasets)
 datasets.add_command(show_dataset)
 scenarios.add_command(list_scenarios)
 calculated_tables.add_command(list_calculated_tables)
+calculated_tables.add_command(show_calculated_table)
 calculated_tables.add_command(override_calculated_table)
 calculated_tables.add_command(export_calculated_table)
 calculated_tables.add_command(remove_calculated_table_override)

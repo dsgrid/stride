@@ -41,6 +41,20 @@ def test_show_dataset(default_project: Project) -> None:
         assert "country_1" in result.stdout
 
 
+def test_show_calculated_table(default_project: Project) -> None:
+    project = default_project
+    runner = CliRunner()
+    result = runner.invoke(cli, ["calculated-tables", "list", str(project.path)])
+    assert result.exit_code == 0
+    tables = [x.strip() for x in result.stdout.splitlines()][1:]
+    assert tables
+    result = runner.invoke(
+        cli, ["calculated-tables", "show", str(project.path), tables[0], "-l", "10"]
+    )
+    assert result.exit_code == 0
+    assert "country_1" in result.stdout
+
+
 def test_scenario_name() -> None:
     for name in (
         "dsgrid_data",
@@ -318,7 +332,7 @@ def test_override_calculated_table_pre_registration(
         {
             "scenario": "alternate_gdp",
             "table_name": "energy_projection_res_load_shapes",
-            "filename": str(data_file),
+            "filename": str(data_file.with_stem("invalid")),
         }
     ]
     dump_json_file(config, project_config_file)
@@ -333,6 +347,12 @@ def test_override_calculated_table_pre_registration(
     ]
     runner = CliRunner()
     result = runner.invoke(cli, cmd)
+    assert result.exit_code != 0
+
+    config = load_json_file(project_config_file)
+    config["calculated_table_overrides"][0]["filename"] = str(data_file)
+    dump_json_file(config, project_config_file)
+    result = runner.invoke(cli, cmd)
     assert result.exit_code == 0
 
     with Project.load(new_base_dir / config["project_id"], read_only=True) as project:
@@ -343,6 +363,25 @@ def test_override_calculated_table_pre_registration(
             .sum()
         )
         assert new_total == orig_total * 3
+
+
+def test_export_energy_projection(
+    tmp_path_factory: TempPathFactory, default_project: Project
+) -> None:
+    tmp_path = tmp_path_factory.mktemp("tmpdir")
+    filename = tmp_path / "energy_projection.parquet"
+    assert not filename.exists()
+    runner = CliRunner()
+    cmd = [
+        "projects",
+        "export-energy-projection",
+        str(default_project.path),
+        "-f",
+        str(filename),
+    ]
+    result = runner.invoke(cli, cmd)
+    assert result.exit_code == 0
+    assert filename.exists()
 
 
 def test_invalid_data_tables(copy_project_input_data: tuple[Path, Path, Path]) -> None:

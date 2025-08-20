@@ -271,6 +271,12 @@ class Project:
         export_table(self._con, full_name, filename)
         logger.info("Exported scenario={} table={} to {}", scenario_name, table_name, filename)
 
+    def show_calculated_table(self, scenario_name: str, table_name: str, limit: int = 20) -> None:
+        """Print a limited number of rows of the table to the console."""
+        self._check_calculated_table_present(scenario_name, table_name)
+        full_name = f"{scenario_name}.{table_name}"
+        self._show_table(full_name, limit=limit)
+
     def has_table(self, name: str, schema: str = "main") -> bool:
         """Return True if the table name is in the specified schema."""
         return name in self.list_tables(schema=schema)
@@ -364,6 +370,30 @@ class Project:
             )
         self._con.commit()
 
+    def export_energy_projection(
+        self, filename: Path = Path("energy_projection.csv"), overwrite: bool = False
+    ) -> None:
+        """Export the energy projection table to a file.
+
+        Parameters
+        ----------
+        filename
+            Filename to create. Supports .csv and .parquet.
+        overwrite
+            If True, overwrite the file if it already exists.
+
+        Examples
+        --------
+        >>> project.export_energy_projection()
+        INFO: Exported the energy projection table to energy_projection.csv
+        """
+        # FUTURE: users may want filters. Would need to determine how to accept the parameters.
+        # Might be easier to let them create their own SQL query.
+        # CLI users may still want something.
+        check_overwrite(filename, overwrite)
+        export_table(self._con, "energy_projection", filename)
+        logger.info("Exported the energy projection table to {}", filename)
+
     def get_energy_projection(self, scenario: str | None = None) -> DuckDBPyRelation:
         """Return the energy projection table, optionally for a scenario.
 
@@ -383,10 +413,16 @@ class Project:
             f"SELECT * FROM {scenario}.energy_projection WHERE scenario = ?", params=(scenario,)
         )
 
-    def show_dataset(self, dataset_id: str, scenario: str = "baseline", limit: int = 20) -> None:
-        """Return a list of scenario names in the project."""
+    def show_dataset(self, scenario: str, dataset_id: str, limit: int = 20) -> None:
+        """Print a limited number of rows of the dataset to the console."""
         table = make_dsgrid_data_table_name(scenario, dataset_id)
-        print(self._con.sql(f"SELECT * FROM {table} LIMIT {limit}"))
+        self._show_table(table, limit=limit)
+
+    def _show_table(self, table: str, limit: int = 20) -> None:
+        rel = self._con.sql(f"SELECT * FROM {table} LIMIT ?", params=(limit,))
+        # DuckDB doesn't seem to provide a way to change the number of rows displayed.
+        # If this is an issue, we could redirect to Pandas and customize the output.
+        print(rel)
 
     def get_table_overrides(self) -> dict[str, list[str]]:
         """Return a dictionary of tables being overridden for each scenario."""
