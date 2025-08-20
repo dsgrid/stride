@@ -44,6 +44,12 @@ LOGURU_LEVELS = ["TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITI
 @click.pass_context
 def cli(ctx: click.Context, console_level: str, file_level: str, reraise_exceptions: bool) -> None:
     """Stride comands"""
+    setup_logging(
+        filename="stride.log",
+        console_level=console_level,
+        file_level=file_level,
+        mode="a",
+    )
 
 
 @click.group()
@@ -78,17 +84,45 @@ $ stride projects create my_project.json5\n
 @click.pass_context
 def create_project(ctx: click.Context, config_file: Path, directory: Path, overwrite: bool) -> Any:
     """Create a Stride project."""
-    setup_logging(
-        filename="stride.log",
-        console_level=ctx.find_root().params["console_level"],
-        file_level=ctx.find_root().params["file_level"],
-        mode="a",
-    )
     res = handle_stride_exception(
         ctx, Project.create, config_file, base_dir=directory, overwrite=overwrite
     )
     if res[1] != 0:
         ctx.exit(res[1])
+
+
+_export_ep_epilog = """
+Examples:\n
+$ stride projects export-energy-projection test_project\n
+$ stride projects export-energy-projection test_project -f energy_projection.parquet \n
+"""
+
+
+@click.command(name="export-energy-projection", epilog=_export_ep_epilog)
+@click.argument("project_path", type=click.Path(exists=True), callback=path_callback)
+@click.option(
+    "-f",
+    "--filename",
+    type=click.Path(),
+    default="energy_projection.csv",
+    show_default=True,
+    help="Exported filename. Supports .csv and .parquet.",
+    callback=path_callback,
+)
+@click.option(
+    "--overwrite",
+    default=False,
+    show_default=True,
+    is_flag=True,
+    help="Overwrite the exported filename if it exists.",
+)
+@click.pass_context
+def export_energy_projection(
+    ctx: click.Context, project_path: Path, filename: Path, overwrite: bool
+) -> None:
+    """Export the energy projection table to a file."""
+    project = safe_get_project_from_context(ctx, project_path, read_only=True)
+    project.export_energy_projection(filename=filename, overwrite=overwrite)
 
 
 @click.group()
@@ -417,6 +451,7 @@ cli.add_command(scenarios)
 cli.add_command(calculated_tables)
 cli.add_command(view)
 projects.add_command(create_project)
+projects.add_command(export_energy_projection)
 datasets.add_command(list_datasets)
 datasets.add_command(show_dataset)
 scenarios.add_command(list_scenarios)

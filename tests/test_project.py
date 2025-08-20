@@ -365,6 +365,25 @@ def test_override_calculated_table_pre_registration(
         assert new_total == orig_total * 3
 
 
+def test_export_energy_projection(
+    tmp_path_factory: TempPathFactory, default_project: Project
+) -> None:
+    tmp_path = tmp_path_factory.mktemp("tmpdir")
+    filename = tmp_path / "energy_projection.parquet"
+    assert not filename.exists()
+    runner = CliRunner()
+    cmd = [
+        "projects",
+        "export-energy-projection",
+        str(default_project.path),
+        "-f",
+        str(filename),
+    ]
+    result = runner.invoke(cli, cmd)
+    assert result.exit_code == 0
+    assert filename.exists()
+
+
 def test_invalid_data_tables(copy_project_input_data: tuple[Path, Path, Path]) -> None:
     project_config_file = copy_project_input_data[2]
     config = load_json_file(project_config_file)

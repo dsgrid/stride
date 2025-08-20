@@ -370,6 +370,30 @@ class Project:
             )
         self._con.commit()
 
+    def export_energy_projection(
+        self, filename: Path = Path("energy_projection.csv"), overwrite: bool = False
+    ) -> None:
+        """Export the energy projection table to a file.
+
+        Parameters
+        ----------
+        filename
+            Filename to create. Supports .csv and .parquet.
+        overwrite
+            If True, overwrite the file if it already exists.
+
+        Examples
+        --------
+        >>> project.export_energy_projection()
+        INFO: Exported the energy projection table to energy_projection.csv
+        """
+        # FUTURE: users may want filters. Would need to determine how to accept the parameters.
+        # Might be easier to let them create their own SQL query.
+        # CLI users may still want something.
+        check_overwrite(filename, overwrite)
+        export_table(self._con, "energy_projection", filename)
+        logger.info("Exported the energy projection table to {}", filename)
+
     def get_energy_projection(self, scenario: str | None = None) -> DuckDBPyRelation:
         """Return the energy projection table, optionally for a scenario.
 
