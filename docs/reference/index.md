@@ -5,6 +5,7 @@
 :caption: 'Contents:'
 :maxdepth: 2
 
-api
+data_api
+project_api
 cli_reference
 ```

@@ -1,3 +1,5 @@
+(create-project-tutorial)=
+
 # Create a project
 
 In this tutorial you will learn how to create and explore a stride project.

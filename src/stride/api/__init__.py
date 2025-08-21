@@ -280,25 +280,33 @@ class APIClient:
         >>> # Get total consumption for all scenarios and years
         >>> df = client.get_annual_electricity_consumption()
 
-        | scenario    | year | value |
-        |-------------|------|-------|
-        | baseline    | 2025 | 5500  |
-        | baseline    | 2030 | 5900  |
-        | high_growth | 2025 | 6000  |
-        | high_growth | 2030 | 6500  |
+        ::
+
+          |-------------|------|-------------|-------|
+          | scenario    | year | value |
+          |-------------|------|-------|
+          | baseline    | 2025 | 5500  |
+          | baseline    | 2030 | 5900  |
+          | high_growth | 2025 | 6000  |
+          | high_growth | 2030 | 6500  |
+          |-------------|------|-------------|-------|
 
         >>> # Get consumption by sector for specific scenarios
         >>> df = client.get_annual_electricity_consumption(
         ...     scenarios=["baseline", "high_growth"], group_by="Sector"
         ... )
 
-        | scenario    | year | sector      | value |
-        |-------------|------|-------------|-------|
-        | baseline    | 2025 | Commercial  | 1500  |
-        | baseline    | 2025 | Industrial  | 2200  |
-        | baseline    | 2025 | Residential | 1800  |
-        | baseline    | 2030 | Commercial  | 1650  |
-        | high_growth | 2025 | Commercial  | 1600  |
+        ::
+
+          |-------------|------|-------------|-------|
+          | scenario    | year | sector      | value |
+          |-------------|------|-------------|-------|
+          | baseline    | 2025 | Commercial  | 1500  |
+          | baseline    | 2025 | Industrial  | 2200  |
+          | baseline    | 2025 | Residential | 1800  |
+          | baseline    | 2030 | Commercial  | 1650  |
+          | high_growth | 2025 | Commercial  | 1600  |
+          |-------------|------|-------------|-------|
         """
         logger.debug(
             f"get_annual_electricity_consumption called with: scenarios={scenarios}, years={years}, group_by={group_by}"
@@ -383,25 +391,33 @@ class APIClient:
         >>> # Get peak demand for all scenarios and years (no breakdown)
         >>> df = client.get_annual_peak_demand()
 
-        | scenario    | year | value |
-        |-------------|------|-------|
-        | baseline    | 2025 | 5500  |
-        | baseline    | 2030 | 5900  |
-        | high_growth | 2025 | 6000  |
-        | high_growth | 2030 | 6500  |
+        ::
+
+          |-------------|------|-------|
+          | scenario    | year | value |
+          |-------------|------|-------|
+          | baseline    | 2025 | 5500  |
+          | baseline    | 2030 | 5900  |
+          | high_growth | 2025 | 6000  |
+          | high_growth | 2030 | 6500  |
+          |-------------|------|-------|
 
         >>> # Get peak demand by sector for specific scenarios
         >>> df = client.get_annual_peak_demand(
         ...     scenarios=["baseline", "high_growth"], group_by="Sector"
         ... )
 
-        | scenario    | year | sector      | value |
-        |-------------|------|-------------|-------|
-        | baseline    | 2025 | Commercial  | 1500  |
-        | baseline    | 2025 | Industrial  | 2200  |
-        | baseline    | 2025 | Residential | 1800  |
-        | baseline    | 2030 | Commercial  | 1650  |
-        | high_growth | 2025 | Commercial  | 1600  |
+        ::
+
+          |-------------|------|-------------|-------|
+          | scenario    | year | sector      | value |
+          |-------------|------|-------------|-------|
+          | baseline    | 2025 | Commercial  | 1500  |
+          | baseline    | 2025 | Industrial  | 2200  |
+          | baseline    | 2025 | Residential | 1800  |
+          | baseline    | 2030 | Commercial  | 1650  |
+          | high_growth | 2025 | Commercial  | 1600  |
+          |-------------|------|-------------|-------|
         """
         logger.debug(
             f"get_annual_peak_demand called with: scenarios={scenarios}, years={years}, group_by={group_by}"
@@ -528,11 +544,15 @@ class APIClient:
         >>> client = APIClient(path_or_conn)
         >>> df = client.get_secondary_metric("baseline", "GDP", [2025, 2030, 2035])
 
-        | year | value |
-        |------|-------|
-        | 2025 | 1250.5|
-        | 2030 | 1380.2|
-        | 2035 | 1520.8|
+        ::
+
+          |------|-------|
+          | year | value |
+          |------|-------|
+          | 2025 | 1250.5|
+          | 2030 | 1380.2|
+          | 2035 | 1520.8|
+          |------|-------|
         """
         logger.debug(
             f"get_secondary_metric called with: scenario={scenario}, metric={metric}, years={years}"
@@ -567,10 +587,10 @@ class APIClient:
             DataFrame with load duration curve data.
 
             Columns:
-            - {scenario_name} or {year}: float, demand values sorted from highest to lowest
-              for each scenario (if multiple scenarios) or year (if multiple years)
+              - {scenario_name} or {year}: float, demand values sorted from highest to lowest
+                for each scenario (if multiple scenarios) or year (if multiple years)
 
-            Index: row number (0 to 8759 for hourly data)
+              Index: row number (0 to 8759 for hourly data)
 
         Raises
         ------
@@ -748,13 +768,17 @@ class APIClient:
         >>> weather = client.get_weather_metric("baseline", 2030, "Temperature", "Daily Mean")
         >>> print(weather.head())
 
-        |  datetime  | value |
-        |------------|-------|
-        | 2030-01-01 |  5.2  |
-        | 2030-01-02 |  6.1  |
-        | 2030-01-03 |  4.8  |
-        | 2030-01-04 |  7.3  |
-        | 2030-01-05 |  8.9  |
+        ::
+
+          |------------|-------|
+          |  datetime  | value |
+          |------------|-------|
+          | 2030-01-01 |  5.2  |
+          | 2030-01-02 |  6.1  |
+          | 2030-01-03 |  4.8  |
+          | 2030-01-04 |  7.3  |
+          | 2030-01-05 |  8.9  |
+          |------------|-------|
         """
         logger.debug(
             f"get_weather_metric called with: scenario={scenario}, year={year}, wvar={wvar}, resample={resample}, timegroup={timegroup}"
@@ -808,23 +832,31 @@ class APIClient:
         >>> # With group_by specified
         >>> df = client.get_time_series_comparison("baseline", [2025, 2030], "Sector")
 
-        | scenario | year | time_period | sector      | value  |
-        |----------|------|-------------|-------------|--------|
-        | baseline | 2025 | 1           | Commercial  | 1250.5 |
-        | baseline | 2025 | 1           | Industrial  | 2100.3 |
-        | baseline | 2025 | 1           | Residential | 1800.7 |
-        | baseline | 2025 | 2           | Commercial  | 1245.8 |
-        | baseline | 2030 | 1           | Commercial  | 1380.2 |
+        ::
+
+          |----------|------|-------------|-------------|--------|
+          | scenario | year | time_period | sector      | value  |
+          |----------|------|-------------|-------------|--------|
+          | baseline | 2025 | 1           | Commercial  | 1250.5 |
+          | baseline | 2025 | 1           | Industrial  | 2100.3 |
+          | baseline | 2025 | 1           | Residential | 1800.7 |
+          | baseline | 2025 | 2           | Commercial  | 1245.8 |
+          | baseline | 2030 | 1           | Commercial  | 1380.2 |
+          |----------|------|-------------|-------------|--------|
 
         >>> # Without group_by
         >>> df = client.get_time_series_comparison("baseline", [2025, 2030])
 
-        | scenario | year | time_period | value  |
-        |----------|------|-------------|--------|
-        | baseline | 2025 | 1           | 5150.5 |
-        | baseline | 2025 | 2           | 5136.2 |
-        | baseline | 2030 | 1           | 5675.4 |
-        | baseline | 2030 | 2           | 5666.5 |
+        ::
+
+          |----------|------|-------------|--------|
+          | scenario | year | time_period | value  |
+          |----------|------|-------------|--------|
+          | baseline | 2025 | 1           | 5150.5 |
+          | baseline | 2025 | 2           | 5136.2 |
+          | baseline | 2030 | 1           | 5675.4 |
+          | baseline | 2030 | 2           | 5666.5 |
+          |----------|------|-------------|--------|
         """
         logger.debug(
             f"get_time_series_comparison called with: scenario={scenario}, years={years}, group_by={group_by}, resample={resample}"
@@ -927,25 +959,33 @@ class APIClient:
         ...     "baseline", [2025, 2030], "Seasonal", "Average Day"
         ... )
 
-        | scenario | year | season | hour_of_day | value  |
-        |----------|------|--------|-------------|--------|
-        | baseline | 2025 | Winter | 0           | 3200.5 |
-        | baseline | 2025 | Winter | 1           | 3100.2 |
-        | baseline | 2025 | Winter | 2           | 3050.8 |
-        | baseline | 2025 | Spring | 0           | 2800.3 |
-        | baseline | 2030 | Winter | 0           | 3450.2 |
+        ::
+
+          |----------|------|--------|-------------|--------|
+          | scenario | year | season | hour_of_day | value  |
+          |----------|------|--------|-------------|--------|
+          | baseline | 2025 | Winter | 0           | 3200.5 |
+          | baseline | 2025 | Winter | 1           | 3100.2 |
+          | baseline | 2025 | Winter | 2           | 3050.8 |
+          | baseline | 2025 | Spring | 0           | 2800.3 |
+          | baseline | 2030 | Winter | 0           | 3450.2 |
+          |----------|------|--------|-------------|--------|
 
         >>> # Both seasonal and weekday/weekend grouping
         >>> df = client.get_seasonal_load_lines(
         ...     "baseline", [2025], "Seasonal and Weekday/Weekend", "Average Day"
         ... )
 
-        | scenario | year | season | day_type | hour_of_day | value  |
-        |----------|------|--------|----------|-------------|--------|
-        | baseline | 2025 | Winter | Weekday  | 0           | 3400.5 |
-        | baseline | 2025 | Winter | Weekday  | 1           | 3350.2 |
-        | baseline | 2025 | Winter | Weekend  | 0           | 3000.3 |
-        | baseline | 2025 | Spring | Weekday  | 0           | 2900.7 |
+        ::
+
+          |----------|------|--------|----------|-------------|--------|
+          | scenario | year | season | day_type | hour_of_day | value  |
+          |----------|------|--------|----------|-------------|--------|
+          | baseline | 2025 | Winter | Weekday  | 0           | 3400.5 |
+          | baseline | 2025 | Winter | Weekday  | 1           | 3350.2 |
+          | baseline | 2025 | Winter | Weekend  | 0           | 3000.3 |
+          | baseline | 2025 | Spring | Weekday  | 0           | 2900.7 |
+          |----------|------|--------|----------|-------------|--------|
         """
         logger.debug(
             f"get_seasonal_load_lines called with: scenario={scenario}, years={years}, group_by={group_by}, agg={agg}"
@@ -1018,22 +1058,30 @@ class APIClient:
         >>> client = APIClient(path_or_conn)
         >>> df = client.get_seasonal_load_area("baseline", 2030)
 
-        | scenario    | year | season | hour_of_day | value |
-        |-------------|------|--------|-------------|-------|
-        | baseline    | 2030 | Winter | 0           | 3400.5|
-        | baseline    | 2030 | Winter | 1           | 3350.2|
-        | baseline    | 2030 | Spring | 0           | 2900.7|
-        | baseline    | 2030 | Spring | 1           | 2850.3|
+        ::
+
+          |-------------|------|--------|-------------|-------|
+          | scenario    | year | season | hour_of_day | value |
+          |-------------|------|--------|-------------|-------|
+          | baseline    | 2030 | Winter | 0           | 3400.5|
+          | baseline    | 2030 | Winter | 1           | 3350.2|
+          | baseline    | 2030 | Spring | 0           | 2900.7|
+          | baseline    | 2030 | Spring | 1           | 2850.3|
+          |-------------|------|--------|-------------|-------|
 
         >>> df = client.get_seasonal_load_area("baseline", 2030, breakdown="Sector")
 
-        | scenario    | year | season | hour_of_day | sector      | value |
-        |-------------|------|--------|-------------|-------------|-------|
-        | baseline    | 2030 | Winter | 0           | Commercial  | 1200.5|
-        | baseline    | 2030 | Winter | 0           | Industrial  | 1500.2|
-        | baseline    | 2030 | Winter | 0           | Residential | 1700.8|
-        | baseline    | 2030 | Spring | 0           | Commercial  | 1300.7|
-        | baseline    | 2030 | Spring | 0           | Industrial  | 1600.3|
+        ::
+
+          |-------------|------|--------|-------------|-------------|-------|
+          | scenario    | year | season | hour_of_day | sector      | value |
+          |-------------|------|--------|-------------|-------------|-------|
+          | baseline    | 2030 | Winter | 0           | Commercial  | 1200.5|
+          | baseline    | 2030 | Winter | 0           | Industrial  | 1500.2|
+          | baseline    | 2030 | Winter | 0           | Residential | 1700.8|
+          | baseline    | 2030 | Spring | 0           | Commercial  | 1300.7|
+          | baseline    | 2030 | Spring | 0           | Industrial  | 1600.3|
+          |-------------|------|--------|-------------|-------------|-------|
         """
         logger.debug(
             f"get_seasonal_load_area called with: scenario={scenario}, year={year}, group_by={group_by}, agg={agg}, breakdown={breakdown}"
