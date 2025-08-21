@@ -5,12 +5,21 @@
             "name": "Debug Dash App",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/src/stride/ui/app.py",
+            "program": "${workspaceFolder}/scripts/debug_launcher.py",
             "console": "integratedTerminal",
             "env": {
                 "FLASK_ENV": "development"
             },
-            "args": [],
+            "args": ["view", "test_project"],
+            "justMyCode": false
+        },
+        {
+            "name": "Debug create project",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/debug_launcher.py",
+            "console": "integratedTerminal",
+            "args": ["projects", "create", "tests/data/project_input.json5", "--overwrite"],
             "justMyCode": false
         }
     ]
