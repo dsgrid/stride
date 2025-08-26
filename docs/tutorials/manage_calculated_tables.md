@@ -63,7 +63,7 @@ This command will print a subset of rows of one table to the console.
 ```{eval-rst}
 .. code-block:: console
 
-    $ stride projects create stride/tests/data/project_input.json
+    $ stride calculated-tables show test_project energy_projection_res_load_shapes
 ```
 ```
 ┌──────────────────────────┬────────────┬───────────┬─────────────┬─────────┬────────────────────┐
