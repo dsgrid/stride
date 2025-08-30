@@ -3,6 +3,7 @@ SELECT
     ,e.sector
     ,e.a0
     ,e.a1
+    ,e.t0
     ,e.regression_type
     ,e.model_year
     ,e.hdi_value

@@ -151,6 +151,12 @@ def create_dsgrid_project(config: ProjectConfig) -> dict[str, Any]:
                             "unit": "TJ/HDI-person-yr",
                         },
                         {
+                            "id": "res_t0_lin",
+                            "name": "Residential Start Year Linear",
+                            "regression_type": "linear",
+                            "unit": "yr",
+                        },
+                        {
                             "id": "res_a0_exp",
                             "name": "Residential Intercept Exponential",
                             "regression_type": "exponential",
@@ -161,6 +167,12 @@ def create_dsgrid_project(config: ProjectConfig) -> dict[str, Any]:
                             "name": "Residential Slope Exponential",
                             "regression_type": "exponential",
                             "unit": "TJ/HDI-person-yr",
+                        },
+                        {
+                            "id": "res_t0_exp",
+                            "name": "Residential Start Year Exponential",
+                            "regression_type": "exponential",
+                            "unit": "yr",
                         },
                         {
                             "id": "nonres_a0_lin",
@@ -175,6 +187,12 @@ def create_dsgrid_project(config: ProjectConfig) -> dict[str, Any]:
                             "unit": "TJ/billion USD-2024-yr",
                         },
                         {
+                            "id": "nonres_t0_lin",
+                            "name": "Non-residential Start Year Linear",
+                            "regression_type": "linear",
+                            "unit": "yr",
+                        },
+                        {
                             "id": "nonres_a0_exp",
                             "name": "Non-residential Intercept Exponential",
                             "regression_type": "exponential",
@@ -185,6 +203,12 @@ def create_dsgrid_project(config: ProjectConfig) -> dict[str, Any]:
                             "name": "Non-residential Slope Exponential",
                             "regression_type": "exponential",
                             "unit": "TJ/billion USD-2024-yr",
+                        },
+                        {
+                            "id": "nonres_t0_exp",
+                            "name": "Non-residential Start Year Exponential",
+                            "regression_type": "exponential",
+                            "unit": "yr",
                         },
                     ],
                 },

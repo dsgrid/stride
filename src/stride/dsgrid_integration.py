@@ -4,6 +4,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+
 from dsgrid.query.models import DimensionReferenceModel, make_dataset_query
 import duckdb
 from dsgrid.config.dataset_config import DataSchemaType
@@ -199,13 +200,16 @@ def write_datasets_to_dsgrid_format(
 
         dst = dataset_data_path / "table.parquet"
         rel.to_parquet(str(dst))
+        logger.info("Wrote dataset {} to dsgrid format at {}", dataset.dataset_id, dst)
         if dataset.missing_associations_file is not None:
             dst = (
                 dataset_data_path
                 / f"missing_associations{dataset.missing_associations_file.suffix}"
             )
             shutil.copyfile(dataset.missing_associations_file, dst)
-        logger.info("Wrote dataset {} to dsgrid format at {}", dataset.dataset_id, dst)
+            logger.info(
+                "Copied dataset {}'s missing associations file to {}", dataset.dataset_id, dst
+            )
 
         config_file = _dataset_config_path(base_path, dataset.dataset_id)
         config_file.parent.mkdir()

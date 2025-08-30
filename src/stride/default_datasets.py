@@ -100,18 +100,24 @@ def energy_intensity_dataset(
                 "name": "energy_intensity_regression",
                 "description": "EnergyIntensityRegression",
                 "records": [
-                    # {
-                    #     "id": "res_a0_lin",
-                    #     "name": "Residential Intercept Linear",
-                    #     "regression_type": "linear",
-                    #     "unit": "TJ/HDI-person",
-                    # },
-                    # {
-                    #     "id": "res_a1_lin",
-                    #     "name": "Residential Slope Linear",
-                    #     "regression_type": "linear",
-                    #     "unit": "TJ/HDI-person-yr",
-                    # },
+                    {
+                        "id": "res_a0_lin",
+                        "name": "Residential Intercept Linear",
+                        "regression_type": "linear",
+                        "unit": "TJ/HDI-person",
+                    },
+                    {
+                        "id": "res_a1_lin",
+                        "name": "Residential Slope Linear",
+                        "regression_type": "linear",
+                        "unit": "TJ/HDI-person-yr",
+                    },
+                    {
+                        "id": "res_t0_lin",
+                        "name": "Residential Start Year Linear",
+                        "regression_type": "linear",
+                        "unit": "yr",
+                    },
                     {
                         "id": "res_a0_exp",
                         "name": "Residential Intercept Exponential",
@@ -123,6 +129,12 @@ def energy_intensity_dataset(
                         "name": "Residential Slope Exponential",
                         "regression_type": "exponential",
                         "unit": "TJ/HDI-person-yr",
+                    },
+                    {
+                        "id": "res_t0_exp",
+                        "name": "Residential Start Year Exponential",
+                        "regression_type": "exponential",
+                        "unit": "yr",
                     },
                     {
                         "id": "nonres_a0_lin",
@@ -137,6 +149,12 @@ def energy_intensity_dataset(
                         "unit": "TJ/billion USD-2024-yr",
                     },
                     {
+                        "id": "nonres_t0_lin",
+                        "name": "Non-residential Start Year Linear",
+                        "regression_type": "linear",
+                        "unit": "yr",
+                    },
+                    {
                         "id": "nonres_a0_exp",
                         "name": "Non-residential Intercept Exponential",
                         "regression_type": "exponential",
@@ -147,6 +165,12 @@ def energy_intensity_dataset(
                         "name": "Non-residential Slope Exponential",
                         "regression_type": "exponential",
                         "unit": "TJ/billion USD-2024-yr",
+                    },
+                    {
+                        "id": "nonres_t0_exp",
+                        "name": "Non-residential Start Year Exponential",
+                        "regression_type": "exponential",
+                        "unit": "yr",
                     },
                 ],
             },

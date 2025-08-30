@@ -91,9 +91,9 @@ def compute_energy_projection_com_ind_tra(
         ,sector
         ,CASE
             WHEN regression_type = 'exp'
-                THEN EXP(a0 + a1) * gdp_value
+                THEN EXP(a0 + a1 * (model_year - t0)) * gdp_value
             WHEN regression_type = 'lin'
-                THEN (a0 + a1) * gdp_value
+                THEN (a0 + a1 * (model_year - t0)) * gdp_value
         END AS value
     """
     )
@@ -145,8 +145,8 @@ def compute_energy_projection_res(
         ,geography
         ,sector
         ,CASE
-            WHEN regression_type = 'exp' THEN EXP(a0 + a1) * hdi_value * pop_value
-            WHEN regression_type = 'lin' THEN (a0 + a1) *  hdi_value * pop_value
+            WHEN regression_type = 'exp' THEN EXP(a0 + a1 * (model_year - t0)) * hdi_value * pop_value
+            WHEN regression_type = 'lin' THEN (a0 + a1 * (model_year - t0)) *  hdi_value * pop_value
         END AS value
     """
     )
@@ -212,7 +212,7 @@ def pivot_energy_intensity(con: DuckDBPyConnection, rel: DuckDBPyRelation) -> Du
         """
         PIVOT
             (SELECT * FROM rel)
-        ON parameter IN ('a0', 'a1')
+        ON parameter IN ('a0', 'a1', 't0')
         USING SUM(value)
     """
     )
