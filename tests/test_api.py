@@ -5,6 +5,7 @@ Tests for the database api.
 import pytest
 import pandas as pd
 from stride.api import APIClient
+from stride.api.utils import literal_to_list, TimeGroup
 from stride.project import Project
 
 
@@ -225,10 +226,175 @@ def test_get_time_series_comparison(api_client: APIClient) -> None:
     assert not df.empty
 
 
-def test_get_seasonal_load_lines(api_client: APIClient) -> None:
-    """Test seasonal load lines method executes."""
-    valid_scenario = api_client.scenarios[0]
-    df = api_client.get_seasonal_load_lines(valid_scenario)
+@pytest.mark.parametrize("group_by", literal_to_list(TimeGroup))
+def test_seasonal_load_lines_time_groupings(  # noqa: C901
+    api_client: APIClient, weekday_weekend_test_data: None, group_by: TimeGroup
+) -> None:
+    """Test seasonal load lines with different time groupings."""
+    import pandas as pd
+    from stride.api.utils import SPRING_DAY_START, SPRING_DAY_END, FALL_DAY_START, FALL_DAY_END
 
-    assert isinstance(df, pd.DataFrame)
-    assert not df.empty
+    # Temporarily change database connection for testing
+    original_db = api_client.db
+    original_years = api_client._years
+    original_scenarios = api_client._scenarios
+
+    # Use the test database connection
+    api_client.db = getattr(api_client.project, "_test_con")
+    # Clear cached metadata so it will be re-fetched from test database
+    api_client._years = None
+    api_client._scenarios = None
+
+    try:
+        # Get API results
+        df_api = api_client.get_seasonal_load_lines(
+            scenario="test_scenario", years=[2030], group_by=group_by, agg="Average Day"
+        )
+
+        # Verify structure
+        assert isinstance(df_api, pd.DataFrame)
+        assert not df_api.empty
+
+        # Base expected columns
+        expected_columns = {"scenario", "year", "hour_of_day", "value"}
+
+        # Add columns based on grouping
+        if "Seasonal" in group_by:
+            expected_columns.add("season")
+        if "Weekday/Weekend" in group_by:
+            expected_columns.add("day_type")
+
+        assert set(df_api.columns) == expected_columns
+
+        # Should have hours 0-23
+        assert set(df_api["hour_of_day"].unique()) == set(range(24))
+
+        # Calculate expected number of rows
+        expected_rows = 24  # base hours
+        if "Seasonal" in group_by:
+            expected_rows *= 4  # 4 seasons
+        if "Weekday/Weekend" in group_by:
+            expected_rows *= 2  # weekday/weekend
+
+        assert len(df_api) == expected_rows
+
+        # Group-specific validations
+        if "Weekday/Weekend" in group_by:
+            # Should have weekday and weekend
+            assert set(df_api["day_type"].unique()) == {"Weekday", "Weekend"}
+
+            # Verify values: weekdays should be 1, weekends should be 8
+            weekday_values = df_api[df_api["day_type"] == "Weekday"]["value"].unique()
+            weekend_values = df_api[df_api["day_type"] == "Weekend"]["value"].unique()
+
+            assert len(weekday_values) == 1 and weekday_values[0] == 1.0
+            assert len(weekend_values) == 1 and weekend_values[0] == 8.0
+
+        if "Seasonal" in group_by:
+            # Should have 4 seasons
+            assert len(df_api["season"].unique()) == 4
+
+            # If only seasonal (not combined with weekday/weekend), check against pandas calculation
+            if group_by == "Seasonal":
+                # Create reference datetime index (must match the test data exactly)
+                datetime_index = pd.date_range(
+                    start="2018-01-01 00:00:00", end="2018-12-31 23:00:00", freq="h"
+                )
+
+                # Create reference DataFrame with seasonal mapping using utility constants
+                ref_data = []
+                for dt in datetime_index:
+                    value = 1 if dt.weekday() < 5 else 8
+
+                    # Map day of year to seasons using the same logic as utils.py
+                    day_of_year = dt.timetuple().tm_yday
+                    if day_of_year >= SPRING_DAY_START and day_of_year < SPRING_DAY_END:
+                        season = "Spring"
+                    elif day_of_year >= SPRING_DAY_END and day_of_year < FALL_DAY_START:
+                        season = "Summer"
+                    elif day_of_year >= FALL_DAY_START and day_of_year < FALL_DAY_END:
+                        season = "Fall"
+                    else:
+                        season = "Winter"
+
+                    ref_data.append({"hour_of_day": dt.hour, "season": season, "value": value})
+
+                ref_df = pd.DataFrame(ref_data)
+
+                # Calculate pandas seasonal averages (grouped by season and hour)
+                pandas_seasonal = (
+                    ref_df.groupby(["season", "hour_of_day"])["value"].mean().reset_index()
+                )
+                pandas_seasonal = pandas_seasonal.sort_values(
+                    ["season", "hour_of_day"]
+                ).reset_index(drop=True)
+
+                # Sort API result for comparison
+                api_comparison = (
+                    df_api[["season", "hour_of_day", "value"]]
+                    .sort_values(["season", "hour_of_day"])
+                    .reset_index(drop=True)
+                )
+
+                # Compare the calculated values
+                pd.testing.assert_frame_equal(
+                    pandas_seasonal,
+                    api_comparison,
+                    check_dtype=False,
+                    rtol=1e-5,  # Allow for small floating point differences
+                )
+
+                # Verify that each season has different values (since different weekday/weekend ratios)
+                season_values = df_api.groupby("season")["value"].first()
+                assert len(season_values.unique()) == 4, (
+                    "Each season should have a different weekday/weekend ratio"
+                )
+
+                # All values should be between 1 and 8 (weighted averages)
+                all_values = df_api["value"].unique()
+                assert all(1 <= val <= 8 for val in all_values), (
+                    "All values should be between 1 and 8"
+                )
+
+        # For weekday/weekend only, compare with pandas calculation
+        if group_by == "Weekday/Weekend":
+            # Create reference datetime index
+            datetime_index = pd.date_range(
+                start="2018-01-01 00:00:00", end="2018-12-31 23:00:00", freq="h"
+            )
+
+            # Create reference DataFrame
+            ref_data = []
+            for dt in datetime_index:
+                value = 1 if dt.weekday() < 5 else 8
+                day_type = "Weekday" if dt.weekday() < 5 else "Weekend"
+
+                ref_data.append(
+                    {"datetime": dt, "hour_of_day": dt.hour, "day_type": day_type, "value": value}
+                )
+
+            ref_df = pd.DataFrame(ref_data)
+
+            # Calculate pandas aggregation (should be same since all values are constant)
+            pandas_result = (
+                ref_df.groupby(["day_type", "hour_of_day"])["value"].mean().reset_index()
+            )
+            pandas_result = pandas_result.sort_values(["day_type", "hour_of_day"]).reset_index(
+                drop=True
+            )
+
+            # Sort API result for comparison
+            api_comparison = (
+                df_api[["day_type", "hour_of_day", "value"]]
+                .sort_values(["day_type", "hour_of_day"])
+                .reset_index(drop=True)
+            )
+
+            # Compare values
+            pd.testing.assert_frame_equal(pandas_result, api_comparison, check_dtype=False)
+
+    finally:
+        # Restore original database connection and cached metadata
+        api_client.db = original_db
+        api_client._years = original_years
+        api_client._scenarios = original_scenarios
