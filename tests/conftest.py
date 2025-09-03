@@ -1,6 +1,8 @@
 import shutil
 from pathlib import Path
 from typing import Generator
+from duckdb import DuckDBPyConnection
+
 import pytest
 from click.testing import CliRunner
 from pytest import TempPathFactory
@@ -60,7 +62,7 @@ def copy_project_input_data(tmp_path: Path) -> tuple[Path, Path, Path]:
 
 
 @pytest.fixture(scope="session")
-def weekday_weekend_test_data(default_project: Project) -> Generator[None, None, None]:
+def weekday_weekend_test_data(default_project: Project) -> DuckDBPyConnection:
     """Create test data for weekday/weekend validation.
 
     Creates a test table with:
@@ -99,23 +101,16 @@ def weekday_weekend_test_data(default_project: Project) -> Generator[None, None,
         )
 
     # Create DataFrame, register and insert into test database
-    df = pd.DataFrame(test_data)
+    energy_projection_df = pd.DataFrame(test_data)
 
-    test_con.register("df", df)
+    test_con.register("energy_projection_df", energy_projection_df)
     # Create test table with the same name as the real table
     test_con.execute(
         """
         CREATE TABLE energy_projection AS
-        SELECT * FROM df
+        SELECT * FROM energy_projection_df
     """
     )
 
     # Store the test connection in the project for access during tests
-    setattr(default_project, "_test_con", test_con)
-
-    yield
-
-    # Cleanup
-    test_con.close()
-    if hasattr(default_project, "_test_con"):
-        delattr(default_project, "_test_con")
+    return test_con
