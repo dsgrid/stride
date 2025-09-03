@@ -1,6 +1,8 @@
 import shutil
 from pathlib import Path
 from typing import Generator
+from duckdb import DuckDBPyConnection
+
 import pytest
 from click.testing import CliRunner
 from pytest import TempPathFactory
@@ -57,3 +59,58 @@ def copy_project_input_data(tmp_path: Path) -> tuple[Path, Path, Path]:
     project_dir = tmp_path / "project_inputs"
     shutil.copytree(TEST_PROJECT_CONFIG.parent, project_dir)
     return tmp_path, project_dir, project_dir / "project_input.json5"
+
+
+@pytest.fixture(scope="session")
+def weekday_weekend_test_data(default_project: Project) -> DuckDBPyConnection:
+    """Create test data for weekday/weekend validation.
+
+    Creates a test table with:
+    - Weekday values = 1
+    - Weekend values = 8
+    - Full year 2018 hourly data (8760 hours)
+    """
+    import pandas as pd
+    import duckdb
+
+    # Create a separate in-memory database for testing
+    test_con = duckdb.connect(":memory:")
+
+    # Create 2018 hourly datetime index (8760 hours)
+    datetime_index = pd.date_range(
+        start="2018-01-01 00:00:00", end="2018-12-31 23:00:00", freq="H"
+    )
+
+    # Create test data
+    test_data = []
+    for i, dt in enumerate(datetime_index):
+        # Weekday = 1, Weekend = 8
+        value = 1 if dt.weekday() < 5 else 8
+
+        test_data.append(
+            {
+                "timestamp": dt,
+                "hour": i,  # 0-8759
+                "model_year": 2030,  # Test year
+                "geography": default_project.config.country,
+                "sector": "Commercial",
+                "metric": "Electricity",
+                "scenario": "test_scenario",
+                "value": value,
+            }
+        )
+
+    # Create DataFrame, register and insert into test database
+    energy_projection_df = pd.DataFrame(test_data)
+
+    test_con.register("energy_projection_df", energy_projection_df)
+    # Create test table with the same name as the real table
+    test_con.execute(
+        """
+        CREATE TABLE energy_projection AS
+        SELECT * FROM energy_projection_df
+    """
+    )
+
+    # Store the test connection in the project for access during tests
+    return test_con
