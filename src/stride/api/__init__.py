@@ -812,7 +812,7 @@ class APIClient:
         group_by : ConsumptionBreakdown
             The load broken down by sector or end use.
         resample : ResampleOptions, optional
-            Resampling option for the data
+            Resampling option for the data. Use None for raw hourly data.
 
         Returns
         -------
@@ -822,14 +822,28 @@ class APIClient:
             Columns:
             - scenario: str, scenario name
             - year: int, projection year
-            - time_period: int, day/week of year (1-365 for daily, 1-52 for weekly)
+            - time_period: int, time period (hour of year for raw data, day/week for resampled)
             - sector/end_use: str, breakdown category (if group_by specified)
             - value: float, consumption value
 
         Examples
         --------
         >>> client = APIClient(path_or_conn)
-        >>> # With group_by specified
+        >>> # Raw hourly data with group_by
+        >>> df = client.get_time_series_comparison("baseline", [2025, 2030], "Sector", resample=None)
+
+        ::
+
+          |----------|------|-------------|-------------|--------|
+          | scenario | year | time_period | sector      | value  |
+          |----------|------|-------------|-------------|--------|
+          | baseline | 2025 | 1           | Commercial  | 125.5  |
+          | baseline | 2025 | 1           | Industrial  | 210.3  |
+          | baseline | 2025 | 1           | Residential | 180.7  |
+          | baseline | 2025 | 2           | Commercial  | 124.8  |
+          |----------|------|-------------|-------------|--------|
+
+        >>> # Resampled data with group_by specified
         >>> df = client.get_time_series_comparison("baseline", [2025, 2030], "Sector")
 
         ::
@@ -844,8 +858,8 @@ class APIClient:
           | baseline | 2030 | 1           | Commercial  | 1380.2 |
           |----------|------|-------------|-------------|--------|
 
-        >>> # Without group_by
-        >>> df = client.get_time_series_comparison("baseline", [2025, 2030])
+        >>> # Raw hourly data without group_by
+        >>> df = client.get_time_series_comparison("baseline", [2025, 2030], resample=None)
 
         ::
 
@@ -869,50 +883,98 @@ class APIClient:
         self._validate_scenarios([scenario])
         self._validate_years(years)
 
-        # Determine time period calculation based on resample option
-        if resample == "Daily Mean":
-            time_period_calc = "FLOOR(EXTRACT(DOY FROM timestamp)) + 1"
-        elif resample == "Weekly Mean":
-            time_period_calc = "FLOOR((EXTRACT(DOY FROM timestamp) - 1) / 7) + 1"
-        else:
-            err = f"Invalid resample option: {resample}"
-            raise ValueError(err)
+        if resample is None or resample == "None":
+            # Raw hourly data - use hour of year as time_period
+            time_period_calc = "ROW_NUMBER() OVER (PARTITION BY scenario, model_year ORDER BY timestamp)"
 
-        if group_by:
-            if group_by == "End Use":
-                group_col = "metric"
-            else:  # group_by == "Sector"
-                group_col = "sector"
-            sql = f"""
-            SELECT
-                scenario,
-                model_year as year,
-                {time_period_calc} as time_period,
-                {group_col},
-                AVG(value) as value
-            FROM energy_projection
-            WHERE geography = ?
-                AND scenario = ?
-                AND model_year = ANY(?)
-            GROUP BY scenario, model_year, {time_period_calc}, {group_col}
-            ORDER BY scenario, model_year, time_period, {group_col}
-            """
-            params: list[Any] = [self.project_country, scenario, years]
+            if group_by:
+                if group_by == "End Use":
+                    group_col = "metric"
+                else:  # group_by == "Sector"
+                    group_col = "sector"
+                sql = f"""
+                SELECT
+                    scenario,
+                    model_year as year,
+                    {time_period_calc} as time_period,
+                    {group_col},
+                    value
+                FROM energy_projection
+                WHERE geography = ?
+                    AND scenario = ?
+                    AND model_year = ANY(?)
+                ORDER BY scenario, model_year, timestamp, {group_col}
+                """
+                params: list[Any] = [self.project_country, scenario, years]
+            else:
+                sql = f"""
+                WITH hourly_totals AS (
+                    SELECT
+                        scenario,
+                        model_year,
+                        timestamp,
+                        SUM(value) as value
+                    FROM energy_projection
+                    WHERE geography = ?
+                        AND scenario = ?
+                        AND model_year = ANY(?)
+                    GROUP BY scenario, model_year, timestamp
+                )
+                SELECT
+                    scenario,
+                    model_year as year,
+                    {time_period_calc} as time_period,
+                    value
+                FROM hourly_totals
+                ORDER BY scenario, model_year, timestamp
+                """
+                params = [self.project_country, scenario, years]
         else:
-            sql = f"""
-            SELECT
-                scenario,
-                model_year as year,
-                {time_period_calc} as time_period,
-                SUM(value) as value
-            FROM energy_projection
-            WHERE geography = ?
-                AND scenario = ?
-                AND model_year = ANY(?)
-            GROUP BY scenario, model_year, {time_period_calc}
-            ORDER BY scenario, model_year, time_period
-            """
-            params = [self.project_country, scenario, years]
+            # Resampled data (existing logic)
+            # Determine time period calculation based on resample option
+            if resample == "Daily Mean":
+                time_period_calc = "FLOOR(EXTRACT(DOY FROM timestamp)) + 1"
+            elif resample == "Weekly Mean":
+                time_period_calc = "FLOOR((EXTRACT(DOY FROM timestamp) - 1) / 7) + 1"
+            else:
+                err = f"Invalid resample option: {resample}"
+                raise ValueError(err)
+
+            if group_by:
+                if group_by == "End Use":
+                    group_col = "metric"
+                else:  # group_by == "Sector"
+                    group_col = "sector"
+                sql = f"""
+                SELECT
+                    scenario,
+                    model_year as year,
+                    {time_period_calc} as time_period,
+                    {group_col},
+                    AVG(value) as value
+                FROM energy_projection
+                WHERE geography = ?
+                    AND scenario = ?
+                    AND model_year = ANY(?)
+                GROUP BY scenario, model_year, {time_period_calc}, {group_col}
+                ORDER BY scenario, model_year, time_period, {group_col}
+                """
+                params = [self.project_country, scenario, years]
+            else:
+                sql = f"""
+                SELECT
+                    scenario,
+                    model_year as year,
+                    {time_period_calc} as time_period,
+                    SUM(value) as value
+                FROM energy_projection
+                WHERE geography = ?
+                    AND scenario = ?
+                    AND model_year = ANY(?)
+                GROUP BY scenario, model_year, {time_period_calc}
+                ORDER BY scenario, model_year, time_period
+                """
+                params = [self.project_country, scenario, years]
 
         logger.debug(f"SQL Query:\n{sql}")
         df = self.db.execute(sql, params).df()

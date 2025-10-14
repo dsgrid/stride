@@ -16,7 +16,7 @@ SecondaryMetric = Literal[
 WeatherVar = Literal["Humidity", "Temperature"]
 Sectors = Literal["Commercial", "Industrial", "Residential", "Transportation", "Other"]
 ChartType = Literal["Area", "Line"]
-ResampleOptions = Literal["Daily Mean", "Weekly Mean"]
+ResampleOptions = Literal["Daily Mean", "Weekly Mean", "None"]
 Season = Literal["Spring", "Summer", "Fall", "Winter"]
 
 
@@ -51,9 +51,12 @@ def literal_to_list(
     """
     result = list(get_args(literal)) if hasattr(literal, "__args__") else list(get_args(literal))
 
+    # Convert None values to string representation
+    result = [str(r) if r is not None else "None" for r in result]
+
     if prefix:
         result = [f"{prefix}{r}" for r in result]
-    if include_none_str:
+    if include_none_str and "None" not in result:
         result.insert(0, "None")
 
     return result
