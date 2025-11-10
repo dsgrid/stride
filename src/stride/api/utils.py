@@ -1,4 +1,4 @@
-from typing import Literal, get_args, Any
+from typing import Any, Literal, get_args
 
 # Re-export types that will be used by utils
 ConsumptionBreakdown = Literal["End Use", "Sector"]
@@ -16,7 +16,7 @@ SecondaryMetric = Literal[
 WeatherVar = Literal["Humidity", "Temperature"]
 Sectors = Literal["Commercial", "Industrial", "Residential", "Transportation", "Other"]
 ChartType = Literal["Area", "Line"]
-ResampleOptions = Literal["Daily Mean", "Weekly Mean", "None"]
+ResampleOptions = Literal["Daily Mean", "Weekly Mean", "Hourly"]
 Season = Literal["Spring", "Summer", "Fall", "Winter"]
 
 

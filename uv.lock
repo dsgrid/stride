@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.11, <3.14"
 resolution-markers = [
     "python_full_version >= '3.12'",
@@ -183,7 +183,7 @@ wheels = [
 
 [[package]]
 name = "chronify"
-version = "0.3.1"
+version = "0.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "duckdb" },
@@ -197,9 +197,9 @@ dependencies = [
     { name = "sqlalchemy" },
     { name = "tzdata" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f2/32/e43b68e1da0e4b0db04b9456722c88300627f97ee6394f4fa9f27cea3f52/chronify-0.3.1.tar.gz", hash = "sha256:cd2a8828eef0d4fedff20e712226808f4f5b942f08af14dfc00b179900bc2213", size = 156989, upload-time = "2025-08-12T00:17:35.959Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b4/85/d663a4be7ef3b72ed8a48d109bd7864bca7053950ac60111ea1f96c0d483/chronify-0.4.0.tar.gz", hash = "sha256:168fc8ade5e9f20fad5c72f7be145bfe39815d3e1d685a8e7853089889f3d763", size = 157161, upload-time = "2025-10-22T18:37:01.242Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b4/d5/7e15411513d6a9decb30a85a032946f0a4264033afdfb0160e4456f460c5/chronify-0.3.1-py3-none-any.whl", hash = "sha256:c4b64117b48b8e8337ed38f76a04f80aa25be5aed1cc419dcf95918f906496bc", size = 57494, upload-time = "2025-08-12T00:17:34.494Z" },
+    { url = "https://files.pythonhosted.org/packages/63/2f/826c4b6d8703f305d04982b6f81b4125fb8c57012b6575e751925038e496/chronify-0.4.0-py3-none-any.whl", hash = "sha256:e78f0d702f600d35732940da3702a990ce8ea1fef5c8e47abb0923197a458d93", size = 57632, upload-time = "2025-10-22T18:36:59.706Z" },
 ]
 
 [[package]]
@@ -498,9 +498,9 @@ wheels = [
 ]
 
 [[package]]
-name = "dsgrid"
-version = "0.1.0"
-source = { git = "https://github.com/dsgrid/dsgrid.git?rev=feat%2Fdataset-support#6d7083dabd1588eaf5c80056d67fa1a9bdaeb73b" }
+name = "dsgrid-toolkit"
+version = "0.2.0"
+source = { git = "https://github.com/dsgrid/dsgrid.git?rev=main#e504efd89f16380bde3967da1ddf90bcbd568ff3" }
 dependencies = [
     { name = "chronify" },
     { name = "click" },
@@ -638,6 +638,8 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/1f/8e/abdd3f14d735b2929290a018ecf133c901be4874b858dd1c604b9319f064/greenlet-3.2.4-cp311-cp311-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:2523e5246274f54fdadbce8494458a2ebdcdbc7b802318466ac5606d3cded1f8", size = 587684, upload-time = "2025-08-07T13:18:25.164Z" },
     { url = "https://files.pythonhosted.org/packages/5d/65/deb2a69c3e5996439b0176f6651e0052542bb6c8f8ec2e3fba97c9768805/greenlet-3.2.4-cp311-cp311-musllinux_1_1_aarch64.whl", hash = "sha256:1987de92fec508535687fb807a5cea1560f6196285a4cde35c100b8cd632cc52", size = 1116647, upload-time = "2025-08-07T13:42:38.655Z" },
     { url = "https://files.pythonhosted.org/packages/3f/cc/b07000438a29ac5cfb2194bfc128151d52f333cee74dd7dfe3fb733fc16c/greenlet-3.2.4-cp311-cp311-musllinux_1_1_x86_64.whl", hash = "sha256:55e9c5affaa6775e2c6b67659f3a71684de4c549b3dd9afca3bc773533d284fa", size = 1142073, upload-time = "2025-08-07T13:18:21.737Z" },
+    { url = "https://files.pythonhosted.org/packages/67/24/28a5b2fa42d12b3d7e5614145f0bd89714c34c08be6aabe39c14dd52db34/greenlet-3.2.4-cp311-cp311-musllinux_1_2_aarch64.whl", hash = "sha256:c9c6de1940a7d828635fbd254d69db79e54619f165ee7ce32fda763a9cb6a58c", size = 1548385, upload-time = "2025-11-04T12:42:11.067Z" },
+    { url = "https://files.pythonhosted.org/packages/6a/05/03f2f0bdd0b0ff9a4f7b99333d57b53a7709c27723ec8123056b084e69cd/greenlet-3.2.4-cp311-cp311-musllinux_1_2_x86_64.whl", hash = "sha256:03c5136e7be905045160b1b9fdca93dd6727b180feeafda6818e6496434ed8c5", size = 1613329, upload-time = "2025-11-04T12:42:12.928Z" },
     { url = "https://files.pythonhosted.org/packages/d8/0f/30aef242fcab550b0b3520b8e3561156857c94288f0332a79928c31a52cf/greenlet-3.2.4-cp311-cp311-win_amd64.whl", hash = "sha256:9c40adce87eaa9ddb593ccb0fa6a07caf34015a29bf8d344811665b573138db9", size = 299100, upload-time = "2025-08-07T13:44:12.287Z" },
     { url = "https://files.pythonhosted.org/packages/44/69/9b804adb5fd0671f367781560eb5eb586c4d495277c93bde4307b9e28068/greenlet-3.2.4-cp312-cp312-macosx_11_0_universal2.whl", hash = "sha256:3b67ca49f54cede0186854a008109d6ee71f66bd57bb36abd6d0a0267b540cdd", size = 274079, upload-time = "2025-08-07T13:15:45.033Z" },
     { url = "https://files.pythonhosted.org/packages/46/e9/d2a80c99f19a153eff70bc451ab78615583b8dac0754cfb942223d2c1a0d/greenlet-3.2.4-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:ddf9164e7a5b08e9d22511526865780a576f19ddd00d62f8a665949327fde8bb", size = 640997, upload-time = "2025-08-07T13:42:56.234Z" },
@@ -647,6 +649,8 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/19/0d/6660d55f7373b2ff8152401a83e02084956da23ae58cddbfb0b330978fe9/greenlet-3.2.4-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:3b3812d8d0c9579967815af437d96623f45c0f2ae5f04e366de62a12d83a8fb0", size = 607586, upload-time = "2025-08-07T13:18:28.544Z" },
     { url = "https://files.pythonhosted.org/packages/8e/1a/c953fdedd22d81ee4629afbb38d2f9d71e37d23caace44775a3a969147d4/greenlet-3.2.4-cp312-cp312-musllinux_1_1_aarch64.whl", hash = "sha256:abbf57b5a870d30c4675928c37278493044d7c14378350b3aa5d484fa65575f0", size = 1123281, upload-time = "2025-08-07T13:42:39.858Z" },
     { url = "https://files.pythonhosted.org/packages/3f/c7/12381b18e21aef2c6bd3a636da1088b888b97b7a0362fac2e4de92405f97/greenlet-3.2.4-cp312-cp312-musllinux_1_1_x86_64.whl", hash = "sha256:20fb936b4652b6e307b8f347665e2c615540d4b42b3b4c8a321d8286da7e520f", size = 1151142, upload-time = "2025-08-07T13:18:22.981Z" },
+    { url = "https://files.pythonhosted.org/packages/27/45/80935968b53cfd3f33cf99ea5f08227f2646e044568c9b1555b58ffd61c2/greenlet-3.2.4-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:ee7a6ec486883397d70eec05059353b8e83eca9168b9f3f9a361971e77e0bcd0", size = 1564846, upload-time = "2025-11-04T12:42:15.191Z" },
+    { url = "https://files.pythonhosted.org/packages/69/02/b7c30e5e04752cb4db6202a3858b149c0710e5453b71a3b2aec5d78a1aab/greenlet-3.2.4-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:326d234cbf337c9c3def0676412eb7040a35a768efc92504b947b3e9cfc7543d", size = 1633814, upload-time = "2025-11-04T12:42:17.175Z" },
     { url = "https://files.pythonhosted.org/packages/e9/08/b0814846b79399e585f974bbeebf5580fbe59e258ea7be64d9dfb253c84f/greenlet-3.2.4-cp312-cp312-win_amd64.whl", hash = "sha256:a7d4e128405eea3814a12cc2605e0e6aedb4035bf32697f72deca74de4105e02", size = 299899, upload-time = "2025-08-07T13:38:53.448Z" },
     { url = "https://files.pythonhosted.org/packages/49/e8/58c7f85958bda41dafea50497cbd59738c5c43dbbea5ee83d651234398f4/greenlet-3.2.4-cp313-cp313-macosx_11_0_universal2.whl", hash = "sha256:1a921e542453fe531144e91e1feedf12e07351b1cf6c9e8a3325ea600a715a31", size = 272814, upload-time = "2025-08-07T13:15:50.011Z" },
     { url = "https://files.pythonhosted.org/packages/62/dd/b9f59862e9e257a16e4e610480cfffd29e3fae018a68c2332090b53aac3d/greenlet-3.2.4-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:cd3c8e693bff0fff6ba55f140bf390fa92c994083f838fece0f63be121334945", size = 641073, upload-time = "2025-08-07T13:42:57.23Z" },
@@ -656,6 +660,8 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/ee/43/3cecdc0349359e1a527cbf2e3e28e5f8f06d3343aaf82ca13437a9aa290f/greenlet-3.2.4-cp313-cp313-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:23768528f2911bcd7e475210822ffb5254ed10d71f4028387e5a99b4c6699671", size = 610497, upload-time = "2025-08-07T13:18:31.636Z" },
     { url = "https://files.pythonhosted.org/packages/b8/19/06b6cf5d604e2c382a6f31cafafd6f33d5dea706f4db7bdab184bad2b21d/greenlet-3.2.4-cp313-cp313-musllinux_1_1_aarch64.whl", hash = "sha256:00fadb3fedccc447f517ee0d3fd8fe49eae949e1cd0f6a611818f4f6fb7dc83b", size = 1121662, upload-time = "2025-08-07T13:42:41.117Z" },
     { url = "https://files.pythonhosted.org/packages/a2/15/0d5e4e1a66fab130d98168fe984c509249c833c1a3c16806b90f253ce7b9/greenlet-3.2.4-cp313-cp313-musllinux_1_1_x86_64.whl", hash = "sha256:d25c5091190f2dc0eaa3f950252122edbbadbb682aa7b1ef2f8af0f8c0afefae", size = 1149210, upload-time = "2025-08-07T13:18:24.072Z" },
+    { url = "https://files.pythonhosted.org/packages/1c/53/f9c440463b3057485b8594d7a638bed53ba531165ef0ca0e6c364b5cc807/greenlet-3.2.4-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:6e343822feb58ac4d0a1211bd9399de2b3a04963ddeec21530fc426cc121f19b", size = 1564759, upload-time = "2025-11-04T12:42:19.395Z" },
+    { url = "https://files.pythonhosted.org/packages/47/e4/3bb4240abdd0a8d23f4f88adec746a3099f0d86bfedb623f063b2e3b4df0/greenlet-3.2.4-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:ca7f6f1f2649b89ce02f6f229d7c19f680a6238af656f61e0115b24857917929", size = 1634288, upload-time = "2025-11-04T12:42:21.174Z" },
     { url = "https://files.pythonhosted.org/packages/0b/55/2321e43595e6801e105fcfdee02b34c0f996eb71e6ddffca6b10b7e1d771/greenlet-3.2.4-cp313-cp313-win_amd64.whl", hash = "sha256:554b03b6e73aaabec3745364d6239e9e012d64c68ccd0b8430c64ccc14939a8b", size = 299685, upload-time = "2025-08-07T13:24:38.824Z" },
 ]
 
@@ -1215,6 +1221,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/6e/5c/0efc297df362b88b74957a230af61cd6929f531f72f48063e8408702ffba/plotly-6.2.0.tar.gz", hash = "sha256:9dfa23c328000f16c928beb68927444c1ab9eae837d1fe648dbcda5360c7953d", size = 6801941, upload-time = "2025-06-26T16:20:45.765Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ed/20/f2b7ac96a91cc5f70d81320adad24cc41bf52013508d649b1481db225780/plotly-6.2.0-py3-none-any.whl", hash = "sha256:32c444d4c940887219cb80738317040363deefdfee4f354498cc0b6dab8978bd", size = 9635469, upload-time = "2025-06-26T16:20:40.76Z" },
+]
+
+[[package]]
+name = "plotly-stubs"
+version = "0.0.6"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/07/80/928585fcf5d78377291e02081d816753cfa5669ffa08f4cc612e06c16097/plotly_stubs-0.0.6.tar.gz", hash = "sha256:ddd83fd9f440dac00fcb29524c127598f740a3e93c6b43c95f471603265e14ea", size = 50722, upload-time = "2025-07-29T07:09:35.375Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0d/fd/0eef6785d0a7363f7024c9e2c8ff4fb6f1174aff8e6ab2f0f6397b659b42/plotly_stubs-0.0.6-py3-none-any.whl", hash = "sha256:7cc0b438c4daf58f83c37fefac54c0251664664e5a429b73f1ab0a80169d625e", size = 104430, upload-time = "2025-07-29T07:09:34.21Z" },
 ]
 
 [[package]]
@@ -1971,7 +1986,7 @@ dependencies = [
     { name = "dash-bootstrap-components" },
     { name = "dbt-core" },
     { name = "dbt-duckdb" },
-    { name = "dsgrid" },
+    { name = "dsgrid-toolkit" },
     { name = "duckdb" },
     { name = "loguru" },
     { name = "pandas" },
@@ -1988,6 +2003,7 @@ dev = [
     { name = "mypy" },
     { name = "myst-parser" },
     { name = "pandas-stubs" },
+    { name = "plotly-stubs" },
     { name = "pre-commit" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -1999,11 +2015,6 @@ dev = [
     { name = "sphinx-tabs" },
 ]
 
-[package.dev-dependencies]
-dev = [
-    { name = "pytest" },
-]
-
 [package.metadata]
 requires-dist = [
     { name = "autodoc-pydantic", marker = "extra == 'dev'", specifier = "~=2.0" },
@@ -2012,7 +2023,7 @@ requires-dist = [
     { name = "dash-bootstrap-components", specifier = ">=2.0.3" },
     { name = "dbt-core", specifier = ">=1.10.5,<2" },
     { name = "dbt-duckdb" },
-    { name = "dsgrid", git = "https://github.com/dsgrid/dsgrid.git?rev=feat%2Fdataset-support" },
+    { name = "dsgrid-toolkit", git = "https://github.com/dsgrid/dsgrid.git?rev=main" },
     { name = "duckdb", specifier = ">=1.1,<2" },
     { name = "furo", marker = "extra == 'dev'" },
     { name = "loguru" },
@@ -2021,6 +2032,7 @@ requires-dist = [
     { name = "pandas", specifier = ">=2.2,<3" },
     { name = "pandas-stubs", marker = "extra == 'dev'" },
     { name = "plotly", specifier = ">=6.2.0" },
+    { name = "plotly-stubs", marker = "extra == 'dev'", specifier = ">=0.0.6" },
     { name = "pre-commit", marker = "extra == 'dev'" },
     { name = "pyarrow" },
     { name = "pydantic", specifier = ">=2.7,<3" },
@@ -2035,9 +2047,6 @@ requires-dist = [
     { name = "sphinx-tabs", marker = "extra == 'dev'", specifier = "~=3.4" },
 ]
 provides-extras = ["dev"]
-
-[package.metadata.requires-dev]
-dev = [{ name = "pytest", specifier = ">=8.4.1" }]
 
 [[package]]
 name = "text-unidecode"

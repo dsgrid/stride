@@ -16,19 +16,21 @@ Key Features:
 
 """
 
-import pandas as pd
-from stride.project import Project
-from loguru import logger
 from typing import Any
 
+import pandas as pd
+from loguru import logger
+
+from stride.project import Project
+
 from .utils import (
-    build_seasonal_query,
     ConsumptionBreakdown,
-    TimeGroup,
-    TimeGroupAgg,
     ResampleOptions,
     SecondaryMetric,
+    TimeGroup,
+    TimeGroupAgg,
     WeatherVar,
+    build_seasonal_query,
 )
 
 # TODO
@@ -734,7 +736,7 @@ class APIClient:
         scenario: str,
         year: int,
         wvar: WeatherVar,
-        resample: ResampleOptions | None = None,
+        resample: ResampleOptions,
         timegroup: TimeGroup | None = None,
     ) -> pd.DataFrame:
         """
@@ -830,7 +832,9 @@ class APIClient:
         --------
         >>> client = APIClient(path_or_conn)
         >>> # Raw hourly data with group_by
-        >>> df = client.get_time_series_comparison("baseline", [2025, 2030], "Sector", resample=None)
+        >>> df = client.get_time_series_comparison(
+        ...     "baseline", [2025, 2030], "Sector", resample=None
+        ... )
 
         ::
 
@@ -883,9 +887,11 @@ class APIClient:
         self._validate_scenarios([scenario])
         self._validate_years(years)
 
-        if resample is None or resample == "None":
+        if resample == "Hourly":
             # Raw hourly data - use hour of year as time_period
-            time_period_calc = "ROW_NUMBER() OVER (PARTITION BY scenario, model_year ORDER BY timestamp)"
+            time_period_calc = (
+                "ROW_NUMBER() OVER (PARTITION BY scenario, model_year ORDER BY timestamp)"
+            )
 
             if group_by:
                 if group_by == "End Use":
