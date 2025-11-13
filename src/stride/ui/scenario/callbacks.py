@@ -1,18 +1,17 @@
-from dash import Input, Output, callback
-import plotly.graph_objects as go
+from typing import TYPE_CHECKING, Any, Literal
 
+import plotly.graph_objects as go
+from dash import Input, Output, callback
 from loguru import logger
 
 from stride.api.utils import (
     ConsumptionBreakdown,
-    SecondaryMetric,
     ResampleOptions,
-    WeatherVar,
+    SecondaryMetric,
     TimeGroup,
     TimeGroupAgg,
+    WeatherVar,
 )
-
-from typing import TYPE_CHECKING, Literal, Any
 
 if TYPE_CHECKING:
     from stride.api import APIClient
@@ -274,7 +273,7 @@ def update_yearly_plot(
     breakdown : ConsumptionBreakdown
         Breakdown type ("None", "Sector", or "End Use")
     resample : ResampleOptions
-        Resampling option ("Daily Mean" or "Weekly Mean")
+        Resampling option ("Daily Mean", "Weekly Mean", or "Hourly")
     weather_var : WeatherVar | "None" | None
         Weather variable for secondary axis (not yet implemented)
     selected_year : list[int]
