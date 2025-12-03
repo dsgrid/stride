@@ -1,3 +1,4 @@
+import importlib.resources
 import os
 import shutil
 import subprocess
@@ -13,7 +14,6 @@ from dsgrid.utils.files import dump_json_file
 from duckdb import DuckDBPyConnection, DuckDBPyRelation
 from loguru import logger
 
-import stride
 from stride.db_interface import make_dsgrid_data_table_name
 from stride.default_datasets import create_test_datasets
 from stride.default_project import create_dsgrid_project
@@ -252,11 +252,14 @@ class Project:
 
     def copy_dbt_template(self) -> None:
         """Copy the dbt template for all scenarios."""
-        stride_base_dir = Path(next(iter(stride.__path__)))
         dbt_dir = self._path / DBT_DIR
-        shutil.copytree(stride_base_dir / DBT_DIR, dbt_dir)
-        src_file = stride_base_dir / DBT_DIR / "energy_projection_scenario_placeholder.sql"
-        dst_file = self._path / DBT_DIR / "models" / "energy_projection.sql"
+        dbt_resource = importlib.resources.files("stride").joinpath(DBT_DIR)
+
+        with importlib.resources.as_file(dbt_resource) as dbt_src:
+            shutil.copytree(dbt_src, dbt_dir)
+
+        src_file = dbt_dir / "energy_projection_scenario_placeholder.sql"
+        dst_file = dbt_dir / "models" / "energy_projection.sql"
         shutil.copyfile(src_file, dst_file)
 
     def export_calculated_table(
