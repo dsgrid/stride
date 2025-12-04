@@ -100,7 +100,7 @@ def make_mapped_datasets(
     scenario: str,
 ) -> None:
     url = _registry_url(base_path)
-    mgr = RegistryManager.load(DatabaseConnection(url=url))
+    mgr = RegistryManager.load(DatabaseConnection(url=url), use_remote_data=False)
     scratch_dir = Path(tempfile.gettempdir())
     project = mgr.project_manager.load_project(project_id)
     time_dimension = project.config.get_base_time_dimension()
