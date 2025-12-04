@@ -24,6 +24,7 @@ from stride.models import (
     ProjectConfig,
     Scenario,
 )
+from stride.ui.palette import ColorPalette
 
 CONFIG_FILE = "project.json5"
 DATABASE_FILE = "data.duckdb"
@@ -43,6 +44,7 @@ class Project:
         self._config = config
         self._path = project_path
         self._con = self._connect(**connection_kwargs)
+        self._palette: ColorPalette | None = None
 
     def _connect(self, **connection_kwargs: Any) -> DuckDBPyConnection:
         return duckdb.connect(self._path / REGISTRY_DATA_DIR / DATABASE_FILE, **connection_kwargs)
@@ -147,6 +149,20 @@ class Project:
     def path(self) -> Path:
         """Return the project path."""
         return self._path
+
+    @property
+    def palette(self) -> ColorPalette:
+        """Get or create the color palette for this project."""
+        if self._palette is None:
+            self._palette = ColorPalette(self._config.color_palette)
+        return self._palette
+
+    def save_palette(self) -> None:
+        """Save the current palette state back to the project conig file."""
+        if self._palette is not None:
+            self._config.color_palette = self._palette.to_dict()
+            config_path = self._path / "project.json5"
+            config_path.write_text(self._config.model_dump_json(indent=2))
 
     def override_calculated_tables(self, overrides: list[CalculatedTableOverride]) -> None:
         """Override one or more calculated tables."""

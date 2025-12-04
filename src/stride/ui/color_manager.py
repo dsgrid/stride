@@ -1,7 +1,7 @@
-from typing import Dict, List, Self
-from itertools import cycle
-from plotly import colors
 import re
+from typing import Dict, List, Self
+
+from .palette import ColorPalette
 
 
 class ColorManager:
@@ -9,19 +9,18 @@ class ColorManager:
 
     _instance = None
 
-    def __new__(cls) -> Self:
+    def __new__(cls, palette: ColorPalette | None = None) -> Self:
         if cls._instance is None:
             cls._instance = super(ColorManager, cls).__new__(cls)
             cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self) -> None:
+    def __init__(self, palette: ColorPalette | None = None) -> None:
         if self._initialized:
             return
 
-        self._color_palette = colors.qualitative.Prism  # type: ignore[attr-defined]
-        self._color_iterator = cycle(self._color_palette)
-        self._color_cache: Dict[str, str] = {}
+        # Use provided palette or create a new one
+        self._palette = palette if palette is not None else ColorPalette()
         self._scenario_colors: Dict[str, Dict[str, str]] = {}
         self._initialized: bool = True
 
@@ -47,16 +46,22 @@ class ColorManager:
 
     def get_color(self, key: str) -> str:
         """Get consistent RGBA color for a given key."""
-        if key not in self._color_cache:
-            color = next(self._color_iterator)
+        # Get color from palette (could be hex or rgb string)
+        color = self._palette.get(key)
 
-            # TODO might want to handle all cases with match statement.
-            if isinstance(color, str) and color.startswith("#"):
-                self._color_cache[key] = self._hex_to_rgba_str(color)
+        # Convert to RGBA for UI usage
+        if color.startswith("#"):
+            return self._hex_to_rgba_str(color)
+        elif color.startswith("rgb"):
+            # Already in rgb format, ensure it's rgba
+            if color.startswith("rgba"):
+                return color
             else:
-                # Assume it is already an rgb(a) string
-                self._color_cache[key] = color
-        return self._color_cache[key]
+                # Convert rgb to rgba
+                return color.replace("rgb(", "rgba(").replace(")", ", 1.0)")
+        else:
+            # Unknown format, return as is
+            return color
 
     def get_scenario_styling(self, scenario: str) -> Dict[str, str]:
         """Get background and border colors for scenario checkboxes."""
@@ -66,7 +71,6 @@ class ColorManager:
         """Get all scenario styling colors."""
         return self._scenario_colors.copy()
 
-    # FIXME This doesn't seem to override the default css for the checkbox as intended
     def generate_scenario_css(self) -> str:
         """Generate CSS string for scenario checkbox styling."""
         css_rules = []
@@ -84,6 +88,10 @@ class ColorManager:
 
         return "\n".join(css_rules)
 
+    def get_palette(self) -> ColorPalette:
+        """Get the underlying ColorPalette instance."""
+        return self._palette
+
     def _generate_scenario_colors(self, scenarios: List[str]) -> None:
         """Generate background and border colors for scenarios."""
         for scenario in scenarios:
@@ -96,7 +104,18 @@ class ColorManager:
             }
 
     def _hex_to_rgba_str(self, hex_color: str) -> str:
-        """Convert hex color to RGBA string."""
+        """Convert hex color to RGBA string.
+
+        Parameters
+        ----------
+        hex_color : str
+            Hex color string starting with #
+
+        Returns
+        -------
+        str
+            RGBA color string
+        """
         hex_color = hex_color.lstrip("#")
         r, g, b = tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
         return self._rgba_to_str(r, g, b, 1.0)
@@ -125,6 +144,12 @@ class ColorManager:
 
 
 # Convenience function to get the singleton instance
-def get_color_manager() -> ColorManager:
-    """Get the ColorManager singleton instance."""
-    return ColorManager()
+def get_color_manager(palette: ColorPalette | None = None) -> ColorManager:
+    """Get the ColorManager singleton instance.
+
+    Parameters
+    ----------
+    palette : ColorPalette | None
+        Optional ColorPalette to use. Only used on first initialization.
+    """
+    return ColorManager(palette)

@@ -76,7 +76,20 @@ strict = true
 
 [[tool.mypy.overrides]]
 ignore_missing_imports = true
-module = "dsgrid.*"
+module = [
+  "dsgrid.*",
+  "plotly.*",
+  "dash.*",
+  "dash_bootstrap_components.*",
+]
+
+[[tool.mypy.overrides]]
+# Ignore type errors in UI layout files due to complex dash component types
+ignore_errors = true
+module = [
+  "stride.ui.home.layout",
+  "stride.ui.scenario.layout",
+]
 
 [tool.pytest.ini_options]
 pythonpath = "src"

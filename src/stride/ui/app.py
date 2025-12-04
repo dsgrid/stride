@@ -1,16 +1,14 @@
 from pathlib import Path
-from dash import Dash, html, dcc, Input, Output, callback
-import dash_bootstrap_components as dbc  # type: ignore
 
+import dash_bootstrap_components as dbc
+from dash import Dash, Input, Output, callback, dcc, html
 
-from stride.ui.home import create_home_layout, register_home_callbacks
-from stride.ui.scenario import create_scenario_layout, register_scenario_callbacks
-
-from stride.ui.color_manager import get_color_manager
-from stride.ui.plotting import StridePlots
 from stride.api import APIClient
-from stride.api.utils import literal_to_list, Sectors
-
+from stride.api.utils import Sectors, literal_to_list
+from stride.ui.color_manager import get_color_manager
+from stride.ui.home import create_home_layout, register_home_callbacks
+from stride.ui.plotting import StridePlots
+from stride.ui.scenario import create_scenario_layout, register_scenario_callbacks
 
 assets_path = Path(__file__).parent.absolute() / "assets"
 app = Dash(
@@ -28,20 +26,19 @@ def create_app(data_handler: APIClient) -> Dash:
 
     Parameters
     ----------
-    project_config : ProjectConfig, optional
-        Project configuration object. If provided along with db_connection,
-        will be used to initialize the APIClient.
-    db_connection : duckdb.DuckDBPyConnection, optional
-        Database connection object. If provided along with project_config,
-        will be used to initialize the APIClient.
+    data_handler : APIClient
+        API client with access to the project and database
 
     Returns
     -------
     Dash
         Configured Dash application
     """
-    # Initialize color manager with all entities
-    color_manager = get_color_manager()
+    # Get the project's color palette
+    project_palette = data_handler.project.palette
+
+    # Initialize color manager with the project's palette
+    color_manager = get_color_manager(palette=project_palette)
     color_manager.initialize_colors(
         scenarios=data_handler.scenarios,
         sectors=literal_to_list(Sectors),
@@ -54,7 +51,6 @@ def create_app(data_handler: APIClient) -> Dash:
     years = data_handler.years
 
     # create the home view layout based on the data handler.
-    # TODO, pass the entire data handler object into each "create" function.
     home_layout = create_home_layout(scenarios, years, color_manager)
     scenario_layout = create_scenario_layout(years, color_manager)
 
@@ -105,5 +101,14 @@ def create_app(data_handler: APIClient) -> Dash:
     )
 
     register_scenario_callbacks(scenarios, years, data_handler, plotter)
+
+    # Add a callback to save palette when app shuts down
+    import atexit
+
+    def save_palette() -> None:
+        """Save the color palette back to the project on shutdown."""
+        data_handler.project.save_palette()
+
+    atexit.register(save_palette)
 
     return app

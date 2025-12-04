@@ -1,7 +1,8 @@
+from typing import TYPE_CHECKING, Any
+
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from stride.ui.color_manager import ColorManager
@@ -28,7 +29,7 @@ def determine_facet_layout(df: pd.DataFrame) -> dict[str, Any]:
             f"{season} - {day_type}" for day_type in day_order for season in season_order
         ]
         facet_col = "season_day_type"
-        df[facet_col] = df["season"] + " - " + df["day_type"]
+        df[facet_col] = df["season"].astype(str) + " - " + df["day_type"].astype(str)
         df[facet_col] = pd.Categorical(df[facet_col], categories=facet_categories, ordered=True)
         return {
             "facet_col": facet_col,

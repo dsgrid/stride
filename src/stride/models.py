@@ -3,11 +3,10 @@ from pathlib import Path
 from typing import Any, Self
 
 from chronify.exceptions import InvalidParameter
-from pydantic import Field, field_validator
-
 from dsgrid.data_models import DSGBaseModel
 from dsgrid.dimension.base_models import DimensionType
 from dsgrid.dimension.time import TimeDimensionType
+from pydantic import Field, field_validator
 
 
 class DatasetType(StrEnum):
@@ -129,6 +128,10 @@ class ProjectConfig(DSGBaseModel):  # type: ignore
     calculated_table_overrides: list[CalculatedTableOverride] = Field(
         default=[],
         description="Calculated tables to override",
+    )
+    color_palette: dict[str, str] = Field(
+        default={},
+        description="Color palette mapping graph labels to hex color strings for the UI.",
     )
 
     @classmethod
