@@ -73,6 +73,7 @@ files = [
   "tests",
 ]
 strict = true
+warn_unused_ignores = false
 
 [[tool.mypy.overrides]]
 ignore_missing_imports = true

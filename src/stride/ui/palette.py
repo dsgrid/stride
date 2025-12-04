@@ -34,7 +34,7 @@ class ColorPalette:
         """Initializes a new ColorPalette instance with an empty set of colors."""
         # it would be nice to allow the user to set the theme via string, but it seems
         # like that would require a rather large and tedious match block for the dozens of available themes.
-        self.theme = colors.qualitative.Prism
+        self.theme = colors.qualitative.Prism  # type: ignore[attr-defined]
         self._color_iterator = cycle(self.theme)
 
         self.palette: dict[str, str] = {}  # color palettes
@@ -144,7 +144,7 @@ class ColorPalette:
         """
 
         new_palette = cls()
-        color_iterator = cycle(colors.qualitative.Prism)
+        color_iterator = cycle(colors.qualitative.Prism)  # type: ignore[attr-defined]
 
         # Want to validate every color value, but don't break if some are not valid colors.
         for key, color in palette.items():
