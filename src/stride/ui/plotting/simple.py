@@ -1,14 +1,14 @@
 from typing import TYPE_CHECKING
+
 import pandas as pd
 import plotly.graph_objects as go
 
 from .utils import (
-    TRANSPARENT,
     DEFAULT_BAR_COLOR,
-    numbers_under_each_bar,
-    get_time_series_breakdown_info,
-    create_time_series_line_traces,
+    TRANSPARENT,
     create_time_series_area_traces,
+    create_time_series_line_traces,
+    get_time_series_breakdown_info,
 )
 
 if TYPE_CHECKING:
@@ -53,7 +53,7 @@ def grouped_single_bars(
                 y=df_subset["value"],
                 name=str(group_value),
                 marker_color=color,
-                showlegend=False,
+                showlegend=True,
             )
         )
 
@@ -97,8 +97,18 @@ def grouped_multi_bars(
     """
     bars = []
 
-    for x_value in df[x_group].unique():
-        for y_value in df[y_group].unique():
+    # Get max value for indicator bar sizing
+    max_value = df["value"].max()
+    indicator_height = max_value * 0.02
+
+    # Add data bars - group by sector for sector toggling
+    # NOTE: Due to Plotly's legend system limitations, we can only toggle one dimension
+    # independently. Data bars are grouped by sector/end_use so clicking a sector
+    # toggles that sector across all scenarios. Scenario indicators are visual only.
+    added_y_legend = set()
+    y_group_title_added = False
+    for y_value in sorted(df[y_group].unique()):
+        for x_value in sorted(df[x_group].unique()):
             df_subset = df[(df[x_group] == x_value) & (df[y_group] == y_value)]
             bars.append(
                 go.Bar(
@@ -107,9 +117,45 @@ def grouped_multi_bars(
                     marker_color=color_generator.get_color(y_value),
                     name=y_value,
                     offsetgroup=x_value,
-                    showlegend=False,
+                    legendgroup=y_value,
+                    legendgrouptitle_text=y_group.replace("_", " ").title()
+                    if not y_group_title_added
+                    else None,
+                    legendrank=1,
+                    showlegend=y_value not in added_y_legend,
                 )
             )
+            if not y_group_title_added:
+                y_group_title_added = True
+            added_y_legend.add(y_value)
+
+    # Add colored indicator bars for scenarios (visual reference)
+    # These appear in the legend but clicking them only toggles the indicator itself,
+    # not the data bars. Use scenario selection checkboxes for full scenario toggling.
+    years = sorted(df["year"].unique())
+    scenario_title_added = False
+    for i, x_value in enumerate(sorted(df[x_group].unique())):
+        bars.append(
+            go.Bar(
+                x=[str(year) for year in years],
+                y=[indicator_height] * len(years),
+                name=x_value,
+                legendgroup="scenarios",  # All scenarios share same legendgroup
+                legendgrouptitle_text="Scenarios" if not scenario_title_added else None,
+                legendrank=2,
+                marker=dict(
+                    color=color_generator.get_color(x_value),
+                    pattern_shape="/",
+                    pattern_solidity=0.3,
+                ),
+                offsetgroup=x_value,
+                showlegend=True,
+                base=-indicator_height * 2.5,
+                hoverinfo="skip",
+            )
+        )
+        if not scenario_title_added:
+            scenario_title_added = True
 
     fig = go.Figure(data=bars)
     fig.update_layout(
@@ -120,10 +166,12 @@ def grouped_multi_bars(
         margin_l=20,
         margin_r=20,
         barmode="stack",
+        yaxis=dict(range=[-indicator_height * 4, max_value * 1.1]),
+        legend=dict(
+            itemclick="toggle",  # Single click toggles sectors (or scenario indicators)
+            itemdoubleclick=False,  # Disabled - can't handle 2D toggling properly
+        ),
     )
-    n_groups = len(df["year"].unique())
-    n_bars = len(df[x_group].unique())
-    fig = numbers_under_each_bar(fig, n_groups, n_bars)
 
     return fig
 
@@ -168,26 +216,65 @@ def grouped_stacked_bars(
     groups = sorted(df[group_col].unique())
     stack_categories = sorted(df[stack_col].unique())
 
-    # Track which legend gropus have been added.
-    added_legend_groups = set()
+    # Get the maximum value to determine indicator bar height
+    max_value = df[value_col].max()
+    indicator_height = max_value * 0.02  # 2% of max value
 
-    # Create traces for each combination of group and stack category
-    for group in groups:
-        for stack_cat in stack_categories:
+    # Create data traces - group by sector for sector toggling
+    # NOTE: Due to Plotly's legend system limitations, we can only toggle one dimension
+    # independently. Data bars are grouped by sector/end_use so clicking a sector
+    # toggles that sector across all scenarios. Scenario indicators are visual only.
+    added_stack_legend = set()
+    stack_group_title_added = False
+    for stack_cat in stack_categories:
+        for group in groups:
             df_subset = df[(df[group_col] == group) & (df[stack_col] == stack_cat)]
 
             fig.add_trace(
                 go.Bar(
                     x=df_subset[year_col].astype(str),
                     y=df_subset[value_col],
-                    name=f"{group}_{stack_cat}",
+                    name=stack_cat,
                     legendgroup=stack_cat,
+                    legendgrouptitle_text=stack_col.replace("_", " ").title()
+                    if not stack_group_title_added
+                    else None,
                     marker_color=color_generator.get_color(stack_cat),
                     offsetgroup=group,
-                    showlegend=stack_cat not in added_legend_groups,
+                    legendrank=1,
+                    showlegend=stack_cat not in added_stack_legend,
                 )
             )
-            added_legend_groups.add(stack_cat)
+            if not stack_group_title_added:
+                stack_group_title_added = True
+            added_stack_legend.add(stack_cat)
+
+    # Add colored indicator bars for scenarios (visual reference)
+    # These appear in the legend but clicking them only toggles the indicator itself,
+    # not the data bars. Use scenario selection checkboxes for full scenario toggling.
+    scenario_title_added = False
+    for i, group in enumerate(groups):
+        fig.add_trace(
+            go.Bar(
+                x=[str(year) for year in years],
+                y=[indicator_height] * len(years),
+                name=group,
+                legendgroup="scenarios",  # All scenarios share same legendgroup
+                legendgrouptitle_text="Scenarios" if not scenario_title_added else None,
+                legendrank=2,
+                marker=dict(
+                    color=color_generator.get_color(group),
+                    pattern_shape="/",
+                    pattern_solidity=0.3,
+                ),
+                offsetgroup=group,
+                showlegend=True,
+                base=-indicator_height * 2.5,
+                hoverinfo="skip",
+            )
+        )
+        if not scenario_title_added:
+            scenario_title_added = True
 
     fig.update_layout(
         plot_bgcolor=TRANSPARENT,
@@ -197,11 +284,12 @@ def grouped_stacked_bars(
         margin_l=20,
         margin_r=20,
         barmode="stack",
+        yaxis=dict(range=[-indicator_height * 4, max_value * 1.1]),
+        legend=dict(
+            itemclick="toggle",  # Single click toggles sectors (or scenario indicators)
+            itemdoubleclick=False,  # Disabled - can't handle 2D toggling properly
+        ),
     )
-
-    n_groups = len(years)
-    n_bars = len(groups)
-    fig = numbers_under_each_bar(fig, n_groups, n_bars)
 
     return fig
 

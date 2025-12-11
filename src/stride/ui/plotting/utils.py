@@ -171,10 +171,14 @@ def create_seasonal_annotations(layout_config: dict[str, Any]) -> list[dict[str,
 
 
 def numbers_under_each_bar(
-    fig: go.Figure, n_groups: int, n_bars: int, sep_width: float = 0.2
+    fig: go.Figure,
+    n_groups: int,
+    n_bars: int,
+    labels: list[str] | None = None,
+    sep_width: float = 0.2,
 ) -> go.Figure:
     """
-    Add numbered annotations under each bar group in a grouped bar chart.
+    Add annotations above the middle bar group in a grouped bar chart.
 
     Parameters
     ----------
@@ -184,26 +188,38 @@ def numbers_under_each_bar(
         Number of bar groups (x-axis positions)
     n_bars : int
         Number of bars per group
+    labels : list[str], optional
+        Labels to display above each bar. If None, uses numbers (1, 2, 3...), by default None
     sep_width : float, optional
         Separation width between bar groups, by default 0.2
 
     Returns
     -------
     go.Figure
-        Modified figure with numbered annotations under each bar group
+        Modified figure with annotations above the middle bar group
     """
-    for bar_group_num in range(1, n_groups + 1):
-        bar_nums = np.arange(n_bars) + 1
-        x = (np.arange(n_bars) - ((n_bars - 1) / 2)) * ((1 - sep_width) / n_bars)
-        x = x + bar_group_num - 1
-        for bar_num, xi in zip(bar_nums, x):
-            fig.add_annotation(
-                text=f"<b>{bar_num}</b>",
-                y=0,
-                x=xi,
-                showarrow=False,
-                yshift=-10,
-            )
+    # Position labels above the middle bar group
+    middle_group = (n_groups + 1) // 2
+
+    if labels is not None:
+        bar_labels = labels
+    else:
+        bar_labels = [str(i) for i in range(1, n_bars + 1)]
+
+    x = (np.arange(n_bars) - ((n_bars - 1) / 2)) * ((1 - sep_width) / n_bars)
+    x = x + middle_group - 1
+
+    for label, xi in zip(bar_labels, x):
+        fig.add_annotation(
+            text=f"<b>{label}</b>",
+            y=1,
+            x=xi,
+            showarrow=False,
+            yref="paper",
+            yanchor="bottom",
+            textangle=-45,
+            xanchor="left",
+        )
     return fig
 
 

@@ -1,17 +1,17 @@
-from dash import Input, Output, callback
-
-from stride.ui.plotting import StridePlots
-from stride.ui.color_manager import ColorManager
-from stride.api.utils import ConsumptionBreakdown, SecondaryMetric, ChartType
 from typing import TYPE_CHECKING, Any, Literal
+
 import plotly.graph_objects as go
+from dash import Input, Output, callback
 from loguru import logger
 
+from stride.api.utils import ChartType, ConsumptionBreakdown, SecondaryMetric
+from stride.ui.color_manager import ColorManager
+from stride.ui.plotting import StridePlots
 
 if TYPE_CHECKING:
     from stride.api import APIClient
-    from stride.ui.plotting import StridePlots
     from stride.ui.color_manager import ColorManager
+    from stride.ui.plotting import StridePlots
 
 
 def save_home_state(*values: object) -> dict[str, Any]:
@@ -349,11 +349,13 @@ def register_home_callbacks(
         Input("home-scenarios-checklist", "value"),
         Input("home-consumption-breakdown", "value"),
         Input("home-secondary-metric", "value"),
+        Input("chart-refresh-trigger", "data"),
     )
     def _update_home_scenario_comparison_callback(
         selected_scenarios: list[str],
         breakdown: ConsumptionBreakdown | Literal["None"],
         secondary_metric: SecondaryMetric | Literal["None"],
+        refresh_trigger: int,
     ) -> go.Figure | dict[str, Any]:
         return update_home_scenario_comparison(
             data_handler, plotter, selected_scenarios, breakdown, secondary_metric
@@ -364,11 +366,13 @@ def register_home_callbacks(
         Input("home-scenarios-2-checklist", "value"),
         Input("home-peak-breakdown", "value"),
         Input("home-peak-secondary-metric", "value"),
+        Input("chart-refresh-trigger", "data"),
     )
     def _update_home_sector_breakdown_callback(
         selected_scenarios: list[str],
         breakdown: ConsumptionBreakdown | Literal["None"],
         secondary_metric: SecondaryMetric | Literal["None"],
+        refresh_trigger: int,
     ) -> go.Figure | dict[str, Any]:
         return update_home_sector_breakdown(
             data_handler, plotter, selected_scenarios, breakdown, secondary_metric
@@ -378,9 +382,10 @@ def register_home_callbacks(
         Output("home-load-duration", "figure"),
         Input("home-scenarios-3-checklist", "value"),
         Input("home-year-dropdown", "value"),
+        Input("chart-refresh-trigger", "data"),
     )
     def _update_home_load_duration_callback(
-        selected_scenarios: list[str], selected_year: int
+        selected_scenarios: list[str], selected_year: int, refresh_trigger: int
     ) -> go.Figure | dict[str, Any]:
         return update_home_load_duration(data_handler, plotter, selected_scenarios, selected_year)
 
@@ -390,12 +395,14 @@ def register_home_callbacks(
         Input("home-timeseries-chart-type", "value"),
         Input("home-timeseries-breakdown", "value"),
         Input("home-timeseries-secondary-metric", "value"),
+        Input("chart-refresh-trigger", "data"),
     )
     def _update_home_scenario_timeseries_callback(
         selected_scenarios: list[str],
         chart_type: ChartType,
         breakdown: ConsumptionBreakdown | Literal["None"],
         secondary_metric: SecondaryMetric | Literal["None"],
+        refresh_trigger: int,
     ) -> go.Figure | dict[str, Any]:
         return update_home_scenario_timeseries(
             data_handler, plotter, selected_scenarios, chart_type, breakdown, secondary_metric

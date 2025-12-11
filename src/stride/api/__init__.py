@@ -148,6 +148,42 @@ class APIClient:
         self._years = None
         self._scenarios = None
 
+    def get_unique_sectors(self) -> list[str]:
+        """
+        Get unique sectors from the energy projection table.
+
+        Returns
+        -------
+        list[str]
+            Sorted list of unique sectors from the database
+        """
+        sql = """
+        SELECT DISTINCT sector
+        FROM energy_projection
+        WHERE geography = ?
+        ORDER BY sector
+        """
+        result = self.db.execute(sql, [self.project_country]).fetchall()
+        return [row[0] for row in result]
+
+    def get_unique_end_uses(self) -> list[str]:
+        """
+        Get unique end uses (metrics) from the energy projection table.
+
+        Returns
+        -------
+        list[str]
+            Sorted list of unique end uses/metrics from the database
+        """
+        sql = """
+        SELECT DISTINCT metric
+        FROM energy_projection
+        WHERE geography = ?
+        ORDER BY metric
+        """
+        result = self.db.execute(sql, [self.project_country]).fetchall()
+        return [row[0] for row in result]
+
     def _fetch_years(self) -> list[int]:
         """
         Fetch years from database.

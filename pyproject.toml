@@ -38,6 +38,7 @@ dependencies = [
     "pyarrow",
     "pydantic >= 2.7, < 3",
     "rich",
+    "textual>=0.47.0",
 ]
 [project.optional-dependencies]
 

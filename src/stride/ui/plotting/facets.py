@@ -1,14 +1,15 @@
 from typing import TYPE_CHECKING, Any
+
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from .utils import (
     TRANSPARENT,
-    determine_facet_layout,
-    create_seasonal_annotations,
     calculate_subplot_layout,
     create_faceted_traces,
+    create_seasonal_annotations,
+    determine_facet_layout,
     update_faceted_layout,
 )
 

@@ -1,11 +1,16 @@
-/* STRIDE title styling with underline - moved to left with padding */
+/* STRIDE title styling - clickable home link */
 .stride-title {
-    border-bottom: 3px solid #000000;
-    padding-bottom: 0px;
-    padding-left: 40px;
-    margin-bottom: 0; /* Removed bottom margin */
-    text-align: left;
+    cursor: pointer;
+    margin: 0;
+    padding: 0;
+    display: inline-block;
 }
+
+.stride-title:hover {
+    color: #0d6efd;
+}
+
+/* Sidebar toggle button styling - now in theme CSS files */
 
 /* Scenario title styling - matches STRIDE title alignment */
 .scenario-title {
@@ -74,7 +79,7 @@
 
 /* Optional: Add some spacing and styling to cards */
 .card {
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     border: 1px solid #e9ecef;
 }
 
@@ -130,4 +135,78 @@
     border-color: var(--scenario-border, #007bffcc) !important;
     color: #212529;
     font-weight: bold;
+}
+
+/* Color picker button styling */
+.color-item-button {
+    font-family: inherit;
+    font-size: inherit;
+}
+
+.color-item-button:hover {
+    background-color: #e9ecef !important;
+    border-color: #007bff !important;
+    box-shadow: 0 2px 6px rgba(0, 123, 255, 0.2);
+    transform: translateY(-1px);
+}
+
+.color-item-button:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 3px rgba(0, 123, 255, 0.3);
+}
+
+/* Color picker modal styling */
+#color-picker-input {
+    border: 2px solid #dee2e6;
+    border-radius: 4px;
+    padding: 4px;
+}
+
+#color-picker-input:hover {
+    border-color: #007bff;
+}
+
+#color-picker-hex-input {
+    font-family: monospace;
+    text-transform: uppercase;
+}
+
+/* ============================================
+   THEME TOGGLE SWITCH
+   ============================================ */
+
+/* Theme toggle switch container */
+#theme-toggle {
+    cursor: pointer;
+}
+
+/* Custom styling for the switch */
+.form-switch .form-check-input {
+    width: 3em;
+    height: 1.5em;
+    cursor: pointer;
+}
+
+.form-switch .form-check-input:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.form-switch .form-check-input:checked {
+    background-color: #4a5568;
+    border-color: #4a5568;
+}
+
+/* Smooth transitions */
+body,
+#page-content,
+.card,
+.btn,
+input,
+select,
+textarea {
+    transition:
+        background-color 0.3s ease,
+        color 0.3s ease,
+        border-color 0.3s ease;
 }

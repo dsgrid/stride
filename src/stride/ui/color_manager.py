@@ -16,13 +16,16 @@ class ColorManager:
         return cls._instance
 
     def __init__(self, palette: ColorPalette | None = None) -> None:
-        if self._initialized:
-            return
-
-        # Use provided palette or create a new one
-        self._palette = palette if palette is not None else ColorPalette()
-        self._scenario_colors: Dict[str, Dict[str, str]] = {}
-        self._initialized: bool = True
+        # If a new palette is provided, update even if already initialized
+        if palette is not None:
+            self._palette = palette
+            self._scenario_colors: Dict[str, Dict[str, str]] = {}
+            self._initialized = True
+        elif not self._initialized:
+            # First initialization without a palette
+            self._palette = ColorPalette()
+            self._scenario_colors: Dict[str, Dict[str, str]] = {}
+            self._initialized = True
 
     def initialize_colors(
         self,
@@ -126,7 +129,8 @@ class ColorManager:
 
     def _str_to_rgba(self, rgba_str: str) -> tuple[int, int, int, float]:
         """Parse RGBA string to tuple."""
-        rgba = re.search(r"rgba\((\d+), (\d+), (\d+), ([\d\.]+)\)", rgba_str)
+        # Allow optional spaces after commas
+        rgba = re.search(r"rgba\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d\.]+)\)", rgba_str)
         if rgba is not None:
             return (
                 int(rgba.groups()[0]),
@@ -135,7 +139,7 @@ class ColorManager:
                 float(rgba.groups()[3]),
             )
 
-        rgb = re.search(r"rgb\((\d+), (\d+), (\d+)\)", rgba_str)
+        rgb = re.search(r"rgb\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)\)", rgba_str)
         if rgb is not None:
             return (int(rgb.groups()[0]), int(rgb.groups()[1]), int(rgb.groups()[2]), 1.0)
 

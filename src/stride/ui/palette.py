@@ -10,8 +10,8 @@ The class provides a class method to intialize a palette from a dictionary while
 
 import re
 from itertools import cycle
+from typing import Any, Mapping, MutableSequence, TypedDict
 
-from loguru import logger
 from plotly import colors
 
 # can have a project color palette, or a user color palette?
@@ -21,6 +21,15 @@ from plotly import colors
 # it into the project json file.
 
 hex_color_pattern = re.compile(r"^#[0-9A-Fa-f]{6}$|^#[0-9A-Fa-f]{8}$")
+rgb_color_pattern = re.compile(r"^rgba?\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*(?:,\s*[\d.]+\s*)?\)$")
+
+
+class PaletteItem(TypedDict):
+    """Structure for a palette item with label, color, and order."""
+
+    label: str
+    color: str
+    order: int
 
 
 class ColorPalette:
@@ -50,7 +59,7 @@ class ColorPalette:
         key : str
             The lookup key for which to assign or update the color
         color : str | None, optional
-            A hex string representation of the color. If ``None`` or invalid, a new color
+            A hex string or rgb/rgba string representation of the color. If ``None`` or invalid, a new color
             is assigned based on the theme.
 
         Raises
@@ -65,9 +74,7 @@ class ColorPalette:
 
         if color is None or not isinstance(color, str):
             color = next(self._color_iterator)
-
-            logger.debug(f"ColorPalette: creating new color: {color} for key: {key}")
-        elif not hex_color_pattern.match(color):
+        elif not (hex_color_pattern.match(color) or rgb_color_pattern.match(color)):
             color = next(self._color_iterator)
 
         self.palette[key] = color
@@ -148,12 +155,8 @@ class ColorPalette:
 
         # Want to validate every color value, but don't break if some are not valid colors.
         for key, color in palette.items():
-            if not hex_color_pattern.match(color):
-                new_color = next(color_iterator)
-                logger.info(
-                    f"color: {color} for key: {key} is not a valid hex string. Overriding color with: {new_color}"
-                )
-                color = new_color
+            if not (hex_color_pattern.match(color) or rgb_color_pattern.match(color)):
+                color = next(color_iterator)
 
             new_palette.palette[key] = color
 
@@ -168,3 +171,103 @@ class ColorPalette:
             A copy mapping of labels to corresponding hex color strings.
         """
         return self.palette.copy()
+
+    def move_item_up(self, items: MutableSequence[dict[str, Any]], index: int) -> bool:
+        """Move an item up in the list (swap with previous item).
+
+        Parameters
+        ----------
+        items : MutableSequence[dict[str, Any]]
+            The list of palette items to reorder
+        index : int
+            The index of the item to move up
+
+        Returns
+        -------
+        bool
+            True if the item was moved, False if it was already at the top
+        """
+        if index > 0:
+            items[index - 1], items[index] = items[index], items[index - 1]
+            # Update order values
+            items[index - 1]["order"], items[index]["order"] = (
+                items[index]["order"],
+                items[index - 1]["order"],
+            )
+            return True
+        return False
+
+    def move_item_down(self, items: MutableSequence[dict[str, Any]], index: int) -> bool:
+        """Move an item down in the list (swap with next item).
+
+        Parameters
+        ----------
+        items : MutableSequence[dict[str, Any]]
+            The list of palette items to reorder
+        index : int
+            The index of the item to move down
+
+        Returns
+        -------
+        bool
+            True if the item was moved, False if it was already at the bottom
+        """
+        if index < len(items) - 1:
+            items[index], items[index + 1] = items[index + 1], items[index]
+            # Update order values
+            items[index]["order"], items[index + 1]["order"] = (
+                items[index + 1]["order"],
+                items[index]["order"],
+            )
+            return True
+        return False
+
+    @staticmethod
+    def palette_to_grouped_items(
+        palette: dict[str, str], groups: dict[str, dict[str, str]]
+    ) -> dict[str, list[dict[str, Any]]]:
+        """Convert a flat palette and groups into a structured dict of lists of items.
+
+        Parameters
+        ----------
+        palette : dict[str, str]
+            Flat dictionary of label -> color mappings
+        groups : dict[str, dict[str, str]]
+            Grouped palette (e.g., from organize_palette_by_groups)
+
+        Returns
+        -------
+        dict[str, list[dict[str, Any]]]
+            Dictionary mapping group names to lists of PaletteItems with order
+        """
+        result: dict[str, list[dict[str, Any]]] = {}
+        for group_name, group_palette in groups.items():
+            items: list[dict[str, Any]] = []
+            for order, (label, color) in enumerate(group_palette.items()):
+                items.append({"label": label, "color": color, "order": order})
+            result[group_name] = items
+        return result
+
+    @staticmethod
+    def grouped_items_to_palette(
+        grouped_items: Mapping[str, list[dict[str, Any]]],
+    ) -> dict[str, str]:
+        """Convert a structured dict of lists of items back to a flat palette.
+
+        Parameters
+        ----------
+        grouped_items : Mapping[str, list[dict[str, Any]]]
+            Dictionary mapping group names to lists of PaletteItems
+
+        Returns
+        -------
+        dict[str, str]
+            Flat dictionary of label -> color mappings
+        """
+        palette: dict[str, str] = {}
+        for group_name, items in grouped_items.items():
+            # Sort by order to maintain user-defined ordering
+            sorted_items = sorted(items, key=lambda x: x["order"])
+            for item in sorted_items:
+                palette[item["label"]] = item["color"]
+        return palette

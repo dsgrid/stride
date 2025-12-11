@@ -495,12 +495,14 @@ def _register_consumption_callbacks(data_handler: "APIClient", plotter: "StrideP
             Input("view-selector", "value"),
             Input("scenario-consumption-breakdown", "value"),
             Input("scenario-consumption-secondary", "value"),
+            Input("chart-refresh-trigger", "data"),
         ],
     )
     def _update_consumption_plot_callback(
         scenario: str,
         breakdown: ConsumptionBreakdown | Literal["None"],
         secondary_metric: SecondaryMetric | Literal["None"],
+        refresh_trigger: int,
     ) -> go.Figure | dict[str, Any]:
         return update_consumption_plot(
             data_handler, plotter, scenario, breakdown, secondary_metric
@@ -512,12 +514,14 @@ def _register_consumption_callbacks(data_handler: "APIClient", plotter: "StrideP
             Input("view-selector", "value"),
             Input("scenario-peak-breakdown", "value"),
             Input("scenario-peak-secondary", "value"),
+            Input("chart-refresh-trigger", "data"),
         ],
     )
     def _update_peak_plot_callback(
         scenario: str,
         breakdown: ConsumptionBreakdown | Literal["None"],
         secondary_metric: SecondaryMetric | Literal["None"],
+        refresh_trigger: int,
     ) -> go.Figure | dict[str, Any]:
         return update_peak_plot(data_handler, plotter, scenario, breakdown, secondary_metric)
 
@@ -533,14 +537,16 @@ def _register_timeseries_callbacks(data_handler: "APIClient", plotter: "StridePl
             Input("scenario-timeseries-resample", "value"),
             Input("scenario-timeseries-weather", "value"),
             Input("scenario-timeseries-years", "value"),
+            Input("chart-refresh-trigger", "data"),
         ],
     )
     def _update_timeseries_plot_callback(
         scenario: str,
         breakdown: ConsumptionBreakdown | Literal["None"],
-        resample: ResampleOptions,
-        weather_var: WeatherVar | Literal["None"] | None,
+        resample: str,
+        weather_var: str | None,
         selected_years: list[int] | int,
+        refresh_trigger: int,
     ) -> go.Figure | dict[str, Any]:
         return update_timeseries_plot(
             data_handler, plotter, scenario, breakdown, resample, weather_var, selected_years
@@ -554,14 +560,16 @@ def _register_timeseries_callbacks(data_handler: "APIClient", plotter: "StridePl
             Input("scenario-yearly-resample", "value"),
             Input("scenario-yearly-weather", "value"),
             Input("scenario-yearly-year", "value"),
+            Input("chart-refresh-trigger", "data"),
         ],
     )
     def _update_yearly_plot_callback(
         scenario: str,
         breakdown: ConsumptionBreakdown | Literal["None"],
-        resample: ResampleOptions,
-        weather_var: WeatherVar | Literal["None"] | None,
+        resample: str,
+        weather_var: str | None,
         selected_year: int,
+        refresh_trigger: int,
     ) -> go.Figure | dict[str, Any]:
         return update_yearly_plot(
             data_handler, plotter, scenario, breakdown, resample, weather_var, selected_year
@@ -578,13 +586,15 @@ def _register_seasonal_callbacks(data_handler: "APIClient", plotter: "StridePlot
             Input("scenario-seasonal-lines-timegroup", "value"),
             Input("scenario-seasonal-lines-agg", "value"),
             Input("scenario-seasonal-lines-weather", "value"),
+            Input("chart-refresh-trigger", "data"),
         ],
     )
     def _update_seasonal_lines_plot_callback(
         scenario: str,
-        timegroup: TimeGroup,
-        agg: TimeGroupAgg,
+        timegroup: str,
+        agg_func: str,
         weather_var: WeatherVar | Literal["None"] | None,
+        refresh_trigger: int,
     ) -> go.Figure | dict[str, Any]:
         return update_seasonal_lines_plot(
             data_handler, plotter, scenario, timegroup, agg, weather_var
@@ -599,6 +609,7 @@ def _register_seasonal_callbacks(data_handler: "APIClient", plotter: "StridePlot
             Input("scenario-seasonal-area-agg", "value"),
             Input("scenario-seasonal-area-timegroup", "value"),
             Input("scenario-seasonal-area-weather", "value"),
+            Input("chart-refresh-trigger", "data"),
         ],
     )
     def _update_seasonal_area_plot_callback(
@@ -608,6 +619,7 @@ def _register_seasonal_callbacks(data_handler: "APIClient", plotter: "StridePlot
         agg: TimeGroupAgg,
         timegroup: TimeGroup,
         weather_var: WeatherVar | Literal["None"] | None,
+        refresh_trigger: int,
     ) -> go.Figure | dict[str, Any]:
         return update_seasonal_area_plot(
             data_handler, plotter, scenario, breakdown, selected_year, timegroup, agg, weather_var
@@ -619,10 +631,14 @@ def _register_load_duration_callbacks(data_handler: "APIClient", plotter: "Strid
 
     @callback(
         Output("scenario-load-duration-plot", "figure"),
-        [Input("view-selector", "value"), Input("scenario-load-duration-years", "value")],
+        [
+            Input("view-selector", "value"),
+            Input("scenario-load-duration-years", "value"),
+            Input("chart-refresh-trigger", "data"),
+        ],
     )
     def _update_load_duration_plot_callback(
-        scenario: str, selected_years: list[int] | int
+        scenario: str, selected_years: list[int] | int, refresh_trigger: int
     ) -> go.Figure | dict[str, Any]:
         return update_load_duration_plot(data_handler, plotter, scenario, selected_years)
 
