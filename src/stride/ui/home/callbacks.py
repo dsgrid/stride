@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, Any, Literal
 
 import plotly.graph_objects as go
-from dash import Input, Output, callback
+from dash import ALL, Input, Output, State, callback, ctx
 from loguru import logger
 
 from stride.api.utils import ChartType, ConsumptionBreakdown, SecondaryMetric
@@ -318,6 +318,295 @@ def register_home_callbacks(
         Color management utilities
     """
 
+    # Scenario button callbacks for each checklist
+    # Callback 1: home-scenarios-checklist
+    @callback(
+        Output("home-scenarios-checklist", "data"),
+        Input({"type": "home-scenarios-checklist", "index": ALL}, "n_clicks"),
+        State("home-scenarios-checklist", "data"),
+        prevent_initial_call=True,
+    )
+    def _update_scenario_selection_1(
+        n_clicks: list[int], current_selection: list[str]
+    ) -> list[str]:
+        """Toggle scenario selection when button is clicked."""
+        if not ctx.triggered:
+            return current_selection
+
+        triggered_id = ctx.triggered_id
+        if not triggered_id or not isinstance(triggered_id, dict):
+            return current_selection
+
+        clicked_scenario = triggered_id["index"]
+        new_selection = current_selection.copy() if current_selection else []
+
+        if clicked_scenario in new_selection:
+            if len(new_selection) <= 1:
+                return new_selection
+            new_selection.remove(clicked_scenario)
+        else:
+            new_selection.append(clicked_scenario)
+
+        return new_selection
+
+    @callback(
+        Output({"type": "home-scenarios-checklist", "index": ALL}, "style"),
+        Input("home-scenarios-checklist", "data"),
+        State({"type": "home-scenarios-checklist", "index": ALL}, "id"),
+        prevent_initial_call=False,
+    )
+    def _update_button_styles_1(
+        selected_scenarios: list[str], button_ids: list[dict[str, str]]
+    ) -> list[dict[str, Any]]:
+        """Update button styles based on selected scenarios."""
+        styles = []
+        selected_scenarios = selected_scenarios or []
+
+        for button_id in button_ids:
+            scenario = button_id["index"]
+            is_selected = scenario in selected_scenarios
+
+            base_color = color_manager.get_color(scenario)
+            r, g, b, _ = color_manager._str_to_rgba(base_color)
+
+            alpha = 0.9 if is_selected else 0.3
+            bg_color = f"rgba({r}, {g}, {b}, {alpha})"
+            border_color = f"rgba({r}, {g}, {b}, 1.0)"
+
+            style = {
+                "backgroundColor": bg_color,
+                "borderColor": border_color,
+                "borderWidth": "2px",
+                "borderStyle": "solid",
+                "borderRadius": "8px",
+                "padding": "8px 16px",
+                "margin": "4px",
+                "cursor": "pointer",
+                "fontWeight": "bold" if is_selected else "normal",
+                "fontSize": "0.95rem",
+                "transition": "all 0.2s ease",
+                "color": "#212529",
+            }
+            styles.append(style)
+
+        return styles
+
+    # Callback 2: home-scenarios-2-checklist
+    @callback(
+        Output("home-scenarios-2-checklist", "data"),
+        Input({"type": "home-scenarios-2-checklist", "index": ALL}, "n_clicks"),
+        State("home-scenarios-2-checklist", "data"),
+        prevent_initial_call=True,
+    )
+    def _update_scenario_selection_2(
+        n_clicks: list[int], current_selection: list[str]
+    ) -> list[str]:
+        """Toggle scenario selection when button is clicked."""
+        if not ctx.triggered:
+            return current_selection
+
+        triggered_id = ctx.triggered_id
+        if not triggered_id or not isinstance(triggered_id, dict):
+            return current_selection
+
+        clicked_scenario = triggered_id["index"]
+        new_selection = current_selection.copy() if current_selection else []
+
+        if clicked_scenario in new_selection:
+            if len(new_selection) <= 1:
+                return new_selection
+            new_selection.remove(clicked_scenario)
+        else:
+            new_selection.append(clicked_scenario)
+
+        return new_selection
+
+    @callback(
+        Output({"type": "home-scenarios-2-checklist", "index": ALL}, "style"),
+        Input("home-scenarios-2-checklist", "data"),
+        State({"type": "home-scenarios-2-checklist", "index": ALL}, "id"),
+        prevent_initial_call=False,
+    )
+    def _update_button_styles_2(
+        selected_scenarios: list[str], button_ids: list[dict[str, str]]
+    ) -> list[dict[str, Any]]:
+        """Update button styles based on selected scenarios."""
+        styles = []
+        selected_scenarios = selected_scenarios or []
+
+        for button_id in button_ids:
+            scenario = button_id["index"]
+            is_selected = scenario in selected_scenarios
+
+            base_color = color_manager.get_color(scenario)
+            r, g, b, _ = color_manager._str_to_rgba(base_color)
+
+            alpha = 0.9 if is_selected else 0.3
+            bg_color = f"rgba({r}, {g}, {b}, {alpha})"
+            border_color = f"rgba({r}, {g}, {b}, 1.0)"
+
+            style = {
+                "backgroundColor": bg_color,
+                "borderColor": border_color,
+                "borderWidth": "2px",
+                "borderStyle": "solid",
+                "borderRadius": "8px",
+                "padding": "8px 16px",
+                "margin": "4px",
+                "cursor": "pointer",
+                "fontWeight": "bold" if is_selected else "normal",
+                "fontSize": "0.95rem",
+                "transition": "all 0.2s ease",
+                "color": "#212529",
+            }
+            styles.append(style)
+
+        return styles
+
+    # Callback 3: home-scenarios-3-checklist
+    @callback(
+        Output("home-scenarios-3-checklist", "data"),
+        Input({"type": "home-scenarios-3-checklist", "index": ALL}, "n_clicks"),
+        State("home-scenarios-3-checklist", "data"),
+        prevent_initial_call=True,
+    )
+    def _update_scenario_selection_3(
+        n_clicks: list[int], current_selection: list[str]
+    ) -> list[str]:
+        """Toggle scenario selection when button is clicked."""
+        if not ctx.triggered:
+            return current_selection
+
+        triggered_id = ctx.triggered_id
+        if not triggered_id or not isinstance(triggered_id, dict):
+            return current_selection
+
+        clicked_scenario = triggered_id["index"]
+        new_selection = current_selection.copy() if current_selection else []
+
+        if clicked_scenario in new_selection:
+            if len(new_selection) <= 1:
+                return new_selection
+            new_selection.remove(clicked_scenario)
+        else:
+            new_selection.append(clicked_scenario)
+
+        return new_selection
+
+    @callback(
+        Output({"type": "home-scenarios-3-checklist", "index": ALL}, "style"),
+        Input("home-scenarios-3-checklist", "data"),
+        State({"type": "home-scenarios-3-checklist", "index": ALL}, "id"),
+        prevent_initial_call=False,
+    )
+    def _update_button_styles_3(
+        selected_scenarios: list[str], button_ids: list[dict[str, str]]
+    ) -> list[dict[str, Any]]:
+        """Update button styles based on selected scenarios."""
+        styles = []
+        selected_scenarios = selected_scenarios or []
+
+        for button_id in button_ids:
+            scenario = button_id["index"]
+            is_selected = scenario in selected_scenarios
+
+            base_color = color_manager.get_color(scenario)
+            r, g, b, _ = color_manager._str_to_rgba(base_color)
+
+            alpha = 0.9 if is_selected else 0.3
+            bg_color = f"rgba({r}, {g}, {b}, {alpha})"
+            border_color = f"rgba({r}, {g}, {b}, 1.0)"
+
+            style = {
+                "backgroundColor": bg_color,
+                "borderColor": border_color,
+                "borderWidth": "2px",
+                "borderStyle": "solid",
+                "borderRadius": "8px",
+                "padding": "8px 16px",
+                "margin": "4px",
+                "cursor": "pointer",
+                "fontWeight": "bold" if is_selected else "normal",
+                "fontSize": "0.95rem",
+                "transition": "all 0.2s ease",
+                "color": "#212529",
+            }
+            styles.append(style)
+
+        return styles
+
+    # Callback 4: home-scenarios-4-checklist
+    @callback(
+        Output("home-scenarios-4-checklist", "data"),
+        Input({"type": "home-scenarios-4-checklist", "index": ALL}, "n_clicks"),
+        State("home-scenarios-4-checklist", "data"),
+        prevent_initial_call=True,
+    )
+    def _update_scenario_selection_4(
+        n_clicks: list[int], current_selection: list[str]
+    ) -> list[str]:
+        """Toggle scenario selection when button is clicked."""
+        if not ctx.triggered:
+            return current_selection
+
+        triggered_id = ctx.triggered_id
+        if not triggered_id or not isinstance(triggered_id, dict):
+            return current_selection
+
+        clicked_scenario = triggered_id["index"]
+        new_selection = current_selection.copy() if current_selection else []
+
+        if clicked_scenario in new_selection:
+            if len(new_selection) <= 1:
+                return new_selection
+            new_selection.remove(clicked_scenario)
+        else:
+            new_selection.append(clicked_scenario)
+
+        return new_selection
+
+    @callback(
+        Output({"type": "home-scenarios-4-checklist", "index": ALL}, "style"),
+        Input("home-scenarios-4-checklist", "data"),
+        State({"type": "home-scenarios-4-checklist", "index": ALL}, "id"),
+        prevent_initial_call=False,
+    )
+    def _update_button_styles_4(
+        selected_scenarios: list[str], button_ids: list[dict[str, str]]
+    ) -> list[dict[str, Any]]:
+        """Update button styles based on selected scenarios."""
+        styles = []
+        selected_scenarios = selected_scenarios or []
+
+        for button_id in button_ids:
+            scenario = button_id["index"]
+            is_selected = scenario in selected_scenarios
+
+            base_color = color_manager.get_color(scenario)
+            r, g, b, _ = color_manager._str_to_rgba(base_color)
+
+            alpha = 0.9 if is_selected else 0.3
+            bg_color = f"rgba({r}, {g}, {b}, {alpha})"
+            border_color = f"rgba({r}, {g}, {b}, 1.0)"
+
+            style = {
+                "backgroundColor": bg_color,
+                "borderColor": border_color,
+                "borderWidth": "2px",
+                "borderStyle": "solid",
+                "borderRadius": "8px",
+                "padding": "8px 16px",
+                "margin": "4px",
+                "cursor": "pointer",
+                "fontWeight": "bold" if is_selected else "normal",
+                "fontSize": "0.95rem",
+                "transition": "all 0.2s ease",
+                "color": "#212529",
+            }
+            styles.append(style)
+
+        return styles
+
     # State management callbacks
     home_input_ids = [
         "home-consumption-breakdown",
@@ -337,16 +626,16 @@ def register_home_callbacks(
     # Save home tab state
     @callback(
         Output("home-state-store", "data"),
-        [Input(input_id, "value") for input_id in home_input_ids],
+        [Input(input_id, "data") for input_id in home_input_ids],
         prevent_initial_call=True,
     )
     def _save_home_state_callback(*values: Any) -> dict[str, Any]:
         return save_home_state(*values)
 
-    # Home tab callbacks
+    # Home tab callbacks - now using "data" instead of "value" for stores
     @callback(
         Output("home-scenario-comparison", "figure"),
-        Input("home-scenarios-checklist", "value"),
+        Input("home-scenarios-checklist", "data"),
         Input("home-consumption-breakdown", "value"),
         Input("home-secondary-metric", "value"),
         Input("chart-refresh-trigger", "data"),
@@ -363,7 +652,7 @@ def register_home_callbacks(
 
     @callback(
         Output("home-sector-breakdown", "figure"),
-        Input("home-scenarios-2-checklist", "value"),
+        Input("home-scenarios-2-checklist", "data"),
         Input("home-peak-breakdown", "value"),
         Input("home-peak-secondary-metric", "value"),
         Input("chart-refresh-trigger", "data"),
@@ -380,7 +669,7 @@ def register_home_callbacks(
 
     @callback(
         Output("home-load-duration", "figure"),
-        Input("home-scenarios-3-checklist", "value"),
+        Input("home-scenarios-3-checklist", "data"),
         Input("home-year-dropdown", "value"),
         Input("chart-refresh-trigger", "data"),
     )
@@ -391,7 +680,7 @@ def register_home_callbacks(
 
     @callback(
         Output("home-scenario-timeseries", "figure"),
-        Input("home-scenarios-4-checklist", "value"),
+        Input("home-scenarios-4-checklist", "data"),
         Input("home-timeseries-chart-type", "value"),
         Input("home-timeseries-breakdown", "value"),
         Input("home-timeseries-secondary-metric", "value"),

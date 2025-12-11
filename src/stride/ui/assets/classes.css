@@ -94,47 +94,25 @@
     margin-right: 15px;
 }
 
-/* Scenario checkbox styling - tab-like appearance */
-.scenario-checklist {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
+/* Scenario button styling - custom colored buttons */
+.scenario-button {
+    outline: none;
+    box-shadow: none;
 }
 
-.scenario-checklist .form-check {
-    margin: 0;
-    padding: 0;
+.scenario-button:hover {
+    opacity: 0.8;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.scenario-checklist .form-check-input {
-    display: none;
+.scenario-button:active {
+    transform: translateY(0);
 }
 
-.scenario-checklist .form-check-label {
-    background-color: #f8f9fa;
-    border: 2px solid #dee2e6;
-    border-radius: 8px;
-    padding: 8px 12px;
-    margin: 2px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: inline-block;
-    font-weight: 500;
-    font-size: 0.95rem;
-    user-select: none;
-}
-
-.scenario-checklist .form-check-label:hover {
-    background-color: #e9ecef;
-    border-color: #adb5bd;
-}
-
-/* Selected state using CSS variables for dynamic colors */
-.scenario-checklist .form-check-input:checked + .form-check-label {
-    background-color: var(--scenario-bg, #007bff33) !important;
-    border-color: var(--scenario-border, #007bffcc) !important;
-    color: #212529;
-    font-weight: bold;
+.scenario-button:focus {
+    outline: 2px solid rgba(13, 110, 253, 0.5);
+    outline-offset: 2px;
 }
 
 /* Color picker button styling */

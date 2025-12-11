@@ -27,27 +27,52 @@ def create_home_layout(
             checklist_id, scenarios_list[:2] if len(scenarios_list) >= 2 else scenarios_list
         )
 
+        # Create custom styled buttons for each scenario
+        scenario_buttons = []
+        for scenario in scenarios_list:
+            # Get the scenario color from color manager
+            base_color = color_manager.get_color(scenario)
+            r, g, b, _ = color_manager._str_to_rgba(base_color)
+
+            # Determine if scenario is selected
+            is_selected = scenario in stored_value
+
+            # Set alpha based on selection state
+            alpha = 0.9 if is_selected else 0.3
+            bg_color = f"rgba({r}, {g}, {b}, {alpha})"
+            border_color = f"rgba({r}, {g}, {b}, 1.0)"
+
+            scenario_buttons.append(
+                html.Button(
+                    scenario,
+                    id={"type": checklist_id, "index": scenario},
+                    n_clicks=0,
+                    style={
+                        "backgroundColor": bg_color,
+                        "borderColor": border_color,
+                        "borderWidth": "2px",
+                        "borderStyle": "solid",
+                        "borderRadius": "8px",
+                        "padding": "8px 16px",
+                        "margin": "4px",
+                        "cursor": "pointer",
+                        "fontWeight": "bold" if is_selected else "normal",
+                        "fontSize": "0.95rem",
+                        "transition": "all 0.2s ease",
+                        "color": "#212529",
+                    },
+                    className="scenario-button",
+                )
+            )
+
         return html.Div(
             [
-                # Add scenario-specific CSS styles
                 html.Div(
-                    [
-                        html.Script(
-                            f"""
-                var style = document.createElement('style');
-                style.textContent = `{scenario_css}`;
-                document.head.appendChild(style);
-                """
-                        )
-                    ]
+                    scenario_buttons,
+                    style={"display": "flex", "flexWrap": "wrap", "gap": "4px"},
                 ),
-                dbc.Checklist(
-                    id=checklist_id,
-                    options=[{"label": s, "value": s} for s in scenarios_list],
-                    value=stored_value,
-                    inline=True,
-                    className="scenario-checklist",
-                ),
+                # Hidden store to track selected scenarios
+                dcc.Store(id=checklist_id, data=stored_value),
             ]
         )
 
