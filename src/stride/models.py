@@ -129,9 +129,9 @@ class ProjectConfig(DSGBaseModel):  # type: ignore
         default=[],
         description="Calculated tables to override",
     )
-    color_palette: dict[str, str] = Field(
-        default={},
-        description="Color palette mapping graph labels to hex color strings for the UI.",
+    color_palette: dict[str, dict[str, str]] = Field(
+        default={"scenarios": {}, "model_years": {}, "metrics": {}},
+        description="Color palette organized into scenarios, model_years, and metrics categories. Each category maps labels to hex/rgb color strings for the UI.",
     )
 
     @classmethod

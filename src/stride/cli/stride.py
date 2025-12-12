@@ -625,38 +625,45 @@ def init_palette(
         ctx.exit(1)
 
     # Initialize palette based on source type
-    palette_dict: dict[str, str] = {}
+    palette_dict: dict[str, dict[str, str]] = {}
     project_path: Path | None = None
 
     if source_count == 0:
-        # Create an empty palette
+        # Create an empty palette with structured categories
         print(f"Creating empty palette: {name}")
         print("Use 'stride palette view {name} --user' to add labels interactively")
-        palette_dict = {}
+        palette_dict = {"scenarios": {}, "model_years": {}, "metrics": {}}
     elif from_project:
-        # Query the database for all unique labels
+        # Get labels from project configuration and database
         project_path = from_project
-        print(f"Querying database for unique labels in project: {project_path}")
+        print(f"Initializing palette from project: {project_path}")
         project = safe_get_project_from_context(ctx, project_path, read_only=True)
-        api_client = APIClient(project)
 
-        # Get all unique labels
-        scenarios = api_client.scenarios
-        years = [str(y) for y in api_client.years]
+        # Create a new palette with labels organized into categories
+        palette = ColorPalette()
+
+        # Get scenarios from ProjectConfig.scenarios (fast lookup)
+        scenario_names = [scenario.name for scenario in project.config.scenarios]
+        print(f"Found {len(scenario_names)} scenarios from config")
+        for label in scenario_names:
+            palette.update(label, category="scenarios")
+
+        # Get model years from ProjectConfig (fast lookup)
+        model_years = project.config.list_model_years()
+        year_labels = [str(year) for year in model_years]
+        print(f"Found {len(year_labels)} model years from config")
+        for label in year_labels:
+            palette.update(label, category="model_years")
+
+        # Get sectors and end uses from database (requires query)
+        api_client = APIClient(project)
         sectors = api_client.get_unique_sectors()
         end_uses = api_client.get_unique_end_uses()
+        print(f"Found {len(sectors)} sectors and {len(end_uses)} end uses from database")
 
-        print(
-            f"Found {len(scenarios)} scenarios, {len(years)} years, {len(sectors)} sectors, {len(end_uses)} end uses"
-        )
-
-        # Create a new palette with all labels
-        palette = ColorPalette()
-        all_labels = scenarios + years + sectors + end_uses
-
-        for label in all_labels:
-            # This will automatically assign colors from the theme
-            palette.get(label)
+        # Add sectors and end uses to the metrics category
+        for label in sectors + end_uses:
+            palette.update(label, category="metrics")
 
         palette_dict = palette.to_dict()
 
@@ -773,6 +780,45 @@ def get_default_palette() -> None:
         print("Set one with: stride palette set-default <palette-name>")
 
 
+_palette_refresh_epilog = """
+Examples:\n
+# Fix palette colors for a project\n
+$ stride palette refresh my_project\n
+"""
+
+
+@click.command(name="refresh", epilog=_palette_refresh_epilog)
+@click.argument("project_path", type=click.Path(exists=True, path_type=Path))
+@click.pass_context
+def refresh_palette(ctx: click.Context, project_path: Path) -> None:
+    """Refresh palette colors to use correct themes for each category.
+
+    This fixes palettes where metrics might be using model year colors or
+    other incorrect theme assignments. It reassigns all colors while
+    preserving the labels in each category.
+    """
+    project = safe_get_project_from_context(ctx, project_path, read_only=False)
+
+    print(f"Refreshing palette colors for project: {project_path}")
+
+    # Show before state
+    palette = project.palette
+    print(f"\nBefore refresh:")
+    print(f"  Scenarios: {len(palette.scenarios)}")
+    print(f"  Model Years: {len(palette.model_years)}")
+    print(f"  Metrics: {len(palette.metrics)}")
+
+    # Refresh colors
+    project.refresh_palette_colors()
+    project.save_palette()
+
+    print(f"\nAfter refresh:")
+    print(f"  Scenarios: {len(palette.scenarios)} (Bold theme)")
+    print(f"  Model Years: {len(palette.model_years)} (YlOrRd theme)")
+    print(f"  Metrics: {len(palette.metrics)} (Prism theme)")
+    print(f"\nPalette colors refreshed and saved!")
+
+
 def handle_stride_exception(
     ctx: click.Context, func: Callable[..., Any], *args: Any, **kwargs: Any
 ) -> Any:
@@ -824,3 +870,4 @@ palette.add_command(init_palette)
 palette.add_command(list_palettes)
 palette.add_command(set_default_palette)
 palette.add_command(get_default_palette)
+palette.add_command(refresh_palette)

@@ -231,7 +231,6 @@ class PaletteViewer(App[None]):
         Binding("q", "quit", "Quit", priority=True),
         Binding("e", "edit_color", "Edit"),
         Binding("a", "add_label", "Add Label"),
-        Binding("c", "create_group", "New Group"),
         Binding("x", "delete_label", "Delete Label"),
         Binding("X", "delete_group", "Delete Group"),
         Binding("s", "save_palette", "Save"),
@@ -275,10 +274,12 @@ class PaletteViewer(App[None]):
         self.editing_label: str | None = None
         self.original_color: str | None = None
         self.input_mode: str | None = (
-            None  # Tracks what we're inputting: 'edit', 'add_label', 'add_color', 'create_group'
+            None  # Tracks what we're inputting: 'edit', 'add_label', 'add_color'
         )
         self.temp_label_name: str | None = None  # Temporary storage for label name when adding
-        self.temp_group_name: str | None = None  # Temporary storage for group name when creating
+        self.temp_group_name: str | None = (
+            None  # Temporary storage for group name when adding labels
+        )
 
     def compose(self) -> ComposeResult:
         """Compose the main UI layout."""
@@ -303,7 +304,7 @@ class PaletteViewer(App[None]):
                 else:
                     # If palette is empty, show a helpful message
                     yield Label(
-                        "[dim]Empty palette. Press 'c' to create a new group or 'a' to add a label.[/dim]",
+                        "[dim]Empty palette. Press 'a' to add a label.[/dim]",
                         id="empty-palette-msg",
                     )
 
@@ -396,8 +397,6 @@ class PaletteViewer(App[None]):
             self.handle_add_label_name(event.value.strip(), event.input)
         elif event.input.id == "add-color-input":
             self.handle_add_label_color(event.value.strip(), event.input)
-        elif event.input.id == "create-group-input":
-            self.handle_create_group(event.value.strip(), event.input)
 
     def action_cancel_edit(self) -> None:
         """Cancel inline editing or input mode."""
@@ -410,7 +409,7 @@ class PaletteViewer(App[None]):
             self.notify("Edit cancelled")
         elif self.input_mode:
             # Cancel any other input mode
-            input_ids = ["add-label-input", "add-color-input", "create-group-input"]
+            input_ids = ["add-label-input", "add-color-input"]
             for input_id in input_ids:
                 try:
                     input_widget = self.query_one(f"#{input_id}", Input)
@@ -469,7 +468,7 @@ class PaletteViewer(App[None]):
         if not group_name:
             if not self.label_groups:
                 self.notify(
-                    "No groups exist. Press 'c' to create a group first.", severity="warning"
+                    "No groups exist. Cannot add labels to empty palette.", severity="warning"
                 )
                 return
             # Default to first group
@@ -551,47 +550,6 @@ class PaletteViewer(App[None]):
         self.temp_group_name = None
 
         self.notify(f"Added label '{label_name}' to '{group_name}'", severity="information")
-
-    def action_create_group(self) -> None:
-        """Create a new label group/category."""
-        if self.editing_mode or self.input_mode:
-            return
-
-        # Prompt for group name
-        self.input_mode = "create_group"
-        input_widget = Input(
-            placeholder="Enter group name (e.g., 'End Uses', 'Scenarios')",
-            id="create-group-input",
-        )
-        self.mount(input_widget)
-        input_widget.focus()
-        self.notify("Enter new group name", timeout=2)
-
-    def handle_create_group(self, group_name: str, input_widget: Input) -> None:
-        """Handle the group name input when creating a new group."""
-        if not group_name:
-            self.notify("Group name cannot be empty", severity="error")
-            return
-
-        # Check if group already exists
-        if group_name in self.label_groups:
-            self.notify(f"Group '{group_name}' already exists", severity="error")
-            return
-
-        # Create the new group (empty for now)
-        self.label_groups[group_name] = {}
-        self.has_unsaved_changes = True
-
-        # Refresh the display
-        self._refresh_display()
-
-        # Clean up
-        input_widget.remove()
-        self.input_mode = None
-
-        self.notify(
-            f"Created group '{group_name}'. Press 'a' to add labels.", severity="information"
-        )
 
     def _refresh_display(self) -> None:
         """Refresh the entire display with updated label groups."""
@@ -675,7 +633,7 @@ class PaletteViewer(App[None]):
             self.notify(f"Label '{label}' not found", severity="error")
 
     def action_delete_group(self) -> None:
-        """Delete the currently focused group/category."""
+        """Delete the currently focused group/category (disabled for pre-defined groups)."""
         if self.editing_mode or self.input_mode:
             return
 
@@ -694,6 +652,15 @@ class PaletteViewer(App[None]):
 
         if not group_name:
             self.notify("No group selected", severity="warning")
+            return
+
+        # Prevent deletion of pre-defined groups
+        predefined_groups = {"Scenarios", "Model Years", "Metrics"}
+        if group_name in predefined_groups:
+            self.notify(
+                f"Cannot delete pre-defined group '{group_name}'. You can only delete labels within it.",
+                severity="warning",
+            )
             return
 
         # Confirm deletion (since this removes all labels in the group)
@@ -719,17 +686,34 @@ class PaletteViewer(App[None]):
             return
 
         try:
-            # Flatten label_groups back to a single dict
-            flat_palette = {}
+            # Convert label_groups to structured format
+            # Map display names back to internal names
+            display_to_category = {
+                "Scenarios": "scenarios",
+                "Model Years": "model_years",
+                "Metrics": "metrics",
+            }
+
+            structured_palette = {
+                "scenarios": {},
+                "model_years": {},
+                "metrics": {},
+            }
+
             for group_name, labels in self.label_groups.items():
-                flat_palette.update(labels)
+                category_name = display_to_category.get(group_name)
+                if category_name:
+                    structured_palette[category_name] = labels
+                else:
+                    # Legacy/unknown groups - add to metrics
+                    structured_palette["metrics"].update(labels)
 
             if self.palette_type == "project":
                 # Save to project.json5
                 from stride.models import ProjectConfig
 
                 config = ProjectConfig.from_file(self.palette_location)
-                config.color_palette = flat_palette
+                config.color_palette = structured_palette
                 self.palette_location.write_text(config.model_dump_json(indent=2))
                 self.notify(
                     f"Saved project palette to {self.palette_location}", severity="information"
@@ -740,7 +724,7 @@ class PaletteViewer(App[None]):
 
                 data = {
                     "name": self.palette_name,
-                    "palette": flat_palette,
+                    "palette": structured_palette,
                 }
                 with open(self.palette_location, "w") as f:
                     json.dump(data, f, indent=2)
@@ -890,106 +874,81 @@ class PaletteViewer(App[None]):
     def action_help(self) -> None:
         """Show help information."""
         help_text = """
-        Palette Viewer Help:
+Stride Palette Viewer - Keyboard Shortcuts
 
-        Navigation:
-        - Arrow keys: Navigate between cells
-        - Tab/Shift+Tab: Move between columns
+Navigation:
+- Arrow keys: Navigate between cells
+- Tab/Shift+Tab: Move between columns
 
-        Actions:
-        - a: Add new label to current group
-        - c: Create new group/category
-        - e: Edit color (type directly, Enter to save, Esc to cancel)
-        - x: Delete current label
-        - X: Delete current group (including all labels)
-        - u: Move item up within its group
-        - d: Move item down within its group
-        - s: Save changes to disk
-        - q: Quit
-        - r: Refresh
-        - ?: Show this help
-        - Esc: Cancel current input
-        """
+Actions:
+- a: Add new label to current group
+- e: Edit color (type directly, Enter to save, Esc to cancel)
+- x: Delete current label
+- X: Delete current group (disabled for pre-defined groups)
+- u: Move item up within its group
+- d: Move item down within its group
+- s: Save changes to disk
+- q: Quit
+- r: Refresh
+- ?: Show this help
+- Esc: Cancel current input
+
+Note: Groups (Scenarios, Model Years, Metrics) are pre-defined and cannot be deleted.
+"""
         self.notify(help_text, timeout=12)
 
 
 def organize_palette_by_groups(
-    palette: dict[str, str],
+    palette: dict[str, str] | dict[str, dict[str, str]],
     project_config: Any | None = None,
 ) -> dict[str, dict[str, str]]:
-    """Organize a flat palette dictionary into label groups.
-
-    This function attempts to intelligently group labels based on their names
-    and known patterns. For example, it separates end uses, scenarios, years, etc.
+    """Organize a palette dictionary into the three pre-defined groups.
 
     Parameters
     ----------
-    palette : dict[str, str]
-        Flat dictionary of label -> color mappings
+    palette : dict[str, str] | dict[str, dict[str, str]]
+        Either a flat dictionary of label -> color mappings (legacy format) or
+        a structured dictionary with 'scenarios', 'model_years', and 'metrics' keys.
     project_config : Any | None, optional
-        Optional project configuration to extract additional grouping information
+        Optional project configuration (not currently used but kept for compatibility)
 
     Returns
     -------
     dict[str, dict[str, str]]
-        Nested dictionary organized by label groups
+        Nested dictionary organized by the three pre-defined groups:
+        'Scenarios', 'Model Years', and 'Metrics'
     """
-    groups: dict[str, dict[str, str]] = {
-        "End Uses": {},
-        "Scenarios": {},
-        "Years": {},
-        "Sectors": {},
-        "Other": {},
-    }
+    # Check if it's the new structured format
+    if (
+        isinstance(palette, dict)
+        and "scenarios" in palette
+        and "model_years" in palette
+        and "metrics" in palette
+    ):
+        # Use the structured format directly, mapping to display names
+        scenarios_dict = palette.get("scenarios", {})
+        model_years_dict = palette.get("model_years", {})
+        metrics_dict = palette.get("metrics", {})
 
-    # Known end uses (case-insensitive matching)
-    end_use_keywords = {
-        "cooling",
-        "heating",
-        "lighting",
-        "water",
-        "refrigeration",
-        "cooking",
-        "ventilation",
-        "fans",
-        "pumps",
-        "appliances",
-    }
-
-    # Known sectors
-    sector_keywords = {
-        "residential",
-        "commercial",
-        "industrial",
-        "transportation",
-    }
-
-    # Extract scenario names from config if available
-    scenario_names = set()
-    if project_config and hasattr(project_config, "scenarios"):
-        scenario_names = {s.name for s in project_config.scenarios}
-
-    for label, color in palette.items():
-        label_lower = label.lower()
-
-        # Check if it's a year (4-digit number)
-        if label.isdigit() and len(label) == 4:
-            groups["Years"][label] = color
-        # Check if it's a known scenario
-        elif label in scenario_names:
-            groups["Scenarios"][label] = color
-        # Check if it's a sector
-        elif any(keyword in label_lower for keyword in sector_keywords):
-            groups["Sectors"][label] = color
-        # Check if it's an end use
-        elif any(keyword in label_lower for keyword in end_use_keywords):
-            groups["End Uses"][label] = color
-        # Otherwise, put it in Other
-        else:
-            groups["Other"][label] = color
-
-    # Remove empty groups
-    return {k: v for k, v in groups.items() if v}
+        # Ensure all values are dicts of strings
+        result: dict[str, dict[str, str]] = {
+            "Scenarios": scenarios_dict if isinstance(scenarios_dict, dict) else {},
+            "Model Years": model_years_dict if isinstance(model_years_dict, dict) else {},
+            "Metrics": metrics_dict if isinstance(metrics_dict, dict) else {},
+        }
+        return result
+    else:
+        # Legacy flat format - put everything in Metrics for now
+        metrics_palette: dict[str, str] = {}
+        if isinstance(palette, dict):
+            for key, value in palette.items():
+                if isinstance(value, str):
+                    metrics_palette[key] = value
+        return {
+            "Scenarios": {},
+            "Model Years": {},
+            "Metrics": metrics_palette,
+        }
 
 
 def launch_palette_viewer(
@@ -1062,15 +1021,15 @@ def list_user_palettes() -> list[Path]:
     return sorted(palette_dir.glob("*.json"))
 
 
-def save_user_palette(name: str, palette: dict[str, str]) -> Path:
+def save_user_palette(name: str, palette: dict[str, str] | dict[str, dict[str, str]]) -> Path:
     """Save a palette to the user's palette directory.
 
     Parameters
     ----------
     name : str
         Name for the palette (will be used as filename)
-    palette : dict[str, str]
-        Palette dictionary to save
+    palette : dict[str, str] | dict[str, dict[str, str]]
+        Palette dictionary to save (either flat or structured format)
 
     Returns
     -------

@@ -40,37 +40,21 @@ def create_settings_layout(
     # Get current palette data from color manager's palette
     palette = color_manager.get_palette()
 
-    # The ColorPalette stores colors in a flat dict (palette.palette)
-    # We need to organize them by inferring groups based on common patterns
-    # For now, we'll just display all colors in one group since we don't have
-    # group metadata in the ColorPalette class itself
+    # Get structured palette with categories
+    structured_palette = palette.to_dict()
 
-    # Get all colors from the palette
-    all_colors = palette.to_dict()
-
-    # Try to categorize by common naming patterns
+    # Extract colors for each category and convert to RGBA for display
     scenario_colors = {}
-    sector_colors = {}
-    end_use_colors = {}
+    for label in structured_palette.get("scenarios", {}):
+        scenario_colors[label] = color_manager.get_color(label)
 
-    # Common sector names
-    sector_keywords = ["residential", "commercial", "industrial", "transport"]
-    # Common end use names
-    end_use_keywords = ["heating", "cooling", "lighting", "water", "appliance", "ventilation"]
+    model_year_colors = {}
+    for label in structured_palette.get("model_years", {}):
+        model_year_colors[label] = color_manager.get_color(label)
 
-    for label, color in all_colors.items():
-        label_lower = label.lower()
-        # Convert color to RGBA format for display
-        display_color = color_manager.get_color(label)
-
-        # Categorize based on keywords
-        if any(keyword in label_lower for keyword in sector_keywords):
-            sector_colors[label] = display_color
-        elif any(keyword in label_lower for keyword in end_use_keywords):
-            end_use_colors[label] = display_color
-        else:
-            # Default to scenarios for anything else
-            scenario_colors[label] = display_color
+    metric_colors = {}
+    for label in structured_palette.get("metrics", {}):
+        metric_colors[label] = color_manager.get_color(label)
 
     # Get temporary color edits
     temp_edits = get_temp_color_edits()
@@ -212,11 +196,11 @@ def create_settings_layout(
                                                     )
                                                     if scenario_colors
                                                     else None,
-                                                    # Sectors
+                                                    # Model Years
                                                     html.Div(
                                                         [
                                                             html.H6(
-                                                                "Sectors",
+                                                                "Model Years",
                                                                 className="mb-2 text-muted",
                                                             ),
                                                             html.Div(
@@ -224,19 +208,19 @@ def create_settings_layout(
                                                                     _create_color_item(
                                                                         label, color, temp_edits
                                                                     )
-                                                                    for label, color in sector_colors.items()
+                                                                    for label, color in model_year_colors.items()
                                                                 ],
                                                                 className="d-flex flex-wrap gap-2 mb-3",
                                                             ),
                                                         ]
                                                     )
-                                                    if sector_colors
+                                                    if model_year_colors
                                                     else None,
-                                                    # End Uses
+                                                    # Metrics
                                                     html.Div(
                                                         [
                                                             html.H6(
-                                                                "End Uses",
+                                                                "Metrics",
                                                                 className="mb-2 text-muted",
                                                             ),
                                                             html.Div(
@@ -244,13 +228,13 @@ def create_settings_layout(
                                                                     _create_color_item(
                                                                         label, color, temp_edits
                                                                     )
-                                                                    for label, color in end_use_colors.items()
+                                                                    for label, color in metric_colors.items()
                                                                 ],
                                                                 className="d-flex flex-wrap gap-2",
                                                             ),
                                                         ]
                                                     )
-                                                    if end_use_colors
+                                                    if metric_colors
                                                     else None,
                                                 ],
                                             )
@@ -280,7 +264,7 @@ def create_settings_layout(
                                                 [
                                                     dbc.Input(
                                                         id="color-picker-input",
-                                                        type="color",
+                                                        type="color",  # type: ignore[arg-type]
                                                         style={
                                                             "width": "100%",
                                                             "height": "60px",
@@ -511,32 +495,21 @@ def create_color_preview_content(color_manager: ColorManager) -> list[html.Div]:
     # Get current palette data from color manager's palette
     palette = color_manager.get_palette()
 
-    # Get all colors from the palette
-    all_colors = palette.to_dict()
+    # Get structured palette with categories
+    structured_palette = palette.to_dict()
 
-    # Try to categorize by common naming patterns
+    # Extract colors for each category and convert to RGBA for display
     scenario_colors = {}
-    sector_colors = {}
-    end_use_colors = {}
+    for label in structured_palette.get("scenarios", {}):
+        scenario_colors[label] = color_manager.get_color(label)
 
-    # Common sector names
-    sector_keywords = ["residential", "commercial", "industrial", "transport"]
-    # Common end use names
-    end_use_keywords = ["heating", "cooling", "lighting", "water", "appliance", "ventilation"]
+    model_year_colors = {}
+    for label in structured_palette.get("model_years", {}):
+        model_year_colors[label] = color_manager.get_color(label)
 
-    for label, color in all_colors.items():
-        label_lower = label.lower()
-        # Convert color to RGBA format for display
-        display_color = color_manager.get_color(label)
-
-        # Categorize based on keywords
-        if any(keyword in label_lower for keyword in sector_keywords):
-            sector_colors[label] = display_color
-        elif any(keyword in label_lower for keyword in end_use_keywords):
-            end_use_colors[label] = display_color
-        else:
-            # Default to scenarios for anything else
-            scenario_colors[label] = display_color
+    metric_colors = {}
+    for label in structured_palette.get("metrics", {}):
+        metric_colors[label] = color_manager.get_color(label)
 
     # Get temporary color edits
     temp_edits = get_temp_color_edits()
@@ -564,19 +537,19 @@ def create_color_preview_content(color_manager: ColorManager) -> list[html.Div]:
             )
         )
 
-    # Sectors
-    if sector_colors:
+    # Model Years
+    if model_year_colors:
         content.append(
             html.Div(
                 [
                     html.H6(
-                        "Sectors",
+                        "Model Years",
                         className="mb-2 text-muted",
                     ),
                     html.Div(
                         [
                             _create_color_item(label, color, temp_edits)
-                            for label, color in sector_colors.items()
+                            for label, color in model_year_colors.items()
                         ],
                         className="d-flex flex-wrap gap-2 mb-3",
                     ),
@@ -584,19 +557,19 @@ def create_color_preview_content(color_manager: ColorManager) -> list[html.Div]:
             )
         )
 
-    # End Uses
-    if end_use_colors:
+    # Metrics
+    if metric_colors:
         content.append(
             html.Div(
                 [
                     html.H6(
-                        "End Uses",
+                        "Metrics",
                         className="mb-2 text-muted",
                     ),
                     html.Div(
                         [
                             _create_color_item(label, color, temp_edits)
-                            for label, color in end_use_colors.items()
+                            for label, color in metric_colors.items()
                         ],
                         className="d-flex flex-wrap gap-2",
                     ),
