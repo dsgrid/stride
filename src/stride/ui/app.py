@@ -1,7 +1,9 @@
 from pathlib import Path
+from typing import Any
 
 import dash_bootstrap_components as dbc
 from dash import Dash, Input, Output, State, callback, dcc, html
+from dash.exceptions import PreventUpdate
 from loguru import logger
 
 from stride.api import APIClient
@@ -68,7 +70,7 @@ def create_app(  # noqa: C901
         # Try to find the palette name from user palettes
         try:
             user_palette_list = list_user_palettes()
-            current_palette_name = str(user_palette_list[0]) if user_palette_list else None
+            current_palette_name = user_palette_list[0].stem if user_palette_list else None
         except Exception:
             current_palette_name = None
     else:
@@ -202,6 +204,27 @@ def create_app(  # noqa: C901
             dcc.Store(id="sidebar-open", data=False),
             dcc.Store(id="chart-refresh-trigger", data=0),
             dcc.Store(id="theme-store", data="dark"),
+            # Dynamic scenario CSS that updates with palette changes
+            html.Div(
+                id="scenario-css-container",
+                children=[
+                    html.Script(
+                        f"""
+                        (function() {{
+                            var existingStyle = document.getElementById('scenario-dynamic-css');
+                            if (existingStyle) {{
+                                existingStyle.remove();
+                            }}
+                            var style = document.createElement('style');
+                            style.id = 'scenario-dynamic-css';
+                            style.textContent = `{color_manager.generate_scenario_css()}`;
+                            document.head.appendChild(style);
+                        }})();
+                        """
+                    )
+                ],
+                style={"display": "none"},
+            ),
             # Sidebar
             sidebar,
             # Main content
@@ -650,5 +673,32 @@ def create_app(  # noqa: C901
         get_current_color_manager,
         on_palette_change,
     )
+
+    # Callback to update scenario CSS when palette changes
+    @callback(
+        Output("scenario-css-container", "children"),
+        Input("settings-palette-applied", "data"),
+    )
+    def update_scenario_css(palette_data: dict[str, Any]) -> list:
+        """Update scenario CSS when palette changes."""
+        color_manager = get_current_color_manager()
+        if color_manager is None:
+            raise PreventUpdate
+        return [
+            html.Script(
+                f"""
+                (function() {{
+                    var existingStyle = document.getElementById('scenario-dynamic-css');
+                    if (existingStyle) {{
+                        existingStyle.remove();
+                    }}
+                    var style = document.createElement('style');
+                    style.id = 'scenario-dynamic-css';
+                    style.textContent = `{color_manager.generate_scenario_css()}`;
+                    document.head.appendChild(style);
+                }})();
+                """
+            )
+        ]
 
     return app

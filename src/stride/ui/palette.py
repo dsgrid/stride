@@ -85,6 +85,17 @@ class ColorPalette:
                 for label, color in palette.items():
                     self.update(label, color)
 
+    def __str__(self) -> str:
+        """Return a string representation of the palette."""
+        num_scenarios = len(self.scenarios)
+        num_model_years = len(self.model_years)
+        num_metrics = len(self.metrics)
+        return f"ColorPalette(scenarios={num_scenarios}, model_years={num_model_years}, metrics={num_metrics})"
+
+    def __repr__(self) -> str:
+        """Return a detailed string representation of the palette."""
+        return self.__str__()
+
     def update(self, key: str, color: str | None = None, category: str | None = None) -> None:
         """Updates or creates a new color for the given *key* in the specified category.
 

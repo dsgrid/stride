@@ -12,7 +12,7 @@ from stride.api.utils import (
     TimeGroupAgg,
     WeatherVar,
 )
-from stride.ui.plotting.utils import get_neutral_color
+from stride.ui.plotting.utils import get_error_annotation_style, get_neutral_color
 
 if TYPE_CHECKING:
     from stride.api import APIClient
@@ -106,7 +106,7 @@ def update_consumption_plot(
     breakdown : ConsumptionBreakdown
         Breakdown type ("None", "Sector", or "End Use")
     secondary_metric : SecondaryMetric
-        Secondary metric for right axis (not yet implemented)
+        Secondary metric for right axis
 
     Returns
     -------
@@ -138,6 +138,76 @@ def update_consumption_plot(
             # Use theme-aware neutral gray color for the bars
             neutral_color = get_neutral_color(plotter.get_template())
             fig = plotter.grouped_single_bars(df, "year", fixed_color=neutral_color)
+
+        # Add secondary metric if selected
+        if secondary_metric and secondary_metric != "None":
+            try:
+                secondary_df = data_handler.get_secondary_metric(
+                    scenario=scenario, metric=secondary_metric, years=None
+                )
+
+                if not secondary_df.empty:
+                    # Get scenario color from color manager
+                    scenario_color = plotter.color_manager.get_color(scenario)
+
+                    # Add secondary metric as a line trace on the right y-axis
+                    fig.add_trace(
+                        go.Scatter(
+                            x=secondary_df["year"],
+                            y=secondary_df["value"],
+                            name=secondary_metric,
+                            mode="lines+markers",
+                            yaxis="y2",
+                            line=dict(width=2, dash="dash", color=scenario_color),
+                            marker=dict(size=6, color=scenario_color),
+                        )
+                    )
+
+                    # Update layout to add secondary y-axis
+                    fig.update_layout(
+                        yaxis2=dict(
+                            title=secondary_metric,
+                            overlaying="y",
+                            side="right",
+                        ),
+                        legend=dict(orientation="v", yanchor="top", y=1.0, xanchor="left", x=1.05),
+                    )
+            except NotImplementedError as e:
+                # Show error annotation on the plot for unsupported metrics
+                error_style = get_error_annotation_style(plotter.get_template())
+                fig.add_annotation(
+                    text=f"⚠️ {str(e)}",
+                    xref="paper",
+                    yref="paper",
+                    x=0.5,
+                    y=1.05,
+                    showarrow=False,
+                    font=dict(size=12, color=error_style["font_color"]),
+                    bgcolor=error_style["bgcolor"],
+                    bordercolor=error_style["bordercolor"],
+                    borderwidth=2,
+                )
+            except Exception as e:
+                # Show error annotation for other errors (table not found, etc.)
+                error_msg = str(e)
+                if "does not exist" in error_msg.lower() or "not found" in error_msg.lower():
+                    error_msg = f"Table not available for {secondary_metric}"
+
+                error_style = get_error_annotation_style(plotter.get_template())
+                fig.add_annotation(
+                    text=f"⚠️ {error_msg}",
+                    xref="paper",
+                    yref="paper",
+                    x=0.5,
+                    y=1.05,
+                    showarrow=False,
+                    font=dict(size=12, color=error_style["font_color"]),
+                    bgcolor=error_style["bgcolor"],
+                    bordercolor=error_style["bordercolor"],
+                    borderwidth=2,
+                )
+                logger.error(f"Secondary metric error: {e}")
+
         return fig
     except Exception as e:
         logger.error(f"Error in consumption plot: {e}")
@@ -165,16 +235,16 @@ def update_peak_plot(
     breakdown : ConsumptionBreakdown
         Breakdown type ("None", "Sector", or "End Use")
     secondary_metric : SecondaryMetric
-        Secondary metric for right axis (not yet implemented)
+        Secondary metric for right axis
 
     Returns
     -------
     go.Figure or dict
         Plotly figure object or error dictionary
     """
-
     if scenario not in data_handler.scenarios:
-        return {"data": [], "layout": {"title": f"Error: {str(scenario)} not found"}}
+        logger.error(f"Error: {scenario} does not exist.")
+        return {"data": [], "layout": {"title": f"Error: {scenario} does not exist."}}
     try:
         # Convert "None" to None
         breakdown_value = None if breakdown == "None" else breakdown
@@ -194,10 +264,79 @@ def update_peak_plot(
             # Use theme-aware neutral gray color for the bars
             neutral_color = get_neutral_color(plotter.get_template())
             fig = plotter.grouped_single_bars(df, "year", fixed_color=neutral_color)
-        return fig
 
+        # Add secondary metric if selected
+        if secondary_metric and secondary_metric != "None":
+            try:
+                secondary_df = data_handler.get_secondary_metric(
+                    scenario=scenario, metric=secondary_metric, years=None
+                )
+
+                if not secondary_df.empty:
+                    # Get scenario color from color manager
+                    scenario_color = plotter.color_manager.get_color(scenario)
+
+                    # Add secondary metric as a line trace on the right y-axis
+                    fig.add_trace(
+                        go.Scatter(
+                            x=secondary_df["year"],
+                            y=secondary_df["value"],
+                            name=secondary_metric,
+                            mode="lines+markers",
+                            yaxis="y2",
+                            line=dict(width=2, dash="dash", color=scenario_color),
+                            marker=dict(size=6, color=scenario_color),
+                        )
+                    )
+
+                    # Update layout to add secondary y-axis
+                    fig.update_layout(
+                        yaxis2=dict(
+                            title=secondary_metric,
+                            overlaying="y",
+                            side="right",
+                        ),
+                        legend=dict(orientation="v", yanchor="top", y=1.0, xanchor="left", x=1.05),
+                    )
+            except NotImplementedError as e:
+                # Show error annotation on the plot for unsupported metrics
+                error_style = get_error_annotation_style(plotter.get_template())
+                fig.add_annotation(
+                    text=f"⚠️ {str(e)}",
+                    xref="paper",
+                    yref="paper",
+                    x=0.5,
+                    y=1.05,
+                    showarrow=False,
+                    font=dict(size=12, color=error_style["font_color"]),
+                    bgcolor=error_style["bgcolor"],
+                    bordercolor=error_style["bordercolor"],
+                    borderwidth=2,
+                )
+            except Exception as e:
+                # Show error annotation for other errors (table not found, etc.)
+                error_msg = str(e)
+                if "does not exist" in error_msg.lower() or "not found" in error_msg.lower():
+                    error_msg = f"Table not available for {secondary_metric}"
+
+                error_style = get_error_annotation_style(plotter.get_template())
+                fig.add_annotation(
+                    text=f"⚠️ {error_msg}",
+                    xref="paper",
+                    yref="paper",
+                    x=0.5,
+                    y=1.05,
+                    showarrow=False,
+                    font=dict(size=12, color=error_style["font_color"]),
+                    bgcolor=error_style["bgcolor"],
+                    bordercolor=error_style["bordercolor"],
+                    borderwidth=2,
+                )
+                logger.error(f"Secondary metric error: {e}")
+
+        return fig
     except Exception as e:
-        print(f"Error in peak plot: {e}")
+        logger.error(f"Error in peak demand plot: {e}")
         return {"data": [], "layout": {"title": f"Error: {str(e)}"}}
 
 
@@ -257,6 +396,77 @@ def update_timeseries_plot(
         stack_col = "metric" if breakdown_value == "End Use" else str(breakdown_value)
         # Use the new time_series function for better multi-year visualization
         fig = plotter.time_series(df, group_by=stack_col.lower() if breakdown_value else None)
+
+        # Add weather variable if selected
+        if weather_var and weather_var != "None":
+            try:
+                for year in selected_years_int:
+                    weather_df = data_handler.get_weather_metric(
+                        scenario=scenario,
+                        year=year,
+                        wvar=weather_var,
+                        resample=resample,
+                        timegroup=None,
+                    )
+
+                    if not weather_df.empty:
+                        # Add weather variable as a line trace on the right y-axis
+                        fig.add_trace(
+                            go.Scatter(
+                                x=weather_df["datetime"],
+                                y=weather_df["value"],
+                                name=f"{year} - {weather_var}",
+                                mode="lines",
+                                yaxis="y2",
+                                line=dict(width=1.5, dash="dot"),
+                            )
+                        )
+
+                # Update layout to add secondary y-axis for weather
+                fig.update_layout(
+                    yaxis2=dict(
+                        title=weather_var,
+                        overlaying="y",
+                        side="right",
+                    ),
+                    legend=dict(orientation="v", yanchor="top", y=1.0, xanchor="left", x=1.05),
+                )
+            except NotImplementedError as e:
+                # Show error annotation for unsupported weather variables
+                error_style = get_error_annotation_style(plotter.get_template())
+                fig.add_annotation(
+                    text=f"⚠️ {str(e)}",
+                    xref="paper",
+                    yref="paper",
+                    x=0.5,
+                    y=1.05,
+                    showarrow=False,
+                    font=dict(size=12, color=error_style["font_color"]),
+                    bgcolor=error_style["bgcolor"],
+                    bordercolor=error_style["bordercolor"],
+                    borderwidth=2,
+                )
+            except Exception as e:
+                # Show error annotation for other errors (table not found, etc.)
+                error_msg = str(e)
+                if "does not exist" in error_msg.lower() or "not found" in error_msg.lower():
+                    error_msg = f"Weather table not available for {weather_var}"
+
+                error_style = get_error_annotation_style(plotter.get_template())
+                fig.add_annotation(
+                    text=f"⚠️ {error_msg}",
+                    xref="paper",
+                    yref="paper",
+                    x=0.5,
+                    y=1.05,
+                    showarrow=False,
+                    font=dict(size=12, color=error_style["font_color"]),
+                    bgcolor=error_style["bgcolor"],
+                    bordercolor=error_style["bordercolor"],
+                    borderwidth=2,
+                )
+                logger.error(f"Weather variable error: {e}")
+
         return fig
     except Exception as e:
         print(f"Error in timeseries plot: {e}")
@@ -307,6 +517,7 @@ def update_yearly_plot(
         # Convert "None" to None
         breakdown_value = None if breakdown == "None" else breakdown
         # Get timeseries data for single year
+        year_int = int(selected_year[0])
         df = data_handler.get_time_series_comparison(
             scenario=scenario, years=selected_year, group_by=breakdown_value, resample=resample
         )
@@ -317,6 +528,76 @@ def update_yearly_plot(
         fig = plotter.time_series(
             df, group_by=stack_col.lower() if breakdown_value else None, chart_type="Area"
         )
+
+        # Add weather variable if selected
+        if weather_var and weather_var != "None":
+            try:
+                weather_df = data_handler.get_weather_metric(
+                    scenario=scenario,
+                    year=year_int,
+                    wvar=weather_var,
+                    resample=resample,
+                    timegroup=None,
+                )
+
+                if not weather_df.empty:
+                    # Add weather variable as a line trace on the right y-axis
+                    fig.add_trace(
+                        go.Scatter(
+                            x=weather_df["datetime"],
+                            y=weather_df["value"],
+                            name=weather_var,
+                            mode="lines",
+                            yaxis="y2",
+                            line=dict(width=1.5, dash="dot"),
+                        )
+                    )
+
+                    # Update layout to add secondary y-axis for weather
+                    fig.update_layout(
+                        yaxis2=dict(
+                            title=weather_var,
+                            overlaying="y",
+                            side="right",
+                        ),
+                        legend=dict(orientation="v", yanchor="top", y=1.0, xanchor="left", x=1.05),
+                    )
+            except NotImplementedError as e:
+                # Show error annotation for unsupported weather variables
+                error_style = get_error_annotation_style(plotter.get_template())
+                fig.add_annotation(
+                    text=f"⚠️ {str(e)}",
+                    xref="paper",
+                    yref="paper",
+                    x=0.5,
+                    y=1.05,
+                    showarrow=False,
+                    font=dict(size=12, color=error_style["font_color"]),
+                    bgcolor=error_style["bgcolor"],
+                    bordercolor=error_style["bordercolor"],
+                    borderwidth=2,
+                )
+            except Exception as e:
+                # Show error annotation for other errors (table not found, etc.)
+                error_msg = str(e)
+                if "does not exist" in error_msg.lower() or "not found" in error_msg.lower():
+                    error_msg = f"Weather table not available for {weather_var}"
+
+                error_style = get_error_annotation_style(plotter.get_template())
+                fig.add_annotation(
+                    text=f"⚠️ {error_msg}",
+                    xref="paper",
+                    yref="paper",
+                    x=0.5,
+                    y=1.05,
+                    showarrow=False,
+                    font=dict(size=12, color=error_style["font_color"]),
+                    bgcolor=error_style["bgcolor"],
+                    bordercolor=error_style["bordercolor"],
+                    borderwidth=2,
+                )
+                logger.error(f"Weather variable error: {e}")
+
         return fig
     except Exception as e:
         print(f"Error in yearly plot: {e}")

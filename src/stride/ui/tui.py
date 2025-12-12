@@ -1094,6 +1094,29 @@ def load_user_palette(name: str) -> ColorPalette:
     return ColorPalette(palette_dict)
 
 
+def delete_user_palette(name: str) -> None:
+    """Delete a user palette by name.
+
+    Parameters
+    ----------
+    name : str
+        Name of the palette to delete
+
+    Raises
+    ------
+    FileNotFoundError
+        If the palette does not exist
+    """
+    palette_dir = get_user_palette_dir()
+    palette_path = palette_dir / f"{name}.json"
+
+    if not palette_path.exists():
+        msg = f"User palette '{name}' not found"
+        raise FileNotFoundError(msg)
+
+    palette_path.unlink()
+
+
 def get_stride_config_dir() -> Path:
     """Get the stride configuration directory, creating it if necessary.
 

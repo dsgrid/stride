@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING, Any, Literal
 
+import pandas as pd
 import plotly.graph_objects as go
 from dash import ALL, Input, Output, State, callback, ctx
 from loguru import logger
@@ -7,6 +8,12 @@ from loguru import logger
 from stride.api.utils import ChartType, ConsumptionBreakdown, SecondaryMetric
 from stride.ui.color_manager import ColorManager
 from stride.ui.plotting import StridePlots
+from stride.ui.plotting.utils import (
+    get_background_color,
+    get_error_annotation_style,
+    get_hoverlabel_style,
+    get_warning_annotation_style,
+)
 
 if TYPE_CHECKING:
     from stride.api import APIClient
@@ -66,7 +73,7 @@ def update_home_scenario_comparison(
     breakdown : str
         Breakdown type ("None", "Sector", or "End Use")
     secondary_metric : str
-        Secondary metric for right axis (not yet implemented)
+        Secondary metric for right axis
 
     Returns
     -------
@@ -97,11 +104,97 @@ def update_home_scenario_comparison(
             fig = plotter.grouped_single_bars(df, "scenario")
 
         # Add secondary metric if selected
-        if secondary_metric:
+        if secondary_metric and secondary_metric != "None":
             try:
-                pass  # Placeholder
+                # Get secondary metric data for each selected scenario
+                for scenario in selected_scenarios:
+                    secondary_df = data_handler.get_secondary_metric(
+                        scenario=scenario, metric=secondary_metric, years=None
+                    )
+
+                    if not secondary_df.empty:
+                        # Get scenario color from color manager
+                        scenario_color = plotter.color_manager.get_color(scenario)
+
+                        # Add background line when no breakdown (total only)
+                        if breakdown_value is None:
+                            # Get theme-aware background color (matches plot background)
+                            bg_color = get_background_color(plotter.get_template())
+
+                            # Add background line (solid, thicker)
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=secondary_df["year"],
+                                    y=secondary_df["value"],
+                                    mode="lines",
+                                    yaxis="y2",
+                                    line=dict(width=5, color=bg_color),
+                                    showlegend=False,
+                                    hoverinfo="skip",
+                                )
+                            )
+
+                        # Add secondary metric as a line trace on the right y-axis
+                        fig.add_trace(
+                            go.Scatter(
+                                x=secondary_df["year"],
+                                y=secondary_df["value"],
+                                name=f"{scenario} - {secondary_metric}",
+                                mode="lines+markers",
+                                yaxis="y2",
+                                line=dict(width=2, dash="dash", color=scenario_color),
+                                marker=dict(size=6, color=scenario_color),
+                                hovertemplate="Year: %{x}<br>"
+                                + f"{secondary_metric}: %{{y:.2f}}<br><extra></extra>",
+                            )
+                        )
+
+                # Update layout to add secondary y-axis and unified hover styling
+                hoverlabel_style = get_hoverlabel_style(plotter.get_template())
+                fig.update_layout(
+                    yaxis2=dict(
+                        title=secondary_metric,
+                        overlaying="y",
+                        side="right",
+                    ),
+                    legend=dict(orientation="v", yanchor="top", y=1.0, xanchor="left", x=1.05),
+                    hoverlabel=hoverlabel_style,
+                )
+            except NotImplementedError as e:
+                # Show error annotation on the plot for unsupported metrics
+                error_style = get_error_annotation_style(plotter.get_template())
+                fig.add_annotation(
+                    text=f"⚠️ {str(e)}",
+                    xref="paper",
+                    yref="paper",
+                    x=0.5,
+                    y=1.05,
+                    showarrow=False,
+                    font=dict(size=12, color=error_style["font_color"]),
+                    bgcolor=error_style["bgcolor"],
+                    bordercolor=error_style["bordercolor"],
+                    borderwidth=2,
+                )
             except Exception as e:
-                print(f"Secondary metric error: {e}")
+                # Show error annotation for other errors (table not found, etc.)
+                error_msg = str(e)
+                if "does not exist" in error_msg.lower() or "not found" in error_msg.lower():
+                    error_msg = f"Table not available for {secondary_metric}"
+
+                error_style = get_error_annotation_style(plotter.get_template())
+                fig.add_annotation(
+                    text=f"⚠️ {error_msg}",
+                    xref="paper",
+                    yref="paper",
+                    x=0.5,
+                    y=1.05,
+                    showarrow=False,
+                    font=dict(size=12, color=error_style["font_color"]),
+                    bgcolor=error_style["bgcolor"],
+                    bordercolor=error_style["bordercolor"],
+                    borderwidth=2,
+                )
+                logger.error(f"Secondary metric error: {e}")
 
         return fig
 
@@ -134,7 +227,7 @@ def update_home_sector_breakdown(
     breakdown : str
         Breakdown type ("None", "Sector", or "End Use")
     secondary_metric : str
-        Secondary metric for right axis (not yet implemented)
+        Secondary metric for right axis
 
     Returns
     -------
@@ -168,11 +261,97 @@ def update_home_sector_breakdown(
             fig = plotter.grouped_single_bars(df, "scenario")
 
         # Add secondary metric if selected
-        if secondary_metric:
+        if secondary_metric and secondary_metric != "None":
             try:
-                pass  # Placeholder
+                # Get secondary metric data for each selected scenario
+                for scenario in selected_scenarios:
+                    secondary_df = data_handler.get_secondary_metric(
+                        scenario=scenario, metric=secondary_metric, years=None
+                    )
+
+                    if not secondary_df.empty:
+                        # Get scenario color from color manager
+                        scenario_color = plotter.color_manager.get_color(scenario)
+
+                        # Add background line when no breakdown (total only)
+                        if breakdown_value is None:
+                            # Get theme-aware background color (matches plot background)
+                            bg_color = get_background_color(plotter.get_template())
+
+                            # Add background line (solid, thicker)
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=secondary_df["year"],
+                                    y=secondary_df["value"],
+                                    mode="lines",
+                                    yaxis="y2",
+                                    line=dict(width=5, color=bg_color),
+                                    showlegend=False,
+                                    hoverinfo="skip",
+                                )
+                            )
+
+                        # Add secondary metric as a line trace on the right y-axis
+                        fig.add_trace(
+                            go.Scatter(
+                                x=secondary_df["year"],
+                                y=secondary_df["value"],
+                                name=f"{scenario} - {secondary_metric}",
+                                mode="lines+markers",
+                                yaxis="y2",
+                                line=dict(width=2, dash="dash", color=scenario_color),
+                                marker=dict(size=6, color=scenario_color),
+                                hovertemplate="Year: %{x}<br>"
+                                + f"{secondary_metric}: %{{y:.2f}}<br><extra></extra>",
+                            )
+                        )
+
+                # Update layout to add secondary y-axis and unified hover styling
+                hoverlabel_style = get_hoverlabel_style(plotter.get_template())
+                fig.update_layout(
+                    yaxis2=dict(
+                        title=secondary_metric,
+                        overlaying="y",
+                        side="right",
+                    ),
+                    legend=dict(orientation="v", yanchor="top", y=1.0, xanchor="left", x=1.05),
+                    hoverlabel=hoverlabel_style,
+                )
+            except NotImplementedError as e:
+                # Show error annotation on the plot for unsupported metrics
+                error_style = get_error_annotation_style(plotter.get_template())
+                fig.add_annotation(
+                    text=f"⚠️ {str(e)}",
+                    xref="paper",
+                    yref="paper",
+                    x=0.5,
+                    y=1.05,
+                    showarrow=False,
+                    font=dict(size=12, color=error_style["font_color"]),
+                    bgcolor=error_style["bgcolor"],
+                    bordercolor=error_style["bordercolor"],
+                    borderwidth=2,
+                )
             except Exception as e:
-                print(f"Secondary metric error: {e}")
+                # Show error annotation for other errors (table not found, etc.)
+                error_msg = str(e)
+                if "does not exist" in error_msg.lower() or "not found" in error_msg.lower():
+                    error_msg = f"Table not available for {secondary_metric}"
+
+                error_style = get_error_annotation_style(plotter.get_template())
+                fig.add_annotation(
+                    text=f"⚠️ {error_msg}",
+                    xref="paper",
+                    yref="paper",
+                    x=0.5,
+                    y=1.05,
+                    showarrow=False,
+                    font=dict(size=12, color=error_style["font_color"]),
+                    bgcolor=error_style["bgcolor"],
+                    bordercolor=error_style["bordercolor"],
+                    borderwidth=2,
+                )
+                logger.error(f"Secondary metric error: {e}")
 
         return fig
 
@@ -246,7 +425,7 @@ def update_home_scenario_timeseries(
     breakdown : str
         Breakdown type ("None", "Sector", or "End Use")
     secondary_metric : str
-        Secondary metric for right axis (not yet implemented)
+        Secondary metric for right axis
 
     Returns
     -------
@@ -273,13 +452,289 @@ def update_home_scenario_timeseries(
 
         stack_col = "metric" if breakdown_value == "End Use" else str(breakdown_value)
 
-        # Create the faceted plot
-        fig = plotter.faceted_time_series(
-            df,
-            chart_type=chart_type,
-            group_by=stack_col.lower() if breakdown_value else None,
-            value_col="value",
-        )
+        # Check if secondary metric is selected - if so, recreate chart with secondary axes
+        if secondary_metric and secondary_metric != "None":
+            try:
+                # Collect all secondary metric data
+                secondary_data = []
+                for scenario in selected_scenarios:
+                    try:
+                        secondary_df = data_handler.get_secondary_metric(
+                            scenario=scenario, metric=secondary_metric, years=None
+                        )
+                        if not secondary_df.empty:
+                            secondary_df["scenario"] = scenario
+                            secondary_data.append(secondary_df)
+                    except Exception as inner_e:
+                        logger.warning(
+                            f"Could not fetch {secondary_metric} for {scenario}: {inner_e}"
+                        )
+                        continue
+
+                if secondary_data:
+                    # Combine all secondary data
+                    all_secondary_df = pd.concat(secondary_data, ignore_index=True)
+
+                    # Calculate subplot layout
+                    num_scenarios = len(selected_scenarios)
+                    if num_scenarios <= 3:
+                        rows, cols = 1, num_scenarios
+                    elif num_scenarios <= 6:
+                        rows, cols = 2, 3
+                    else:
+                        rows, cols = 3, 3
+
+                    # Create specs for make_subplots with secondary y-axes
+                    from plotly.subplots import make_subplots
+
+                    specs = [[{"secondary_y": True} for _ in range(cols)] for _ in range(rows)]
+
+                    # Create figure with secondary y-axes
+                    scenarios_sorted = sorted(selected_scenarios)
+                    fig = make_subplots(
+                        rows=rows,
+                        cols=cols,
+                        subplot_titles=scenarios_sorted,
+                        specs=specs,
+                        shared_yaxes=True,
+                        vertical_spacing=0.08,
+                        horizontal_spacing=0.05,
+                    )
+
+                    # Add primary data traces
+                    if breakdown_value:
+                        categories = sorted(df[stack_col.lower()].unique())
+                        for idx, scenario in enumerate(scenarios_sorted):
+                            row = (idx // cols) + 1
+                            col = (idx % cols) + 1
+                            scenario_df = df[df["scenario"] == scenario]
+
+                            for j, category in enumerate(categories):
+                                category_df = scenario_df[
+                                    scenario_df[stack_col.lower()] == category
+                                ]
+                                if not category_df.empty:
+                                    show_legend = idx == 0
+                                    if chart_type == "Area":
+                                        fig.add_trace(
+                                            go.Scatter(
+                                                x=category_df["year"],
+                                                y=category_df["value"],
+                                                name=category,
+                                                mode="lines",
+                                                line=dict(
+                                                    color=plotter.color_manager.get_color(category)
+                                                ),
+                                                fill="tonexty" if j > 0 else "tozeroy",
+                                                stackgroup="one",
+                                                showlegend=show_legend,
+                                                legendgroup=category,
+                                                hovertemplate="Year: %{x}<br>"
+                                                + f"{category}: %{{y:.2f}}<br>"
+                                                + "<extra></extra>",
+                                            ),
+                                            row=row,
+                                            col=col,
+                                            secondary_y=False,
+                                        )
+                                    else:  # Line
+                                        fig.add_trace(
+                                            go.Scatter(
+                                                x=category_df["year"],
+                                                y=category_df["value"],
+                                                name=category,
+                                                mode="lines+markers",
+                                                line=dict(
+                                                    color=plotter.color_manager.get_color(category)
+                                                ),
+                                                showlegend=show_legend,
+                                                legendgroup=category,
+                                                hovertemplate="Year: %{x}<br>"
+                                                + f"{category}: %{{y:.2f}}<br>"
+                                                + "<extra></extra>",
+                                            ),
+                                            row=row,
+                                            col=col,
+                                            secondary_y=False,
+                                        )
+                    else:
+                        # No breakdown - simple line/area per scenario
+                        for idx, scenario in enumerate(scenarios_sorted):
+                            row = (idx // cols) + 1
+                            col = (idx % cols) + 1
+                            scenario_df = df[df["scenario"] == scenario].sort_values("year")
+
+                            if not scenario_df.empty:
+                                if chart_type == "Area":
+                                    fig.add_trace(
+                                        go.Scatter(
+                                            x=scenario_df["year"],
+                                            y=scenario_df["value"],
+                                            name=scenario,
+                                            mode="lines",
+                                            line=dict(
+                                                color=plotter.color_manager.get_color(scenario)
+                                            ),
+                                            fill="tozeroy",
+                                            showlegend=False,
+                                            hovertemplate="Year: %{x}<br>"
+                                            + f"{scenario}: %{{y:.2f}}<br>"
+                                            + "<extra></extra>",
+                                        ),
+                                        row=row,
+                                        col=col,
+                                        secondary_y=False,
+                                    )
+                                else:  # Line
+                                    fig.add_trace(
+                                        go.Scatter(
+                                            x=scenario_df["year"],
+                                            y=scenario_df["value"],
+                                            name=scenario,
+                                            mode="lines+markers",
+                                            line=dict(
+                                                color=plotter.color_manager.get_color(scenario)
+                                            ),
+                                            showlegend=False,
+                                            hovertemplate="Year: %{x}<br>"
+                                            + f"{scenario}: %{{y:.2f}}<br>"
+                                            + "<extra></extra>",
+                                        ),
+                                        row=row,
+                                        col=col,
+                                        secondary_y=False,
+                                    )
+
+                    # Add secondary metric traces
+                    for idx, scenario in enumerate(scenarios_sorted):
+                        scenario_secondary = all_secondary_df[
+                            all_secondary_df["scenario"] == scenario
+                        ]
+                        if not scenario_secondary.empty:
+                            row = (idx // cols) + 1
+                            col = (idx % cols) + 1
+                            scenario_color = plotter.color_manager.get_color(scenario)
+
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=scenario_secondary["year"],
+                                    y=scenario_secondary["value"],
+                                    name=secondary_metric,
+                                    mode="lines+markers",
+                                    line=dict(width=2, dash="dash", color=scenario_color),
+                                    marker=dict(size=6, color=scenario_color, symbol="diamond"),
+                                    legendgroup=secondary_metric,
+                                    showlegend=(idx == 0),
+                                    hovertemplate="Year: %{x}<br>"
+                                    + f"{secondary_metric}: %{{y:.2f}}<br>"
+                                    + "<extra></extra>",
+                                ),
+                                row=row,
+                                col=col,
+                                secondary_y=True,
+                            )
+
+                    # Update axes labels - only on rightmost column for secondary
+                    for idx in range(len(scenarios_sorted)):
+                        row = (idx // cols) + 1
+                        col = (idx % cols) + 1
+                        fig.update_yaxes(
+                            title_text="Energy (TWh)", row=row, col=col, secondary_y=False
+                        )
+                        if col == cols:  # Only rightmost column
+                            fig.update_yaxes(
+                                title_text=secondary_metric,
+                                row=row,
+                                col=col,
+                                secondary_y=True,
+                            )
+
+                    # Update layout with unified hover styling
+                    hoverlabel_style = get_hoverlabel_style(plotter.get_template())
+                    fig.update_layout(
+                        template=plotter.get_template(),
+                        height=400 if rows == 1 else 600,
+                        hovermode="x",
+                        legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02),
+                        margin=dict(l=60, r=80, t=80, b=80),
+                        hoverlabel=hoverlabel_style,
+                    )
+                else:
+                    # No secondary data available - create normal chart with warning
+                    fig = plotter.faceted_time_series(
+                        df,
+                        chart_type=chart_type,
+                        group_by=stack_col.lower() if breakdown_value else None,
+                        value_col="value",
+                    )
+                    warning_style = get_warning_annotation_style(plotter.get_template())
+                    fig.add_annotation(
+                        text=f"⚠️ No data available for {secondary_metric}",
+                        xref="paper",
+                        yref="paper",
+                        x=0.5,
+                        y=1.02,
+                        showarrow=False,
+                        font=dict(size=12, color=warning_style["font_color"]),
+                        bgcolor=warning_style["bgcolor"],
+                        bordercolor=warning_style["bordercolor"],
+                        borderwidth=2,
+                    )
+            except NotImplementedError as e:
+                # Create normal chart with error message
+                fig = plotter.faceted_time_series(
+                    df,
+                    chart_type=chart_type,
+                    group_by=stack_col.lower() if breakdown_value else None,
+                    value_col="value",
+                )
+                error_style = get_error_annotation_style(plotter.get_template())
+                fig.add_annotation(
+                    text=f"⚠️ {str(e)}",
+                    xref="paper",
+                    yref="paper",
+                    x=0.5,
+                    y=1.02,
+                    showarrow=False,
+                    font=dict(size=12, color=error_style["font_color"]),
+                    bgcolor=error_style["bgcolor"],
+                    bordercolor=error_style["bordercolor"],
+                    borderwidth=2,
+                )
+            except Exception as e:
+                # Create normal chart with error message
+                fig = plotter.faceted_time_series(
+                    df,
+                    chart_type=chart_type,
+                    group_by=stack_col.lower() if breakdown_value else None,
+                    value_col="value",
+                )
+                error_msg = str(e)
+                if "does not exist" in error_msg.lower() or "not found" in error_msg.lower():
+                    error_msg = f"Table not available for {secondary_metric}"
+
+                error_style = get_error_annotation_style(plotter.get_template())
+                fig.add_annotation(
+                    text=f"⚠️ {error_msg}",
+                    xref="paper",
+                    yref="paper",
+                    x=0.5,
+                    y=1.02,
+                    showarrow=False,
+                    font=dict(size=12, color=error_style["font_color"]),
+                    bgcolor=error_style["bgcolor"],
+                    bordercolor=error_style["bordercolor"],
+                    borderwidth=2,
+                )
+                logger.error(f"Secondary metric error: {e}")
+        else:
+            # No secondary metric - create normal faceted chart
+            fig = plotter.faceted_time_series(
+                df,
+                chart_type=chart_type,
+                group_by=stack_col.lower() if breakdown_value else None,
+                value_col="value",
+            )
 
         return fig
 
@@ -352,11 +807,14 @@ def register_home_callbacks(  # noqa: C901
     @callback(
         Output({"type": "home-scenarios-checklist", "index": ALL}, "style"),
         Input("home-scenarios-checklist", "data"),
+        Input("settings-palette-applied", "data"),
         State({"type": "home-scenarios-checklist", "index": ALL}, "id"),
         prevent_initial_call=False,
     )
     def _update_button_styles_1(
-        selected_scenarios: list[str], button_ids: list[dict[str, str]]
+        selected_scenarios: list[str],
+        palette_data: dict[str, Any],
+        button_ids: list[dict[str, str]],
     ) -> list[dict[str, Any]]:
         """Update button styles based on selected scenarios."""
         styles = []
@@ -424,11 +882,14 @@ def register_home_callbacks(  # noqa: C901
     @callback(
         Output({"type": "home-scenarios-2-checklist", "index": ALL}, "style"),
         Input("home-scenarios-2-checklist", "data"),
+        Input("settings-palette-applied", "data"),
         State({"type": "home-scenarios-2-checklist", "index": ALL}, "id"),
         prevent_initial_call=False,
     )
     def _update_button_styles_2(
-        selected_scenarios: list[str], button_ids: list[dict[str, str]]
+        selected_scenarios: list[str],
+        palette_data: dict[str, Any],
+        button_ids: list[dict[str, str]],
     ) -> list[dict[str, Any]]:
         """Update button styles based on selected scenarios."""
         styles = []
@@ -496,11 +957,14 @@ def register_home_callbacks(  # noqa: C901
     @callback(
         Output({"type": "home-scenarios-3-checklist", "index": ALL}, "style"),
         Input("home-scenarios-3-checklist", "data"),
+        Input("settings-palette-applied", "data"),
         State({"type": "home-scenarios-3-checklist", "index": ALL}, "id"),
         prevent_initial_call=False,
     )
     def _update_button_styles_3(
-        selected_scenarios: list[str], button_ids: list[dict[str, str]]
+        selected_scenarios: list[str],
+        palette_data: dict[str, Any],
+        button_ids: list[dict[str, str]],
     ) -> list[dict[str, Any]]:
         """Update button styles based on selected scenarios."""
         styles = []
@@ -568,11 +1032,14 @@ def register_home_callbacks(  # noqa: C901
     @callback(
         Output({"type": "home-scenarios-4-checklist", "index": ALL}, "style"),
         Input("home-scenarios-4-checklist", "data"),
+        Input("settings-palette-applied", "data"),
         State({"type": "home-scenarios-4-checklist", "index": ALL}, "id"),
         prevent_initial_call=False,
     )
     def _update_button_styles_4(
-        selected_scenarios: list[str], button_ids: list[dict[str, str]]
+        selected_scenarios: list[str],
+        palette_data: dict[str, Any],
+        button_ids: list[dict[str, str]],
     ) -> list[dict[str, Any]]:
         """Update button styles based on selected scenarios."""
         styles = []

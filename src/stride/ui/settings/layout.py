@@ -132,26 +132,6 @@ def create_settings_layout(
                                                             )
                                                         },
                                                     ),
-                                                    html.Div(
-                                                        [
-                                                            dbc.Button(
-                                                                "Apply Palette",
-                                                                id="apply-palette-btn",
-                                                                color="primary",
-                                                                className="mt-3",
-                                                            ),
-                                                            dbc.Spinner(
-                                                                html.Div(
-                                                                    id="apply-palette-status"
-                                                                ),
-                                                                size="sm",
-                                                                spinner_style={
-                                                                    "marginLeft": "10px"
-                                                                },
-                                                            ),
-                                                        ],
-                                                        className="d-flex align-items-center",
-                                                    ),
                                                 ]
                                             )
                                         ],
@@ -245,6 +225,76 @@ def create_settings_layout(
                             )
                         ]
                     ),
+                    # JSON Editor Section
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                [
+                                    html.Div(
+                                        [
+                                            html.H4("Advanced: JSON Editor", className="mb-2"),
+                                            dbc.Button(
+                                                [
+                                                    html.I(className="bi bi-chevron-down me-2"),
+                                                    "Show JSON Editor",
+                                                ],
+                                                id="toggle-json-editor-btn",
+                                                color="secondary",
+                                                outline=True,
+                                                size="sm",
+                                                className="mb-3",
+                                            ),
+                                        ]
+                                    ),
+                                    dbc.Collapse(
+                                        dbc.Card(
+                                            [
+                                                dbc.CardBody(
+                                                    [
+                                                        html.P(
+                                                            "Edit the palette as JSON. Paste a new palette and click 'Apply JSON' to update the preview. Changes are not saved until you use one of the save buttons below.",
+                                                            className="text-muted small mb-3",
+                                                        ),
+                                                        dbc.Textarea(
+                                                            id="palette-json-editor",
+                                                            style={
+                                                                "fontFamily": "monospace",
+                                                                "fontSize": "0.85rem",
+                                                                "minHeight": "300px",
+                                                            },
+                                                            className="mb-3",
+                                                        ),
+                                                        html.Div(
+                                                            [
+                                                                dbc.Button(
+                                                                    "Apply JSON",
+                                                                    id="apply-json-btn",
+                                                                    color="primary",
+                                                                    size="sm",
+                                                                    className="me-2",
+                                                                ),
+                                                                dbc.Button(
+                                                                    "Reset to Current",
+                                                                    id="reset-json-btn",
+                                                                    color="secondary",
+                                                                    size="sm",
+                                                                ),
+                                                            ],
+                                                            className="mb-2",
+                                                        ),
+                                                        html.Div(id="json-editor-status"),
+                                                    ]
+                                                )
+                                            ],
+                                            className="mb-4",
+                                        ),
+                                        id="json-editor-collapse",
+                                        is_open=False,
+                                    ),
+                                ]
+                            )
+                        ]
+                    ),
                     # Color Picker Modal
                     dbc.Modal(
                         [
@@ -314,67 +364,127 @@ def create_settings_layout(
                         size="md",
                         centered=True,
                     ),
+                    # Delete Confirmation Modal
+                    dbc.Modal(
+                        [
+                            dbc.ModalHeader(
+                                dbc.ModalTitle("Confirm Delete"),
+                                close_button=True,
+                            ),
+                            dbc.ModalBody(
+                                [
+                                    html.P(
+                                        id="delete-confirmation-text",
+                                        className="mb-0",
+                                    ),
+                                ]
+                            ),
+                            dbc.ModalFooter(
+                                [
+                                    dbc.Button(
+                                        "Cancel",
+                                        id="delete-cancel-btn",
+                                        color="secondary",
+                                        className="me-2",
+                                    ),
+                                    dbc.Button(
+                                        "Delete",
+                                        id="delete-confirm-btn",
+                                        color="danger",
+                                    ),
+                                ]
+                            ),
+                        ],
+                        id="delete-confirmation-modal",
+                        is_open=False,
+                        size="md",
+                        centered=True,
+                    ),
                     # Hidden store for selected color label
                     dcc.Store(id="selected-color-label", data=None),
                     # Hidden store for tracking color edits (triggers refresh)
                     dcc.Store(id="color-edits-counter", data=0),
                     # Save Options Section
                     dbc.Row(
-                        [
-                            dbc.Col(
-                                [
-                                    html.H4("Save Options", className="mb-3"),
-                                    dbc.Card(
-                                        [
-                                            dbc.CardBody(
-                                                [
-                                                    html.P(
-                                                        "Save the current color scheme to:",
-                                                        className="mb-3",
-                                                    ),
-                                                    dbc.ButtonGroup(
-                                                        [
-                                                            dbc.Button(
-                                                                "Save to Project",
-                                                                id="save-to-project-btn",
-                                                                color="success",
-                                                                outline=True,
-                                                            ),
-                                                            dbc.Button(
-                                                                "Save to User Palette",
-                                                                id="save-to-user-btn",
-                                                                color="success",
-                                                                outline=True,
-                                                            ),
-                                                        ],
-                                                        className="mb-3",
-                                                    ),
-                                                    html.Div(id="save-palette-status"),
-                                                    # User palette name input (hidden by default)
-                                                    html.Div(
-                                                        [
-                                                            html.Label(
-                                                                "User Palette Name:",
-                                                                className="form-label",
-                                                            ),
-                                                            dbc.Input(
-                                                                id="save-user-palette-name",
-                                                                type="text",
-                                                                placeholder="Enter palette name...",
-                                                            ),
-                                                        ],
-                                                        id="save-user-palette-name-container",
-                                                        style={"display": "none"},
-                                                        className="mt-3",
-                                                    ),
-                                                ]
-                                            )
-                                        ],
-                                        className="mb-4",
-                                    ),
-                                ]
-                            )
-                        ]
+                        html.Div(
+                            [
+                                dbc.Col(
+                                    [
+                                        html.H4("Save Options", className="mb-3"),
+                                        dbc.Card(
+                                            [
+                                                dbc.CardBody(
+                                                    [
+                                                        html.P(
+                                                            "Save the current color scheme:",
+                                                            className="mb-3",
+                                                        ),
+                                                        html.Div(
+                                                            [
+                                                                dbc.Button(
+                                                                    "Save Current Palette",
+                                                                    id="save-current-palette-btn",
+                                                                    color="primary",
+                                                                    outline=True,
+                                                                    className="m-1 theme-text",
+                                                                ),
+                                                                dbc.Button(
+                                                                    "Save to Project",
+                                                                    id="save-to-project-btn",
+                                                                    color="success",
+                                                                    outline=True,
+                                                                    className="m-1 theme-text",
+                                                                ),
+                                                                dbc.Button(
+                                                                    "Save to New Palette",
+                                                                    id="save-to-new-palette-btn",
+                                                                    color="info",
+                                                                    outline=True,
+                                                                    className="m-1 theme-text",
+                                                                ),
+                                                                dbc.Button(
+                                                                    "Delete Selected User Palette",
+                                                                    id="delete-user-palette-btn",
+                                                                    color="danger",
+                                                                    outline=True,
+                                                                    className="m-1 theme-text",
+                                                                    disabled=(
+                                                                        current_palette_type
+                                                                        == "project"
+                                                                        or not current_palette_name
+                                                                    ),
+                                                                ),
+                                                            ],
+                                                            className="d-flex flex-wrap mb-3",
+                                                        ),
+                                                        html.Div(id="delete-palette-status"),
+                                                        html.Div(id="save-palette-status"),
+                                                        # New palette name input (hidden by default)
+                                                        html.Div(
+                                                            [
+                                                                html.Label(
+                                                                    "New Palette Name:",
+                                                                    className="form-label",
+                                                                ),
+                                                                dbc.Input(
+                                                                    id="save-new-palette-name",
+                                                                    type="text",
+                                                                    placeholder="Enter new palette name...",
+                                                                ),
+                                                            ],
+                                                            id="save-new-palette-name-container",
+                                                            style={"display": "none"},
+                                                            className="mt-3",
+                                                        ),
+                                                    ]
+                                                )
+                                            ],
+                                            className="mb-4",
+                                        ),
+                                    ]
+                                )
+                            ],
+                        )
                     ),
                     # Back button
                     dbc.Row(

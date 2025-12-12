@@ -354,6 +354,23 @@ body {
     color: #ffffff !important;
 }
 
+/* Theme-aware button text colors */
+.dark-theme .btn-outline-primary.theme-text {
+    color: #e9ecef !important;
+}
+
+.dark-theme .btn-outline-success.theme-text {
+    color: #e9ecef !important;
+}
+
+.dark-theme .btn-outline-info.theme-text {
+    color: #e9ecef !important;
+}
+
+.dark-theme .btn-outline-danger.theme-text {
+    color: #e9ecef !important;
+}
+
 /* ============================================
    RADIO BUTTONS & CHECKBOXES
    ============================================ */

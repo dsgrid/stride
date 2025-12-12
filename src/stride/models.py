@@ -79,6 +79,10 @@ class Scenario(DSGBaseModel):  # type: ignore
         default=None,
         description="Optional path to a user-provided population table",
     )
+    weather: Path | None = Field(
+        default=None,
+        description="Optional path to a user-provided weather table",
+    )
     # TODO: bait, ev_share, vmt_per_capita
 
     @field_validator("name")

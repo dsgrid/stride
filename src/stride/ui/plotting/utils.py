@@ -12,6 +12,65 @@ DEFAULT_BAR_COLOR = "rgba(0,0,200,0.8)"
 # Theme-aware neutral gray colors
 LIGHT_THEME_GRAY = "rgba(100, 100, 100, 0.8)"  # Darker gray for light backgrounds
 DARK_THEME_GRAY = "rgba(180, 180, 180, 0.8)"  # Lighter gray for dark backgrounds
+# Theme-aware background colors (matching CSS theme --bg-primary)
+DARK_THEME_BG = "rgb(26, 26, 26)"  # Dark background matching CSS #1a1a1a
+LIGHT_THEME_BG = "rgb(255, 255, 255)"  # White background matching CSS #ffffff
+
+
+def get_error_annotation_style(template: str) -> dict[str, Any]:
+    """
+    Get theme-aware styling for error annotations.
+
+    Parameters
+    ----------
+    template : str
+        Plotly template name (e.g., 'plotly_white', 'plotly_dark')
+
+    Returns
+    -------
+    dict
+        Dictionary with 'bgcolor', 'font_color', and 'bordercolor' for error annotations
+    """
+    if "dark" in template.lower():
+        return {
+            "bgcolor": "rgba(60, 60, 60, 0.9)",  # Dark background
+            "font_color": "#ff6b6b",  # Light red text
+            "bordercolor": "#ff4444",  # Red border
+        }
+    else:
+        return {
+            "bgcolor": "rgba(255, 255, 255, 0.9)",  # Light background
+            "font_color": "#d32f2f",  # Dark red text
+            "bordercolor": "#d32f2f",  # Red border
+        }
+
+
+def get_warning_annotation_style(template: str) -> dict[str, Any]:
+    """
+    Get theme-aware styling for warning annotations.
+
+    Parameters
+    ----------
+    template : str
+        Plotly template name (e.g., 'plotly_white', 'plotly_dark')
+
+    Returns
+    -------
+    dict
+        Dictionary with 'bgcolor', 'font_color', and 'bordercolor' for warning annotations
+    """
+    if "dark" in template.lower():
+        return {
+            "bgcolor": "rgba(60, 60, 60, 0.9)",  # Dark background
+            "font_color": "#ffa726",  # Light orange text
+            "bordercolor": "#ff9800",  # Orange border
+        }
+    else:
+        return {
+            "bgcolor": "rgba(255, 255, 255, 0.9)",  # Light background
+            "font_color": "#f57c00",  # Dark orange text
+            "bordercolor": "#f57c00",  # Orange border
+        }
 
 
 def get_neutral_color(template: str) -> str:
@@ -32,6 +91,26 @@ def get_neutral_color(template: str) -> str:
         return DARK_THEME_GRAY
     else:
         return LIGHT_THEME_GRAY
+
+
+def get_background_color(template: str) -> str:
+    """
+    Get the plot background color appropriate for the given template.
+
+    Parameters
+    ----------
+    template : str
+        Plotly template name (e.g., 'plotly_white', 'plotly_dark')
+
+    Returns
+    -------
+    str
+        RGBA color string for plot background
+    """
+    if "dark" in template.lower():
+        return DARK_THEME_BG
+    else:
+        return LIGHT_THEME_BG
 
 
 def get_plotly_template() -> str:

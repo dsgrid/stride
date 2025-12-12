@@ -24,6 +24,18 @@ class StridePlots:
         self._color_generator = color_generator
         self._template = template
 
+    @property
+    def color_manager(self) -> "ColorManager":
+        """
+        Get the color manager instance.
+
+        Returns
+        -------
+        ColorManager
+            The color manager used by this plotter
+        """
+        return self._color_generator
+
     def set_template(self, template: str) -> None:
         """
         Set the plotly template for all plots.
