@@ -56,7 +56,7 @@ def test_api_query_methods() -> None:
         if len(all_labels) > 5:
             print(f"  ... and {len(all_labels) - 5} more")
 
-        palette_dict = palette.to_dict()
+        palette_dict = palette.to_flat_dict()
         print(f"\nGenerated palette with {len(palette_dict)} entries")
 
         # Verify all labels have colors
@@ -113,14 +113,16 @@ def test_palette_init_from_user_palette() -> None:
     # Load it back
     print(f"\nLoading user palette: {test_palette_name}")
     loaded_palette = load_user_palette(test_palette_name)
-    loaded_dict = loaded_palette.to_dict()
+    loaded_dict = loaded_palette.to_flat_dict()
 
     print(f"Loaded {len(loaded_dict)} colors:")
     for label, color in loaded_dict.items():
         print(f"  {label}: {color}")
 
-    # Verify
-    assert loaded_dict == test_palette, "Loaded palette should match original"
+    # Verify (loaded_dict has lowercase keys)
+    assert loaded_dict == {k.lower(): v for k, v in test_palette.items()}, (
+        "Loaded palette should match original"
+    )
     print("✓ User palette loaded successfully")
 
     # Clean up

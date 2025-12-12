@@ -60,7 +60,7 @@ def test_complete_workflow(test_env) -> None:  # type: ignore[no-untyped-def]
     # Step 3: Load the palette back
     loaded_palette = load_user_palette("residential_colors")
     assert isinstance(loaded_palette, ColorPalette)
-    assert loaded_palette.to_dict() == residential_palette
+    assert loaded_palette.to_flat_dict() == {k.lower(): v for k, v in residential_palette.items()}
 
     # Step 4: Verify no default is set initially
     assert get_default_user_palette() is None
@@ -122,9 +122,11 @@ def test_palette_override_simulation(test_env) -> None:  # type: ignore[no-untyp
     palette_name = None
 
     if palette_name:
-        selected_palette = load_user_palette(palette_name).to_dict()  # type: ignore[arg-type]
-    elif get_default_user_palette():
-        selected_palette = load_user_palette(get_default_user_palette()).to_dict()  # type: ignore[arg-type]
+        selected_palette = load_user_palette(palette_name).to_flat_dict()  # type: ignore[assignment]
+    else:
+        default_palette = get_default_user_palette()
+        if default_palette:
+            selected_palette = load_user_palette(default_palette).to_flat_dict()  # type: ignore[assignment]
 
     assert selected_palette == project_palette
 
@@ -134,11 +136,13 @@ def test_palette_override_simulation(test_env) -> None:  # type: ignore[no-untyp
     palette_name = None
 
     if palette_name:
-        selected_palette = load_user_palette(palette_name).to_dict()  # type: ignore[arg-type]
-    elif get_default_user_palette():
-        selected_palette = load_user_palette(get_default_user_palette()).to_dict()  # type: ignore[arg-type]
+        selected_palette = load_user_palette(palette_name).to_flat_dict()  # type: ignore[assignment]
+    else:
+        default_palette = get_default_user_palette()
+        if default_palette:
+            selected_palette = load_user_palette(default_palette).to_flat_dict()  # type: ignore[assignment]
 
-    assert selected_palette == user_palette_dict
+    assert selected_palette == {k.lower(): v for k, v in user_palette_dict.items()}
 
     # Scenario 3: Default set, override specified -> use override
     other_palette_dict = {
@@ -150,20 +154,24 @@ def test_palette_override_simulation(test_env) -> None:  # type: ignore[no-untyp
     palette_name = "other"
 
     if palette_name:
-        selected_palette = load_user_palette(palette_name).to_dict()  # type: ignore[arg-type]
-    elif get_default_user_palette():
-        selected_palette = load_user_palette(get_default_user_palette()).to_dict()  # type: ignore[arg-type]
+        selected_palette = load_user_palette(palette_name).to_flat_dict()  # type: ignore[assignment]
+    else:
+        default_palette = get_default_user_palette()
+        if default_palette:
+            selected_palette = load_user_palette(default_palette).to_flat_dict()  # type: ignore[assignment]
 
-    assert selected_palette == other_palette_dict
+    assert selected_palette == {k.lower(): v for k, v in other_palette_dict.items()}
 
     # Scenario 4: Default set, --no-default-palette flag -> use project
     no_default_flag = True
     palette_name = None
 
     if palette_name:
-        selected_palette = load_user_palette(palette_name).to_dict()  # type: ignore[arg-type]
-    elif not no_default_flag and get_default_user_palette():
-        selected_palette = load_user_palette(get_default_user_palette()).to_dict()  # type: ignore[arg-type]
+        selected_palette = load_user_palette(palette_name).to_flat_dict()  # type: ignore[assignment]
+    elif not no_default_flag:
+        default_palette = get_default_user_palette()
+        if default_palette:
+            selected_palette = load_user_palette(default_palette).to_flat_dict()  # type: ignore[assignment]
     else:
         selected_palette = project_palette
 
@@ -194,7 +202,7 @@ def test_multiple_palettes(test_env) -> None:  # type: ignore[no-untyped-def]
     # Load each palette and verify
     for name, expected_colors in palettes.items():
         loaded = load_user_palette(name)
-        assert loaded.to_dict() == expected_colors
+        assert loaded.to_flat_dict() == {k.lower(): v for k, v in expected_colors.items()}
 
 
 def test_error_handling(test_env) -> None:  # type: ignore[no-untyped-def]
@@ -263,9 +271,9 @@ def test_palette_content_integrity(test_env) -> None:  # type: ignore[no-untyped
     save_user_palette("complex", complex_palette)
     loaded = load_user_palette("complex")
 
-    assert loaded.to_dict() == complex_palette
+    assert loaded.to_flat_dict() == {k.lower(): v for k, v in complex_palette.items()}
 
-    # Verify each label individually
+    # Verify each label individually (get() handles lowercasing internally)
     for label, color in complex_palette.items():
         assert loaded.get(label) == color
 
@@ -284,7 +292,7 @@ def test_concurrent_palette_operations(test_env) -> None:  # type: ignore[no-unt
     # All palettes should still be loadable
     for i in range(5):
         loaded = load_user_palette(f"palette{i}")
-        assert f"Label{i}" in loaded.to_dict()
+        assert f"label{i}" in loaded.to_flat_dict()
 
 
 if __name__ == "__main__":

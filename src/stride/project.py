@@ -217,12 +217,12 @@ class Project:
 
         # Add sectors to metrics category
         for sector in sectors:
-            if sector not in self._palette.metrics:
+            if self._palette is not None and sector not in self._palette.metrics:
                 self._palette.update(sector, category="metrics")
 
         # Add end uses to metrics category
         for end_use in end_uses:
-            if end_use not in self._palette.metrics:
+            if self._palette is not None and end_use not in self._palette.metrics:
                 self._palette.update(end_use, category="metrics")
 
     def refresh_palette_colors(self) -> None:
@@ -243,9 +243,10 @@ class Project:
             _ = self.palette
 
         # Refresh colors for each category using the correct theme
-        self._palette.refresh_category_colors("scenarios")
-        self._palette.refresh_category_colors("model_years")
-        self._palette.refresh_category_colors("metrics")
+        if self._palette is not None:
+            self._palette.refresh_category_colors("scenarios")
+            self._palette.refresh_category_colors("model_years")
+            self._palette.refresh_category_colors("metrics")
 
     def save_palette(self) -> None:
         """Save the current palette state back to the project conig file."""

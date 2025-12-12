@@ -679,7 +679,7 @@ def create_app(  # noqa: C901
         Output("scenario-css-container", "children"),
         Input("settings-palette-applied", "data"),
     )
-    def update_scenario_css(palette_data: dict[str, Any]) -> list:
+    def update_scenario_css(palette_data: dict[str, Any]) -> list[Any]:
         """Update scenario CSS when palette changes."""
         color_manager = get_current_color_manager()
         if color_manager is None:

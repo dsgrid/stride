@@ -694,7 +694,7 @@ class PaletteViewer(App[None]):
                 "Metrics": "metrics",
             }
 
-            structured_palette = {
+            structured_palette: dict[str, dict[str, str]] = {
                 "scenarios": {},
                 "model_years": {},
                 "metrics": {},

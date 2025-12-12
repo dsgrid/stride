@@ -39,9 +39,9 @@ class ColorPalette:
     Keys typically map to label values in a stack chart or chart label.
     """
 
-    def __init__(
+    def __init__(  # noqa: C901
         self,
-        palette: dict[str, str] | dict[str, dict[str, str]] | None = None,
+        palette: dict[str, dict[str, str]] | dict[str, str] | None = None,
     ):
         """Initializes a new ColorPalette instance with colors organized by category.
 
@@ -69,21 +69,48 @@ class ColorPalette:
             # Check if it's the new structured format
             if (
                 isinstance(palette, dict)
-                and "scenarios" in palette
-                and "model_years" in palette
-                and "metrics" in palette
+                and all(k in palette for k in ["scenarios", "model_years", "metrics"])
+                and all(isinstance(v, dict) for v in palette.values())
             ):
                 # New structured format
-                for label, color in palette.get("scenarios", {}).items():
-                    self.update(label, color, category="scenarios")
-                for label, color in palette.get("model_years", {}).items():
-                    self.update(label, color, category="model_years")
-                for label, color in palette.get("metrics", {}).items():
-                    self.update(label, color, category="metrics")
+                scenarios_dict = palette["scenarios"]
+                model_years_dict = palette["model_years"]
+                metrics_dict = palette["metrics"]
+
+                if isinstance(scenarios_dict, dict):
+                    for label, color in scenarios_dict.items():
+                        if isinstance(color, str):
+                            self.update(label, color, category="scenarios")
+
+                if isinstance(model_years_dict, dict):
+                    for label, color in model_years_dict.items():
+                        if isinstance(color, str):
+                            self.update(label, color, category="model_years")
+
+                if isinstance(metrics_dict, dict):
+                    for label, color in metrics_dict.items():
+                        if isinstance(color, str):
+                            self.update(label, color, category="metrics")
             else:
                 # Legacy flat format - default to metrics
-                for label, color in palette.items():
-                    self.update(label, color)
+                for label, color_value in palette.items():
+                    if isinstance(color_value, str):
+                        self.update(label, color_value)
+
+    @property
+    def palette(self) -> dict[str, str]:
+        """Return a merged dictionary of all colors for backward compatibility.
+
+        Returns
+        -------
+        dict[str, str]
+            A flat dictionary combining all categories (scenarios, model_years, metrics).
+        """
+        result = {}
+        result.update(self.scenarios)
+        result.update(self.model_years)
+        result.update(self.metrics)
+        return result
 
     def __str__(self) -> str:
         """Return a string representation of the palette."""
@@ -264,7 +291,7 @@ class ColorPalette:
         raise KeyError(msg)
 
     @classmethod
-    def from_dict(cls, palette: dict[str, str] | dict[str, dict[str, str]]) -> "ColorPalette":  # noqa: C901
+    def from_dict(cls, palette: dict[str, dict[str, str]] | dict[str, str]) -> "ColorPalette":  # noqa: C901
         """
         Loads the color palette from a dictionary representation with sanitization.
 
@@ -287,14 +314,16 @@ class ColorPalette:
         # Check if it's the new structured format
         if (
             isinstance(palette, dict)
-            and "scenarios" in palette
-            and "model_years" in palette
-            and "metrics" in palette
+            and all(k in palette for k in ["scenarios", "model_years", "metrics"])
+            and all(isinstance(v, dict) for v in palette.values())
         ):
             # Process each category with appropriate theme
-            for category_name, category_dict in palette.items():
-                if category_name not in ["scenarios", "model_years", "metrics"]:
+            for category_name in ["scenarios", "model_years", "metrics"]:
+                category_value = palette.get(category_name)
+                if not isinstance(category_value, dict):
                     continue
+
+                category_dict: dict[str, str] = category_value
 
                 # Get appropriate color iterator for this category
                 if category_name == "scenarios":
@@ -325,13 +354,17 @@ class ColorPalette:
         else:
             # Legacy flat format - default to metrics
             metric_iterator = cycle(colors.qualitative.Prism)  # type: ignore[attr-defined]
-            for key, color in palette.items():
+            for key, color_value in palette.items():
+                if not isinstance(color_value, str):
+                    continue
                 # Normalize key to lowercase
                 normalized_key = key.lower()
 
-                if not (hex_color_pattern.match(color) or rgb_color_pattern.match(color)):
-                    color = next(metric_iterator)
-                new_palette.metrics[normalized_key] = color
+                if not (
+                    hex_color_pattern.match(color_value) or rgb_color_pattern.match(color_value)
+                ):
+                    color_value = next(metric_iterator)
+                new_palette.metrics[normalized_key] = color_value
 
         return new_palette
 

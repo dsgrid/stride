@@ -608,7 +608,7 @@ def register_settings_callbacks(  # type: ignore[no-untyped-def]  # noqa: C901
         State("json-editor-collapse", "is_open"),
         prevent_initial_call=True,
     )
-    def toggle_json_editor(n_clicks: int | None, is_open: bool) -> tuple[bool, list]:
+    def toggle_json_editor(n_clicks: int | None, is_open: bool) -> tuple[bool, list[Any]]:
         """Toggle the JSON editor collapse."""
         if not n_clicks:
             raise PreventUpdate

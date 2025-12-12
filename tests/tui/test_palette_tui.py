@@ -48,18 +48,19 @@ def test_organize_palette() -> None:
             print(f"    - {label}: {labels[label]}")
 
     # Verify expected groups exist
-    assert "Sectors" in groups
-    assert "Years" in groups
-    assert "End Uses" in groups
-    # Note: Scenarios won't be detected without project config
-    # assert "Scenarios" in groups
+    assert "Scenarios" in groups
+    assert "Model Years" in groups
+    assert "Metrics" in groups
 
-    # Verify correct categorization
-    assert "residential" in groups["Sectors"]
-    assert "2025" in groups["Years"]
-    # Scenarios are in "Other" without project config
-    assert "baseline" in groups["Other"] or "baseline" in groups.get("Scenarios", {})
-    assert "cooling" in groups["End Uses"]
+    # Verify correct categorization (everything goes to Metrics for flat palette)
+    assert "residential" in groups["Metrics"]
+    assert "2025" in groups["Metrics"]
+    assert "baseline" in groups["Metrics"]
+    assert "cooling" in groups["Metrics"]
+    # In legacy flat format, everything is categorized as Metrics
+    assert len(groups["Scenarios"]) == 0
+    assert len(groups["Model Years"]) == 0
+    assert len(groups["Metrics"]) == len(test_palette)
 
     print("\n✓ Palette organization test passed!")
 

@@ -36,7 +36,7 @@ def test_user_palette_save_and_load(tmp_path, monkeypatch) -> None:  # type: ign
 
     # Load the palette
     loaded_palette = load_user_palette("test_palette")
-    assert loaded_palette.to_dict() == test_palette
+    assert loaded_palette.to_flat_dict() == {k.lower(): v for k, v in test_palette.items()}
 
 
 def test_set_and_get_default_palette(tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]

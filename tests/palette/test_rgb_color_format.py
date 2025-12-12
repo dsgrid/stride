@@ -17,9 +17,9 @@ def test_rgb_format_in_palette() -> None:
     )
 
     # All colors should be preserved
-    assert palette.to_dict()["Label1"] == "rgb(200,0,0)"
-    assert palette.to_dict()["Label2"] == "rgb(0, 200, 0)"
-    assert palette.to_dict()["Label3"] == "rgb(0,0,200)"
+    assert palette.palette["label1"] == "rgb(200,0,0)"
+    assert palette.palette["label2"] == "rgb(0, 200, 0)"
+    assert palette.palette["label3"] == "rgb(0,0,200)"
 
 
 def test_rgba_format_in_palette() -> None:
@@ -33,9 +33,9 @@ def test_rgba_format_in_palette() -> None:
     )
 
     # All colors should be preserved
-    assert palette.to_dict()["Label1"] == "rgba(200,0,0,0.5)"
-    assert palette.to_dict()["Label2"] == "rgba(0, 200, 0, 0.8)"
-    assert palette.to_dict()["Label3"] == "rgba(0,0,200,1.0)"
+    assert palette.palette["label1"] == "rgba(200,0,0,0.5)"
+    assert palette.palette["label2"] == "rgba(0, 200, 0, 0.8)"
+    assert palette.palette["label3"] == "rgba(0,0,200,1.0)"
 
 
 def test_hex_format_in_palette() -> None:
@@ -49,9 +49,9 @@ def test_hex_format_in_palette() -> None:
     )
 
     # All colors should be preserved
-    assert palette.to_dict()["Label1"] == "#FF0000"
-    assert palette.to_dict()["Label2"] == "#00FF00"
-    assert palette.to_dict()["Label3"] == "#0000FF"
+    assert palette.palette["label1"] == "#FF0000"
+    assert palette.palette["label2"] == "#00FF00"
+    assert palette.palette["label3"] == "#0000FF"
 
 
 def test_mixed_formats_in_palette() -> None:
@@ -66,10 +66,10 @@ def test_mixed_formats_in_palette() -> None:
     )
 
     # All colors should be preserved
-    assert palette.to_dict()["Hex"] == "#FF0000"
-    assert palette.to_dict()["RGB"] == "rgb(0,255,0)"
-    assert palette.to_dict()["RGBA"] == "rgba(0,0,255,0.5)"
-    assert palette.to_dict()["RGB_Spaces"] == "rgb(255, 255, 0)"
+    assert palette.palette["hex"] == "#FF0000"
+    assert palette.palette["rgb"] == "rgb(0,255,0)"
+    assert palette.palette["rgba"] == "rgba(0,0,255,0.5)"
+    assert palette.palette["rgb_spaces"] == "rgb(255, 255, 0)"
 
 
 def test_color_manager_with_rgb_format() -> None:
@@ -176,9 +176,9 @@ def test_palette_from_dict_with_rgb() -> None:
     palette = ColorPalette.from_dict(source_dict)
 
     # All colors should be preserved
-    assert palette.to_dict()["A"] == "rgb(10,20,30)"
-    assert palette.to_dict()["B"] == "rgb(40, 50, 60)"
-    assert palette.to_dict()["C"] == "rgba(70,80,90,0.5)"
+    assert palette.palette["a"] == "rgb(10,20,30)"
+    assert palette.palette["b"] == "rgb(40, 50, 60)"
+    assert palette.palette["c"] == "rgba(70,80,90,0.5)"
 
 
 def test_invalid_rgb_format_gets_replaced() -> None:
@@ -193,13 +193,13 @@ def test_invalid_rgb_format_gets_replaced() -> None:
     )
 
     # Valid rgb should be preserved
-    assert palette.to_dict()["Valid"] == "rgb(100,100,100)"
+    assert palette.palette["valid"] == "rgb(100,100,100)"
 
     # Invalid ones should be replaced (they'll have theme colors)
     # We can't predict exact theme colors, but they should exist
-    assert "Invalid1" in palette.to_dict()
-    assert "Invalid2" in palette.to_dict()
-    assert "Invalid3" in palette.to_dict()
+    assert "invalid1" in palette.palette
+    assert "invalid2" in palette.palette
+    assert "invalid3" in palette.palette
 
 
 def test_rgb_with_various_spacing() -> None:
@@ -214,10 +214,10 @@ def test_rgb_with_various_spacing() -> None:
     )
 
     # All should be accepted and preserved
-    assert palette.to_dict()["NoSpaces"] == "rgb(10,20,30)"
-    assert palette.to_dict()["AllSpaces"] == "rgb(10, 20, 30)"
-    assert palette.to_dict()["MixedSpaces1"] == "rgb(10,20, 30)"
-    assert palette.to_dict()["MixedSpaces2"] == "rgb(10 , 20 ,30)"
+    assert palette.palette["nospaces"] == "rgb(10,20,30)"
+    assert palette.palette["allspaces"] == "rgb(10, 20, 30)"
+    assert palette.palette["mixedspaces1"] == "rgb(10,20, 30)"
+    assert palette.palette["mixedspaces2"] == "rgb(10 , 20 ,30)"
 
 
 def test_color_manager_str_to_rgba_parsing() -> None:
@@ -259,7 +259,7 @@ def test_end_to_end_rgb_workflow() -> None:
 
     # Verify palette preserves rgb format
     for label, color in project_colors.items():
-        assert palette.to_dict()[label] == color
+        assert palette.palette[label.lower()] == color
 
     # Initialize ColorManager
     cm = ColorManager(palette)

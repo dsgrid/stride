@@ -171,24 +171,31 @@ class TestColorPaletteToDict:
         palette = ColorPalette()
         result = palette.to_dict()
         assert isinstance(result, dict)
-        assert len(result) == 0
+        # Structured format has 3 categories
+        assert len(result) == 3
+        assert "scenarios" in result
+        assert "model_years" in result
+        assert "metrics" in result
+        assert len(result["scenarios"]) == 0
+        assert len(result["model_years"]) == 0
+        assert len(result["metrics"]) == 0
 
     def test_to_dict_with_colors(self) -> None:
         """Test converting palette with colors to dict."""
         palette = ColorPalette()
-        palette.update("residential", "#FF5733")
-        palette.update("commercial", "#3498DB")
+        palette.update("residential", "#FF5733", category="metrics")
+        palette.update("commercial", "#3498DB", category="metrics")
         result = palette.to_dict()
-        assert len(result) == 2
-        assert result["residential"] == "#FF5733"
-        assert result["commercial"] == "#3498DB"
+        assert "metrics" in result
+        assert result["metrics"]["residential"] == "#FF5733"
+        assert result["metrics"]["commercial"] == "#3498DB"
 
     def test_to_dict_returns_copy(self) -> None:
         """Test that to_dict returns a copy, not the original dict."""
         palette = ColorPalette()
-        palette.update("residential", "#FF5733")
+        palette.update("residential", "#FF5733", category="metrics")
         result = palette.to_dict()
-        result["new_key"] = "#000000"
+        result["metrics"]["new_key"] = "#000000"
         assert "new_key" not in palette.palette
 
 
@@ -371,33 +378,29 @@ class TestColorPaletteGroupedItems:
     """Test ColorPalette grouped items conversion methods."""
 
     def test_palette_to_grouped_items(self) -> None:
-        """Test converting palette and groups to grouped items."""
+        """Test converting palette to grouped items format."""
         palette = {
-            "heating": "#FF0000",
-            "cooling": "#00FF00",
-            "baseline": "#0000FF",
-        }
-        groups = {
-            "End Uses": {"heating": "#FF0000", "cooling": "#00FF00"},
-            "Scenarios": {"baseline": "#0000FF"},
+            "scenarios": {"baseline": "#0000FF"},
+            "model_years": {},
+            "metrics": {"heating": "#FF0000", "cooling": "#00FF00"},
         }
 
-        result = ColorPalette.palette_to_grouped_items(palette, groups)
+        result = ColorPalette.palette_to_grouped_items(palette)
 
-        assert "End Uses" in result
+        assert "Metrics" in result
         assert "Scenarios" in result
-        assert len(result["End Uses"]) == 2
+        assert len(result["Metrics"]) == 2
         assert len(result["Scenarios"]) == 1
-        assert result["End Uses"][0]["label"] == "heating"
-        assert result["End Uses"][0]["color"] == "#FF0000"
-        assert result["End Uses"][0]["order"] == 0
-        assert result["End Uses"][1]["label"] == "cooling"
-        assert result["End Uses"][1]["order"] == 1
+        assert result["Metrics"][0]["label"] == "heating"
+        assert result["Metrics"][0]["color"] == "#FF0000"
+        assert result["Metrics"][0]["order"] == 0
+        assert result["Metrics"][1]["label"] == "cooling"
+        assert result["Metrics"][1]["order"] == 1
 
     def test_grouped_items_to_palette(self) -> None:
-        """Test converting grouped items back to flat palette."""
+        """Test converting grouped items back to structured palette."""
         grouped_items: dict[str, list[dict[str, Any]]] = {
-            "End Uses": [
+            "Metrics": [
                 {"label": "heating", "color": "#FF0000", "order": 0},
                 {"label": "cooling", "color": "#00FF00", "order": 1},
             ],
@@ -409,14 +412,14 @@ class TestColorPaletteGroupedItems:
         result = ColorPalette.grouped_items_to_palette(grouped_items)
 
         assert len(result) == 3
-        assert result["heating"] == "#FF0000"
-        assert result["cooling"] == "#00FF00"
-        assert result["baseline"] == "#0000FF"
+        assert result["metrics"]["heating"] == "#FF0000"
+        assert result["metrics"]["cooling"] == "#00FF00"
+        assert result["scenarios"]["baseline"] == "#0000FF"
 
     def test_grouped_items_preserves_order(self) -> None:
         """Test that grouped items respects custom ordering."""
         grouped_items: dict[str, list[dict[str, Any]]] = {
-            "End Uses": [
+            "Metrics": [
                 {"label": "heating", "color": "#FF0000", "order": 1},
                 {"label": "cooling", "color": "#00FF00", "order": 0},
             ],
@@ -425,7 +428,7 @@ class TestColorPaletteGroupedItems:
         result = ColorPalette.grouped_items_to_palette(grouped_items)
 
         # Convert back to list to check order
-        keys = list(result.keys())
+        keys = list(result["metrics"].keys())
         # cooling should come first because it has order 0
         assert keys[0] == "cooling"
         assert keys[1] == "heating"
@@ -433,38 +436,34 @@ class TestColorPaletteGroupedItems:
     def test_round_trip_grouped_items(self) -> None:
         """Test round-trip conversion of grouped items."""
         palette = {
-            "heating": "#FF0000",
-            "cooling": "#00FF00",
-            "baseline": "#0000FF",
-        }
-        groups = {
-            "End Uses": {"heating": "#FF0000", "cooling": "#00FF00"},
-            "Scenarios": {"baseline": "#0000FF"},
+            "scenarios": {"baseline": "#0000FF"},
+            "model_years": {},
+            "metrics": {"heating": "#FF0000", "cooling": "#00FF00"},
         }
 
         # Convert to grouped items
         grouped_items: dict[str, list[dict[str, Any]]] = ColorPalette.palette_to_grouped_items(
-            palette, groups
+            palette
         )
 
         # Convert back to palette
         result = ColorPalette.grouped_items_to_palette(grouped_items)
 
         # Should have same items (order might differ)
-        assert len(result) == len(palette)
-        for key in palette:
-            assert key in result
-            assert result[key] == palette[key]
+        assert result["scenarios"]["baseline"] == palette["scenarios"]["baseline"]
+        assert result["metrics"]["heating"] == palette["metrics"]["heating"]
+        assert result["metrics"]["cooling"] == palette["metrics"]["cooling"]
 
     def test_empty_groups(self) -> None:
         """Test handling of empty groups."""
-        palette: dict[str, str] = {}
-        groups: dict[str, dict[str, str]] = {}
+        palette: dict[str, dict[str, str]] = {
+            "scenarios": {},
+            "model_years": {},
+            "metrics": {},
+        }
 
-        result: dict[str, list[dict[str, Any]]] = ColorPalette.palette_to_grouped_items(
-            palette, groups
-        )
+        result: dict[str, list[dict[str, Any]]] = ColorPalette.palette_to_grouped_items(palette)
         assert result == {}
 
         back = ColorPalette.grouped_items_to_palette(result)
-        assert back == {}
+        assert back == {"scenarios": {}, "model_years": {}, "metrics": {}}

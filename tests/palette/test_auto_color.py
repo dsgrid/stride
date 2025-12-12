@@ -71,8 +71,8 @@ def test_auto_color_with_existing_palette() -> None:
         is_hex = color.startswith("#")
         is_rgb = color.startswith("rgb(")
         assert is_hex or is_rgb, f"Invalid color format: {color}"
-        # Should be in the palette now
-        assert label in palette.palette
+        # Should be in the palette now (keys are lowercase)
+        assert label.lower() in palette.palette
 
     # Verify all labels are in palette
     assert len(palette.palette) == len(existing) + len(new_labels)
