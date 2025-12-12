@@ -96,7 +96,7 @@ class ColorPalette:
         """Return a detailed string representation of the palette."""
         return self.__str__()
 
-    def update(self, key: str, color: str | None = None, category: str | None = None) -> None:
+    def update(self, key: str, color: str | None = None, category: str | None = None) -> None:  # noqa: C901
         """Updates or creates a new color for the given *key* in the specified category.
 
         Keys are normalized to lowercase for consistent lookups.
@@ -264,7 +264,7 @@ class ColorPalette:
         raise KeyError(msg)
 
     @classmethod
-    def from_dict(cls, palette: dict[str, str] | dict[str, dict[str, str]]) -> "ColorPalette":
+    def from_dict(cls, palette: dict[str, str] | dict[str, dict[str, str]]) -> "ColorPalette":  # noqa: C901
         """
         Loads the color palette from a dictionary representation with sanitization.
 

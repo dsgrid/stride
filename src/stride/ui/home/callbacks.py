@@ -52,7 +52,7 @@ def save_home_state(*values: object) -> dict[str, Any]:
     return dict(zip(home_input_ids, values))
 
 
-def update_home_scenario_comparison(
+def update_home_scenario_comparison(  # noqa: C901
     data_handler: "APIClient",
     plotter: "StridePlots",
     selected_scenarios: list[str],
@@ -206,7 +206,7 @@ def update_home_scenario_comparison(
         return {"data": [], "layout": {"title": f"Error: {str(e)}"}}
 
 
-def update_home_sector_breakdown(
+def update_home_sector_breakdown(  # noqa: C901
     data_handler: "APIClient",
     plotter: "StridePlots",
     selected_scenarios: list[str],
@@ -401,7 +401,7 @@ def update_home_load_duration(
         return {}
 
 
-def update_home_scenario_timeseries(
+def update_home_scenario_timeseries(  # noqa: C901
     data_handler: "APIClient",
     plotter: "StridePlots",
     selected_scenarios: list[str],

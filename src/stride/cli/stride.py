@@ -588,7 +588,7 @@ $ stride palette init --name=my_palette --from-project=test_project --project\n
     help="Save to user palette (default)",
 )
 @click.pass_context
-def init_palette(
+def init_palette(  # noqa: C901
     ctx: click.Context,
     name: str,
     from_project: Path | None,
@@ -803,7 +803,7 @@ def refresh_palette(ctx: click.Context, project_path: Path) -> None:
 
     # Show before state
     palette = project.palette
-    print(f"\nBefore refresh:")
+    print("\nBefore refresh:")
     print(f"  Scenarios: {len(palette.scenarios)}")
     print(f"  Model Years: {len(palette.model_years)}")
     print(f"  Metrics: {len(palette.metrics)}")
@@ -812,11 +812,11 @@ def refresh_palette(ctx: click.Context, project_path: Path) -> None:
     project.refresh_palette_colors()
     project.save_palette()
 
-    print(f"\nAfter refresh:")
+    print("\nAfter refresh:")
     print(f"  Scenarios: {len(palette.scenarios)} (Bold theme)")
     print(f"  Model Years: {len(palette.model_years)} (YlOrRd theme)")
     print(f"  Metrics: {len(palette.metrics)} (Prism theme)")
-    print(f"\nPalette colors refreshed and saved!")
+    print("\nPalette colors refreshed and saved!")
 
 
 def handle_stride_exception(
