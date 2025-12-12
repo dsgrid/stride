@@ -160,6 +160,8 @@ def update_consumption_plot(
                             yaxis="y2",
                             line=dict(width=2, dash="dash", color=scenario_color),
                             marker=dict(size=6, color=scenario_color),
+                            customdata=secondary_df["value"],
+                            hovertemplate=f"{secondary_metric}: %{{customdata:.2f}}<extra></extra>",
                         )
                     )
 
@@ -286,6 +288,8 @@ def update_peak_plot(
                             yaxis="y2",
                             line=dict(width=2, dash="dash", color=scenario_color),
                             marker=dict(size=6, color=scenario_color),
+                            customdata=secondary_df["value"],
+                            hovertemplate=f"{secondary_metric}: %{{customdata:.2f}}<extra></extra>",
                         )
                     )
 
@@ -419,6 +423,8 @@ def update_timeseries_plot(
                                 mode="lines",
                                 yaxis="y2",
                                 line=dict(width=1.5, dash="dot"),
+                                customdata=weather_df["value"],
+                                hovertemplate=f"{year} - {weather_var}: %{{customdata:.2f}}<extra></extra>",
                             )
                         )
 
@@ -550,6 +556,8 @@ def update_yearly_plot(
                             mode="lines",
                             yaxis="y2",
                             line=dict(width=1.5, dash="dot"),
+                            customdata=weather_df["value"],
+                            hovertemplate=f"{weather_var}: %{{customdata:.2f}}<extra></extra>",
                         )
                     )
 

@@ -144,8 +144,8 @@ def update_home_scenario_comparison(
                                 yaxis="y2",
                                 line=dict(width=2, dash="dash", color=scenario_color),
                                 marker=dict(size=6, color=scenario_color),
-                                hovertemplate="Year: %{x}<br>"
-                                + f"{secondary_metric}: %{{y:.2f}}<br><extra></extra>",
+                                customdata=secondary_df["value"],
+                                hovertemplate=f"{scenario} - {secondary_metric}: %{{customdata:.2f}}<extra></extra>",
                             )
                         )
 
@@ -301,8 +301,8 @@ def update_home_sector_breakdown(
                                 yaxis="y2",
                                 line=dict(width=2, dash="dash", color=scenario_color),
                                 marker=dict(size=6, color=scenario_color),
-                                hovertemplate="Year: %{x}<br>"
-                                + f"{secondary_metric}: %{{y:.2f}}<br><extra></extra>",
+                                customdata=secondary_df["value"],
+                                hovertemplate=f"{scenario} - {secondary_metric}: %{{customdata:.2f}}<extra></extra>",
                             )
                         )
 

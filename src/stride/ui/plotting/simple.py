@@ -65,6 +65,13 @@ def grouped_single_bars(
         else:
             color = DEFAULT_BAR_COLOR
 
+        # Create hover template - include group name only if not grouping by year
+        # (since year is already on x-axis)
+        if group.lower() == "year":
+            hover_template = "Value: %{y:.2f}<extra></extra>"
+        else:
+            hover_template = f"{group_value}: %{{y:.2f}}<extra></extra>"
+
         fig.add_trace(
             go.Bar(
                 x=df_subset["year"].astype(str),
@@ -72,7 +79,7 @@ def grouped_single_bars(
                 name=str(group_value),
                 marker_color=color,
                 showlegend=False,
-                hovertemplate="<b>Year: %{x}</b><br>Value: %{y:.2f}<extra></extra>",
+                hovertemplate=hover_template,
             )
         )
 
@@ -86,6 +93,7 @@ def grouped_single_bars(
         margin_r=20,
         barmode="group",
         hoverlabel=hoverlabel_style,
+        hovermode="x unified",
     )
 
     return fig
@@ -283,7 +291,7 @@ def grouped_stacked_bars(
                     offsetgroup=group,
                     legendrank=1,
                     showlegend=stack_cat not in added_stack_legend,
-                    hovertemplate=stack_cat + ": %{y:.2f}<extra></extra>",
+                    hovertemplate=f"{group} - {stack_cat}: %{{y:.2f}}<extra></extra>",
                 )
             )
             if not stack_group_title_added:
