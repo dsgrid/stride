@@ -9,6 +9,42 @@ if TYPE_CHECKING:
 
 TRANSPARENT = "rgba(0, 0, 0, 0)"
 DEFAULT_BAR_COLOR = "rgba(0,0,200,0.8)"
+# Theme-aware neutral gray colors
+LIGHT_THEME_GRAY = "rgba(100, 100, 100, 0.8)"  # Darker gray for light backgrounds
+DARK_THEME_GRAY = "rgba(180, 180, 180, 0.8)"  # Lighter gray for dark backgrounds
+
+
+def get_neutral_color(template: str) -> str:
+    """
+    Get a neutral gray color appropriate for the given template.
+
+    Parameters
+    ----------
+    template : str
+        Plotly template name (e.g., 'plotly_white', 'plotly_dark')
+
+    Returns
+    -------
+    str
+        RGBA color string for neutral gray
+    """
+    if "dark" in template.lower():
+        return DARK_THEME_GRAY
+    else:
+        return LIGHT_THEME_GRAY
+
+
+def get_plotly_template() -> str:
+    """
+    Get the Plotly template for charts.
+
+    Returns
+    -------
+    str
+        Plotly template name (defaults to 'plotly_dark' to match app's default theme)
+    """
+    # Default to dark theme to match the app's default
+    return "plotly_dark"
 
 
 def determine_facet_layout(df: pd.DataFrame) -> dict[str, Any]:

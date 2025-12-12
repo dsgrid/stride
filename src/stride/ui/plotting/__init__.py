@@ -47,10 +47,20 @@ class StridePlots:
         return self._template
 
     def grouped_single_bars(
-        self, df: pd.DataFrame, group: str, use_color_manager: bool = True
+        self,
+        df: pd.DataFrame,
+        group: str,
+        use_color_manager: bool = True,
+        fixed_color: str | None = None,
     ) -> go.Figure:
         """Create a bar plot with 2 levels of x axis."""
-        fig = simple.grouped_single_bars(df, group, self._color_generator, use_color_manager)
+        fig = simple.grouped_single_bars(
+            df,
+            group,
+            self._color_generator,
+            use_color_manager=use_color_manager,
+            fixed_color=fixed_color,
+        )
         fig.update_layout(template=self._template)
         return fig
 
@@ -69,10 +79,17 @@ class StridePlots:
         group_col: str = "scenario",
         stack_col: str = "metric",
         value_col: str = "demand",
+        show_scenario_indicators: bool = True,
     ) -> go.Figure:
         """Create grouped and stacked bar chart."""
         fig = simple.grouped_stacked_bars(
-            df, self._color_generator, year_col, group_col, stack_col, value_col
+            df,
+            self._color_generator,
+            year_col,
+            group_col,
+            stack_col,
+            value_col,
+            show_scenario_indicators,
         )
         fig.update_layout(template=self._template)
         return fig

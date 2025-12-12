@@ -1,5 +1,7 @@
 """Tests for the ColorPalette class."""
 
+from typing import Any
+
 import pytest
 
 from stride.ui.palette import ColorPalette
@@ -282,3 +284,187 @@ class TestColorPaletteHexValidation:
         palette = ColorPalette()
         palette.update("test", "#GGGGGG")
         assert palette.palette["test"] != "#GGGGGG"
+
+
+class TestColorPaletteReordering:
+    """Test ColorPalette reordering methods."""
+
+    def test_move_item_up_success(self) -> None:
+        """Test moving an item up in the list."""
+        palette = ColorPalette()
+        items: list[dict[str, Any]] = [
+            {"label": "item1", "color": "#FF0000", "order": 0},
+            {"label": "item2", "color": "#00FF00", "order": 1},
+            {"label": "item3", "color": "#0000FF", "order": 2},
+        ]
+
+        result = palette.move_item_up(items, 1)
+        assert result is True
+        assert items[0]["label"] == "item2"
+        assert items[1]["label"] == "item1"
+        # After swap, item2 (now at index 0) should have order 0
+        # and item1 (now at index 1) should have order 1
+        assert items[0]["order"] == 0
+        assert items[1]["order"] == 1
+
+    def test_move_item_up_at_top(self) -> None:
+        """Test that moving the top item up returns False."""
+        palette = ColorPalette()
+        items: list[dict[str, Any]] = [
+            {"label": "item1", "color": "#FF0000", "order": 0},
+            {"label": "item2", "color": "#00FF00", "order": 1},
+        ]
+
+        result = palette.move_item_up(items, 0)
+        assert result is False
+        assert items[0]["label"] == "item1"
+        assert items[1]["label"] == "item2"
+
+    def test_move_item_down_success(self) -> None:
+        """Test moving an item down in the list."""
+        palette = ColorPalette()
+        items: list[dict[str, Any]] = [
+            {"label": "item1", "color": "#FF0000", "order": 0},
+            {"label": "item2", "color": "#00FF00", "order": 1},
+            {"label": "item3", "color": "#0000FF", "order": 2},
+        ]
+
+        result = palette.move_item_down(items, 1)
+        assert result is True
+        assert items[1]["label"] == "item3"
+        assert items[2]["label"] == "item2"
+        # After swap, item3 (now at index 1) should have order 1
+        # and item2 (now at index 2) should have order 2
+        assert items[1]["order"] == 1
+        assert items[2]["order"] == 2
+
+    def test_move_item_down_at_bottom(self) -> None:
+        """Test that moving the bottom item down returns False."""
+        palette = ColorPalette()
+        items: list[dict[str, Any]] = [
+            {"label": "item1", "color": "#FF0000", "order": 0},
+            {"label": "item2", "color": "#00FF00", "order": 1},
+        ]
+
+        result = palette.move_item_down(items, 1)
+        assert result is False
+        assert items[0]["label"] == "item1"
+        assert items[1]["label"] == "item2"
+
+    def test_move_multiple_times(self) -> None:
+        """Test moving items multiple times."""
+        palette = ColorPalette()
+        items: list[dict[str, Any]] = [
+            {"label": "item1", "color": "#FF0000", "order": 0},
+            {"label": "item2", "color": "#00FF00", "order": 1},
+            {"label": "item3", "color": "#0000FF", "order": 2},
+        ]
+
+        # Move item3 up twice to reach the top
+        palette.move_item_up(items, 2)
+        assert items[1]["label"] == "item3"
+        palette.move_item_up(items, 1)
+        assert items[0]["label"] == "item3"
+
+
+class TestColorPaletteGroupedItems:
+    """Test ColorPalette grouped items conversion methods."""
+
+    def test_palette_to_grouped_items(self) -> None:
+        """Test converting palette and groups to grouped items."""
+        palette = {
+            "heating": "#FF0000",
+            "cooling": "#00FF00",
+            "baseline": "#0000FF",
+        }
+        groups = {
+            "End Uses": {"heating": "#FF0000", "cooling": "#00FF00"},
+            "Scenarios": {"baseline": "#0000FF"},
+        }
+
+        result = ColorPalette.palette_to_grouped_items(palette, groups)
+
+        assert "End Uses" in result
+        assert "Scenarios" in result
+        assert len(result["End Uses"]) == 2
+        assert len(result["Scenarios"]) == 1
+        assert result["End Uses"][0]["label"] == "heating"
+        assert result["End Uses"][0]["color"] == "#FF0000"
+        assert result["End Uses"][0]["order"] == 0
+        assert result["End Uses"][1]["label"] == "cooling"
+        assert result["End Uses"][1]["order"] == 1
+
+    def test_grouped_items_to_palette(self) -> None:
+        """Test converting grouped items back to flat palette."""
+        grouped_items: dict[str, list[dict[str, Any]]] = {
+            "End Uses": [
+                {"label": "heating", "color": "#FF0000", "order": 0},
+                {"label": "cooling", "color": "#00FF00", "order": 1},
+            ],
+            "Scenarios": [
+                {"label": "baseline", "color": "#0000FF", "order": 0},
+            ],
+        }
+
+        result = ColorPalette.grouped_items_to_palette(grouped_items)
+
+        assert len(result) == 3
+        assert result["heating"] == "#FF0000"
+        assert result["cooling"] == "#00FF00"
+        assert result["baseline"] == "#0000FF"
+
+    def test_grouped_items_preserves_order(self) -> None:
+        """Test that grouped items respects custom ordering."""
+        grouped_items: dict[str, list[dict[str, Any]]] = {
+            "End Uses": [
+                {"label": "heating", "color": "#FF0000", "order": 1},
+                {"label": "cooling", "color": "#00FF00", "order": 0},
+            ],
+        }
+
+        result = ColorPalette.grouped_items_to_palette(grouped_items)
+
+        # Convert back to list to check order
+        keys = list(result.keys())
+        # cooling should come first because it has order 0
+        assert keys[0] == "cooling"
+        assert keys[1] == "heating"
+
+    def test_round_trip_grouped_items(self) -> None:
+        """Test round-trip conversion of grouped items."""
+        palette = {
+            "heating": "#FF0000",
+            "cooling": "#00FF00",
+            "baseline": "#0000FF",
+        }
+        groups = {
+            "End Uses": {"heating": "#FF0000", "cooling": "#00FF00"},
+            "Scenarios": {"baseline": "#0000FF"},
+        }
+
+        # Convert to grouped items
+        grouped_items: dict[str, list[dict[str, Any]]] = ColorPalette.palette_to_grouped_items(
+            palette, groups
+        )
+
+        # Convert back to palette
+        result = ColorPalette.grouped_items_to_palette(grouped_items)
+
+        # Should have same items (order might differ)
+        assert len(result) == len(palette)
+        for key in palette:
+            assert key in result
+            assert result[key] == palette[key]
+
+    def test_empty_groups(self) -> None:
+        """Test handling of empty groups."""
+        palette = {}
+        groups = {}
+
+        result: dict[str, list[dict[str, Any]]] = ColorPalette.palette_to_grouped_items(
+            palette, groups
+        )
+        assert result == {}
+
+        back = ColorPalette.grouped_items_to_palette(result)
+        assert back == {}

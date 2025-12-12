@@ -218,7 +218,13 @@ def create_app(
                                                 [
                                                     html.Div(
                                                         dbc.Button(
-                                                            html.I(className="bi bi-list"),
+                                                            html.Span(
+                                                                "›",
+                                                                style={
+                                                                    "fontSize": "1.5rem",
+                                                                    "fontWeight": "bold",
+                                                                },
+                                                            ),
                                                             id="sidebar-toggle",
                                                             className="me-3 sidebar-toggle-btn",
                                                         ),
@@ -258,7 +264,7 @@ def create_app(
                                                         className="theme-icon sun-icon",
                                                         style={
                                                             "fontSize": "1.4rem",
-                                                            "marginRight": "10px",
+                                                            "marginRight": "15px",
                                                         },
                                                     ),
                                                     dbc.Switch(
@@ -273,7 +279,7 @@ def create_app(
                                                         className="theme-icon moon-icon",
                                                         style={
                                                             "fontSize": "1.4rem",
-                                                            "marginLeft": "10px",
+                                                            "marginLeft": "0px",
                                                         },
                                                     ),
                                                 ],
@@ -335,6 +341,7 @@ def create_app(
         Output("sidebar", "style"),
         Output("page-content", "style"),
         Output("sidebar-open", "data"),
+        Output("sidebar-toggle", "children"),
         Input("sidebar-toggle", "n_clicks"),
         State("sidebar-open", "data"),
         prevent_initial_call=True,
@@ -342,9 +349,21 @@ def create_app(
     def toggle_sidebar(n_clicks, is_open):
         """Toggle sidebar visibility."""
         if n_clicks is None:
-            return {}, {}, is_open
+            return (
+                {},
+                {},
+                is_open,
+                html.Span("›", style={"fontSize": "1.5rem", "fontWeight": "bold"}),
+            )
 
         new_state = not is_open
+
+        # Update button icon based on state
+        button_icon = (
+            html.Span("‹", style={"fontSize": "1.5rem", "fontWeight": "bold"})
+            if new_state
+            else html.Span("›", style={"fontSize": "1.5rem", "fontWeight": "bold"})
+        )
 
         if new_state:
             # Open sidebar
@@ -354,13 +373,12 @@ def create_app(
                 "left": 0,
                 "bottom": 0,
                 "width": "250px",
-                "backgroundColor": "#343a40",
                 "zIndex": 1000,
                 "transform": "translateX(0px)",
                 "transition": "transform 0.3s ease-in-out",
                 "overflowY": "auto",
             }
-            content_style = {"marginLeft": "250px", "transition": "margin-left 0.3s ease-in-out"}
+            content_style = {"marginLeft": "250px", "transition": "margin-left 0.3s"}
         else:
             # Close sidebar
             sidebar_style = {
@@ -369,15 +387,14 @@ def create_app(
                 "left": 0,
                 "bottom": 0,
                 "width": "250px",
-                "backgroundColor": "#343a40",
                 "zIndex": 1000,
                 "transform": "translateX(-250px)",
                 "transition": "transform 0.3s ease-in-out",
                 "overflowY": "auto",
             }
-            content_style = {"marginLeft": "0px", "transition": "margin-left 0.3s ease-in-out"}
+            content_style = {"marginLeft": "0px", "transition": "margin-left 0.3s"}
 
-        return sidebar_style, content_style, new_state
+        return sidebar_style, content_style, new_state, button_icon
 
     # Project switching callback
     @callback(

@@ -152,9 +152,6 @@ def create_home_layout(
                                 [
                                     dbc.Col(
                                         [
-                                            html.Label(
-                                                "Select Scenarios:", style={"fontWeight": "bold"}
-                                            ),
                                             create_styled_checklist(
                                                 scenarios, "home-scenarios-checklist"
                                             ),
@@ -242,9 +239,6 @@ def create_home_layout(
                                 [
                                     dbc.Col(
                                         [
-                                            html.Label(
-                                                "Select Scenarios:", style={"fontWeight": "bold"}
-                                            ),
                                             create_styled_checklist(
                                                 scenarios, "home-scenarios-2-checklist"
                                             ),
@@ -262,15 +256,19 @@ def create_home_layout(
             # Load Duration Curve
             dbc.Card(
                 [
-                    dbc.CardHeader(html.H4("Load Duration Curve")),
-                    dbc.CardBody(
+                    dbc.CardHeader(
                         [
                             dbc.Row(
                                 [
                                     dbc.Col(
+                                        [html.H4("Load Duration Curve", className="mb-0")],
+                                        width=3,
+                                    ),
+                                    dbc.Col(
                                         [
                                             html.Label(
-                                                "Select Year:", style={"fontWeight": "bold"}
+                                                "SELECT YEAR:",
+                                                style={"fontWeight": "bold", "fontSize": "0.9em"},
                                             ),
                                             dcc.Dropdown(
                                                 id="home-year-dropdown",
@@ -285,23 +283,29 @@ def create_home_layout(
                                                 clearable=False,
                                             ),
                                         ],
-                                        width=3,
+                                        width=9,
                                     ),
+                                ],
+                                align="center",
+                            )
+                        ]
+                    ),
+                    dbc.CardBody(
+                        [
+                            dcc.Graph(id="home-load-duration"),
+                            dbc.Row(
+                                [
                                     dbc.Col(
                                         [
-                                            html.Label(
-                                                "Select Scenarios:", style={"fontWeight": "bold"}
-                                            ),
                                             create_styled_checklist(
                                                 scenarios, "home-scenarios-3-checklist"
                                             ),
                                         ],
-                                        width=9,
+                                        width=12,
                                     ),
                                 ],
                                 className="mb-3",
                             ),
-                            dcc.Graph(id="home-load-duration"),
                         ]
                     ),
                 ],
@@ -405,9 +409,6 @@ def create_home_layout(
                                 [
                                     dbc.Col(
                                         [
-                                            html.Label(
-                                                "Select Scenarios:", style={"fontWeight": "bold"}
-                                            ),
                                             create_styled_checklist(
                                                 scenarios, "home-scenarios-4-checklist"
                                             ),

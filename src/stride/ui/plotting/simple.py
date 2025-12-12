@@ -8,6 +8,7 @@ from .utils import (
     TRANSPARENT,
     create_time_series_area_traces,
     create_time_series_line_traces,
+    get_plotly_template,
     get_time_series_breakdown_info,
 )
 
@@ -16,7 +17,11 @@ if TYPE_CHECKING:
 
 
 def grouped_single_bars(
-    df: pd.DataFrame, group: str, color_generator: "ColorManager", use_color_manager: bool = True
+    df: pd.DataFrame,
+    group: str,
+    color_generator: "ColorManager",
+    use_color_manager: bool = True,
+    fixed_color: str | None = None,
 ) -> go.Figure:
     """
     Create a bar plot with 2 levels of x axis.
@@ -31,6 +36,8 @@ def grouped_single_bars(
         Color generator function
     use_color_manager : bool, optional
         Whether to use the color manager for bar colors, by default True
+    fixed_color : str | None, optional
+        Fixed color to use for all bars (overrides use_color_manager), by default None
 
     Returns
     -------
@@ -43,9 +50,13 @@ def grouped_single_bars(
     for group_value in df_grouped:
         df_subset = df[df[group] == group_value]
 
-        color = DEFAULT_BAR_COLOR
-        if use_color_manager:
+        # Determine color: fixed_color takes precedence, then color_manager, then default
+        if fixed_color:
+            color = fixed_color
+        elif use_color_manager:
             color = color_generator.get_color(str(group_value))
+        else:
+            color = DEFAULT_BAR_COLOR
 
         fig.add_trace(
             go.Bar(
@@ -58,6 +69,7 @@ def grouped_single_bars(
         )
 
     fig.update_layout(
+        template=get_plotly_template(),
         plot_bgcolor=TRANSPARENT,
         paper_bgcolor=TRANSPARENT,
         margin_b=0,
@@ -159,6 +171,7 @@ def grouped_multi_bars(
 
     fig = go.Figure(data=bars)
     fig.update_layout(
+        template=get_plotly_template(),
         plot_bgcolor=TRANSPARENT,
         paper_bgcolor=TRANSPARENT,
         margin_b=0,
@@ -183,6 +196,7 @@ def grouped_stacked_bars(
     group_col: str = "scenario",
     stack_col: str = "metric",
     value_col: str = "demand",
+    show_scenario_indicators: bool = True,
 ) -> go.Figure:
     """
     Create grouped and stacked bar chart.
@@ -204,6 +218,8 @@ def grouped_stacked_bars(
         Column name for stacking (colors within stacks), by default "metric"
     value_col : str, optional
         Column name for values (y-axis), by default "demand"
+    show_scenario_indicators : bool, optional
+        Whether to show hatched scenario indicator bars, by default True
 
     Returns
     -------
@@ -252,31 +268,36 @@ def grouped_stacked_bars(
     # Add colored indicator bars for scenarios (visual reference)
     # These appear in the legend but clicking them only toggles the indicator itself,
     # not the data bars. Use scenario selection checkboxes for full scenario toggling.
-    scenario_title_added = False
-    for i, group in enumerate(groups):
-        fig.add_trace(
-            go.Bar(
-                x=[str(year) for year in years],
-                y=[indicator_height] * len(years),
-                name=group,
-                legendgroup="scenarios",  # All scenarios share same legendgroup
-                legendgrouptitle_text="Scenarios" if not scenario_title_added else None,
-                legendrank=2,
-                marker=dict(
-                    color=color_generator.get_color(group),
-                    pattern_shape="/",
-                    pattern_solidity=0.3,
-                ),
-                offsetgroup=group,
-                showlegend=True,
-                base=-indicator_height * 2.5,
-                hoverinfo="skip",
+    if show_scenario_indicators:
+        scenario_title_added = False
+        for i, group in enumerate(groups):
+            fig.add_trace(
+                go.Bar(
+                    x=[str(year) for year in years],
+                    y=[indicator_height] * len(years),
+                    name=group,
+                    legendgroup="scenarios",  # All scenarios share same legendgroup
+                    legendgrouptitle_text="Scenarios" if not scenario_title_added else None,
+                    legendrank=2,
+                    marker=dict(
+                        color=color_generator.get_color(group),
+                        pattern_shape="/",
+                        pattern_solidity=0.3,
+                    ),
+                    offsetgroup=group,
+                    showlegend=True,
+                    base=-indicator_height * 2.5,
+                    hoverinfo="skip",
+                )
             )
-        )
-        if not scenario_title_added:
-            scenario_title_added = True
+            if not scenario_title_added:
+                scenario_title_added = True
+
+    # Adjust y-axis range based on whether scenario indicators are shown
+    y_min = -indicator_height * 4 if show_scenario_indicators else 0
 
     fig.update_layout(
+        template=get_plotly_template(),
         plot_bgcolor=TRANSPARENT,
         paper_bgcolor=TRANSPARENT,
         margin_b=50,
@@ -284,7 +305,7 @@ def grouped_stacked_bars(
         margin_l=20,
         margin_r=20,
         barmode="stack",
-        yaxis=dict(range=[-indicator_height * 4, max_value * 1.1]),
+        yaxis=dict(range=[y_min, max_value * 1.1]),
         legend=dict(
             itemclick="toggle",  # Single click toggles sectors (or scenario indicators)
             itemdoubleclick=False,  # Disabled - can't handle 2D toggling properly
@@ -347,6 +368,7 @@ def time_series(
             fig.add_trace(trace)
 
     fig.update_layout(
+        template=get_plotly_template(),
         plot_bgcolor=TRANSPARENT,
         paper_bgcolor=TRANSPARENT,
         margin=dict(l=20, r=20, t=20, b=40),
@@ -388,6 +410,7 @@ def demand_curve(df: pd.DataFrame, color_generator: "ColorManager") -> go.Figure
             )
         )
     fig.update_layout(
+        template=get_plotly_template(),
         plot_bgcolor=TRANSPARENT,
         paper_bgcolor=TRANSPARENT,
         margin_b=0,
@@ -440,6 +463,7 @@ def area_plot(
     fig.update_layout(title=scenario_name)
 
     fig.update_layout(
+        template=get_plotly_template(),
         plot_bgcolor=TRANSPARENT,
         paper_bgcolor=TRANSPARENT,
         margin_b=50,

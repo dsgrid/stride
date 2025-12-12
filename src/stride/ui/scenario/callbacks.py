@@ -12,6 +12,7 @@ from stride.api.utils import (
     TimeGroupAgg,
     WeatherVar,
 )
+from stride.ui.plotting.utils import get_neutral_color
 
 if TYPE_CHECKING:
     from stride.api import APIClient
@@ -127,10 +128,16 @@ def update_consumption_plot(
         if breakdown_value:
             stack_col = "metric" if breakdown_value == "End Use" else breakdown_value.lower()
             fig = plotter.grouped_stacked_bars(
-                df, stack_col=stack_col, value_col="value", group_col="scenario"
+                df,
+                stack_col=stack_col,
+                value_col="value",
+                group_col="scenario",
+                show_scenario_indicators=False,
             )
         else:
-            fig = plotter.grouped_single_bars(df, "year", use_color_manager=False)
+            # Use theme-aware neutral gray color for the bars
+            neutral_color = get_neutral_color(plotter.get_template())
+            fig = plotter.grouped_single_bars(df, "year", fixed_color=neutral_color)
         return fig
     except Exception as e:
         logger.error(f"Error in consumption plot: {e}")
@@ -177,10 +184,16 @@ def update_peak_plot(
         if breakdown_value:
             stack_col = "metric" if breakdown_value == "End Use" else breakdown_value.lower()
             fig = plotter.grouped_stacked_bars(
-                df, stack_col=stack_col, value_col="value", group_col="scenario"
+                df,
+                stack_col=stack_col,
+                value_col="value",
+                group_col="scenario",
+                show_scenario_indicators=False,
             )
         else:
-            fig = plotter.grouped_single_bars(df, "year", use_color_manager=False)
+            # Use theme-aware neutral gray color for the bars
+            neutral_color = get_neutral_color(plotter.get_template())
+            fig = plotter.grouped_single_bars(df, "year", fixed_color=neutral_color)
         return fig
 
     except Exception as e:
@@ -597,7 +610,7 @@ def _register_seasonal_callbacks(data_handler: "APIClient", plotter: "StridePlot
         refresh_trigger: int,
     ) -> go.Figure | dict[str, Any]:
         return update_seasonal_lines_plot(
-            data_handler, plotter, scenario, timegroup, agg, weather_var
+            data_handler, plotter, scenario, timegroup, agg_func, weather_var
         )
 
     @callback(

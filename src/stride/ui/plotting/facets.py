@@ -10,6 +10,7 @@ from .utils import (
     create_faceted_traces,
     create_seasonal_annotations,
     determine_facet_layout,
+    get_plotly_template,
     update_faceted_layout,
 )
 
@@ -91,6 +92,7 @@ def seasonal_load_lines(df: pd.DataFrame, color_generator: "ColorManager") -> go
         annotations_list = create_seasonal_annotations(layout_config)
 
         fig.update_layout(
+            template=get_plotly_template(),
             plot_bgcolor=TRANSPARENT,
             paper_bgcolor=TRANSPARENT,
             margin=dict(l=60, r=20, t=80, b=80),
@@ -135,6 +137,7 @@ def seasonal_load_lines(df: pd.DataFrame, color_generator: "ColorManager") -> go
                     )
     else:
         fig.update_layout(
+            template=get_plotly_template(),
             plot_bgcolor=TRANSPARENT,
             paper_bgcolor=TRANSPARENT,
             margin=dict(l=20, r=20, t=20, b=40),
@@ -289,6 +292,7 @@ def seasonal_load_area(df: pd.DataFrame, color_generator: "ColorManager") -> go.
         annotations_list = create_seasonal_annotations(layout_config)
 
         fig.update_layout(
+            template=get_plotly_template(),
             plot_bgcolor=TRANSPARENT,
             paper_bgcolor=TRANSPARENT,
             margin=dict(l=60, r=20, t=80, b=80),
@@ -316,6 +320,7 @@ def seasonal_load_area(df: pd.DataFrame, color_generator: "ColorManager") -> go.
         fig.update_yaxes(showline=True, linewidth=1, linecolor="black", mirror=True, title_text="")
     else:
         fig.update_layout(
+            template=get_plotly_template(),
             plot_bgcolor=TRANSPARENT,
             paper_bgcolor=TRANSPARENT,
             margin=dict(l=20, r=20, t=20, b=40),
