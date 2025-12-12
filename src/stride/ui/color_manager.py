@@ -17,14 +17,15 @@ class ColorManager:
 
     def __init__(self, palette: ColorPalette | None = None) -> None:
         # If a new palette is provided, update even if already initialized
+        if not hasattr(self, "_scenario_colors"):
+            self._scenario_colors = {}  # type: Dict[str, Dict[str, str]]
+
         if palette is not None:
             self._palette = palette
-            self._scenario_colors: Dict[str, Dict[str, str]] = {}
             self._initialized = True
         elif not self._initialized:
             # First initialization without a palette
             self._palette = ColorPalette()
-            self._scenario_colors: Dict[str, Dict[str, str]] = {}
             self._initialized = True
 
     def initialize_colors(

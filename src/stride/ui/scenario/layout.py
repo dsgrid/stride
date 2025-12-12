@@ -1,13 +1,15 @@
 from typing import Any
-from dash import html, dcc
+
 import dash_bootstrap_components as dbc  # type: ignore
+from dash import dcc, html
+
 from stride.api.utils import (
-    literal_to_list,
-    SecondaryMetric,
     ResampleOptions,
-    WeatherVar,
+    SecondaryMetric,
     TimeGroup,
     TimeGroupAgg,
+    WeatherVar,
+    literal_to_list,
 )
 from stride.ui.color_manager import ColorManager
 

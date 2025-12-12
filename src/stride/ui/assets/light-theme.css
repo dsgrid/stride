@@ -1,0 +1,648 @@
+/* ============================================
+   STRIDE Light Theme Stylesheet
+   ============================================ */
+
+/* Root variables for light theme */
+.light-theme {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8f9fa;
+    --bg-tertiary: #e9ecef;
+    --bg-hover: #dee2e6;
+    --bg-card: #ffffff;
+
+    --text-primary: #212529;
+    --text-secondary: #495057;
+    --text-muted: #6c757d;
+
+    --border-color: #dee2e6;
+    --border-hover: #adb5bd;
+
+    --accent-primary: #007bff;
+    --accent-hover: #0056b3;
+
+    --input-bg: #ffffff;
+    --input-border: #ced4da;
+    --input-text: #495057;
+
+    --dropdown-bg: #ffffff;
+    --dropdown-text: #212529;
+    --dropdown-hover: #f8f9fa;
+
+    --modal-bg: #ffffff;
+    --modal-overlay: rgba(0, 0, 0, 0.5);
+
+    --success: #28a745;
+    --warning: #ffc107;
+    --danger: #dc3545;
+    --info: #17a2b8;
+}
+
+/* ============================================
+   GLOBAL LIGHT THEME STYLES
+   ============================================ */
+
+html,
+body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.light-theme {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+}
+
+.light-theme body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+}
+
+/* Ensure page content fills viewport */
+.light-theme #page-content {
+    min-height: 100vh;
+    background-color: var(--bg-primary);
+}
+
+.light-theme #main-content-container {
+    min-height: calc(100vh - 200px);
+    background-color: var(--bg-primary);
+}
+
+.light-theme #home-view,
+.light-theme #scenario-view,
+.light-theme #settings-view {
+    min-height: calc(100vh - 200px);
+    background-color: var(--bg-primary);
+}
+
+/* ============================================
+   SIDEBAR
+   ============================================ */
+
+.light-theme #sidebar,
+.light-theme .sidebar-nav {
+    background-color: var(--bg-secondary) !important;
+    border-right: 1px solid var(--border-color) !important;
+}
+
+.light-theme #sidebar .navbar-brand {
+    color: var(--text-primary) !important;
+}
+
+.light-theme #sidebar h4,
+.light-theme #sidebar h6 {
+    color: var(--text-primary) !important;
+}
+
+.light-theme #sidebar .text-white {
+    color: var(--text-primary) !important;
+}
+
+.light-theme #sidebar .text-white-50 {
+    color: var(--text-secondary) !important;
+}
+
+.light-theme #sidebar hr {
+    background-color: var(--border-color) !important;
+    border-color: var(--border-color) !important;
+    opacity: 0.25;
+}
+
+.light-theme #sidebar .btn,
+.light-theme #sidebar .btn-light {
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+
+.light-theme #sidebar .btn:hover,
+.light-theme #sidebar .btn-light:hover {
+    background-color: var(--bg-hover) !important;
+    border-color: var(--border-hover) !important;
+}
+
+.light-theme #sidebar .btn-outline-light {
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+    background-color: transparent !important;
+}
+
+.light-theme #sidebar .btn-outline-light:hover {
+    background-color: var(--bg-hover) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Sidebar dropdown theming */
+.light-theme #sidebar .Select-control {
+    background-color: var(--bg-primary) !important;
+    border-color: var(--border-color) !important;
+}
+
+.light-theme #sidebar .Select-value-label {
+    color: var(--text-primary) !important;
+}
+
+/* Sidebar settings button - match nav tabs */
+.light-theme #sidebar-settings-btn {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+
+.light-theme #sidebar-settings-btn:hover {
+    background-color: var(--bg-hover) !important;
+    border-color: var(--border-hover) !important;
+}
+
+/* ============================================
+   HEADER
+   ============================================ */
+
+.light-theme .stride-title {
+    color: var(--text-primary) !important;
+}
+
+.light-theme .stride-title:hover {
+    color: var(--accent-primary) !important;
+}
+
+/* Sidebar toggle button (arrow) */
+.light-theme #sidebar-toggle,
+.light-theme .sidebar-toggle-btn {
+    background-color: var(--bg-secondary) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+    font-size: 1.5rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.light-theme #sidebar-toggle:hover,
+.light-theme .sidebar-toggle-btn:hover {
+    background-color: var(--accent-primary) !important;
+    border-color: var(--accent-primary) !important;
+    color: #ffffff !important;
+}
+
+.light-theme #sidebar-toggle span,
+.light-theme .sidebar-toggle-btn span {
+    color: var(--text-primary) !important;
+}
+
+.light-theme #sidebar-toggle:hover span,
+.light-theme .sidebar-toggle-btn:hover span {
+    color: #ffffff !important;
+}
+
+/* Bootstrap icons in light mode */
+.light-theme .bi {
+    color: var(--text-primary) !important;
+}
+
+/* Theme toggle icons */
+.light-theme .theme-icon {
+    color: var(--text-primary) !important;
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+}
+
+.light-theme .theme-icon:hover {
+    opacity: 1;
+}
+
+.light-theme .sun-icon {
+    color: var(--text-primary) !important;
+}
+
+.light-theme .moon-icon {
+    color: var(--text-primary) !important;
+}
+
+/* ============================================
+   CARDS
+   ============================================ */
+
+.light-theme .card {
+    background-color: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.light-theme .card-header {
+    background-color: var(--bg-secondary) !important;
+    border-bottom-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.light-theme .card-body {
+    background-color: var(--bg-card) !important;
+    color: var(--text-primary) !important;
+}
+
+/* ============================================
+   DROPDOWNS & INPUTS
+   ============================================ */
+
+.light-theme .Select-control,
+.light-theme .dash-dropdown .Select-control {
+    background-color: var(--dropdown-bg) !important;
+    border-color: var(--input-border) !important;
+    color: var(--dropdown-text) !important;
+}
+
+.light-theme .Select-placeholder,
+.light-theme .Select-value-label {
+    color: var(--dropdown-text) !important;
+}
+
+.light-theme .Select-menu-outer {
+    background-color: var(--dropdown-bg) !important;
+    border-color: var(--input-border) !important;
+}
+
+.light-theme .Select-option {
+    background-color: var(--dropdown-bg) !important;
+    color: var(--dropdown-text) !important;
+}
+
+.light-theme .Select-option:hover {
+    background-color: var(--dropdown-hover) !important;
+}
+
+.light-theme .Select-option.is-selected {
+    background-color: var(--accent-primary) !important;
+    color: #ffffff !important;
+}
+
+/* Dash Bootstrap Components Dropdowns */
+.light-theme .dropdown-menu {
+    background-color: var(--dropdown-bg) !important;
+    border-color: var(--input-border) !important;
+}
+
+.light-theme .dropdown-item {
+    color: var(--dropdown-text) !important;
+}
+
+.light-theme .dropdown-item:hover {
+    background-color: var(--dropdown-hover) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Form Inputs */
+.light-theme input[type="text"],
+.light-theme input[type="number"],
+.light-theme input[type="email"],
+.light-theme textarea,
+.light-theme .form-control {
+    background-color: var(--input-bg) !important;
+    border-color: var(--input-border) !important;
+    color: var(--input-text) !important;
+}
+
+.light-theme input:focus,
+.light-theme textarea:focus,
+.light-theme .form-control:focus {
+    background-color: var(--input-bg) !important;
+    border-color: var(--accent-primary) !important;
+    color: var(--input-text) !important;
+}
+
+.light-theme .form-label {
+    color: var(--text-primary) !important;
+}
+
+/* ============================================
+   BUTTONS
+   ============================================ */
+
+.light-theme .btn-primary {
+    background-color: var(--accent-primary) !important;
+    border-color: var(--accent-primary) !important;
+    color: #ffffff !important;
+}
+
+.light-theme .btn-primary:hover {
+    background-color: var(--accent-hover) !important;
+    border-color: var(--accent-hover) !important;
+}
+
+.light-theme .btn-secondary {
+    background-color: var(--bg-tertiary) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.light-theme .btn-secondary:hover {
+    background-color: var(--bg-hover) !important;
+}
+
+.light-theme .btn-success {
+    background-color: var(--success) !important;
+    border-color: var(--success) !important;
+}
+
+.light-theme .btn-outline-success {
+    color: var(--success) !important;
+    border-color: var(--success) !important;
+}
+
+.light-theme .btn-outline-success:hover {
+    background-color: var(--success) !important;
+    color: #ffffff !important;
+}
+
+/* ============================================
+   RADIO BUTTONS & CHECKBOXES
+   ============================================ */
+
+.light-theme .form-check-label {
+    color: var(--text-primary) !important;
+}
+
+.light-theme .form-check-input {
+    background-color: var(--input-bg) !important;
+    border-color: var(--input-border) !important;
+}
+
+.light-theme .form-check-input:checked {
+    background-color: var(--accent-primary) !important;
+    border-color: var(--accent-primary) !important;
+}
+
+/* ============================================
+   TABS (Radio button tabs)
+   ============================================ */
+
+.light-theme .nav-tabs {
+    background-color: var(--bg-secondary) !important;
+    border-bottom-color: var(--border-color) !important;
+}
+
+.light-theme .nav-tabs .form-check-label {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-secondary) !important;
+    border-color: var(--border-color) !important;
+}
+
+.light-theme .nav-tabs .form-check-label:hover {
+    background-color: var(--bg-hover) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-hover) !important;
+}
+
+.light-theme .nav-tabs .form-check-input:checked + .form-check-label {
+    background-color: var(--accent-primary) !important;
+    color: #ffffff !important;
+    border-color: var(--accent-primary) !important;
+}
+
+/* ============================================
+   SCENARIO CHECKBOXES (Tab-like)
+   ============================================ */
+
+.light-theme .scenario-checklist .form-check-label {
+    background-color: transparent !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.light-theme .scenario-checklist .form-check-label:hover {
+    border-color: var(--border-hover) !important;
+}
+
+/* ============================================
+   MODALS
+   ============================================ */
+
+.light-theme .modal-content {
+    background-color: var(--modal-bg) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.light-theme .modal-header {
+    background-color: var(--bg-secondary) !important;
+    border-bottom-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.light-theme .modal-body {
+    background-color: var(--modal-bg) !important;
+    color: var(--text-primary) !important;
+}
+
+.light-theme .modal-footer {
+    background-color: var(--bg-secondary) !important;
+    border-top-color: var(--border-color) !important;
+}
+
+.light-theme .modal-title {
+    color: var(--text-primary) !important;
+}
+
+/* ============================================
+   COLOR PICKER MODAL SPECIFIC
+   ============================================ */
+
+.light-theme #color-picker-input {
+    background-color: var(--input-bg) !important;
+    border-color: var(--input-border) !important;
+}
+
+.light-theme #color-picker-hex-input {
+    background-color: var(--input-bg) !important;
+    border-color: var(--input-border) !important;
+    color: var(--input-text) !important;
+}
+
+.light-theme .color-item-button {
+    background-color: var(--bg-tertiary) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.light-theme .color-item-button:hover {
+    background-color: var(--bg-hover) !important;
+    border-color: var(--accent-primary) !important;
+}
+
+/* ============================================
+   TEXT COLORS
+   ============================================ */
+
+.light-theme h1,
+.light-theme h2,
+.light-theme h3,
+.light-theme h4,
+.light-theme h5,
+.light-theme h6 {
+    color: var(--text-primary) !important;
+}
+
+.light-theme p,
+.light-theme span,
+.light-theme label {
+    color: var(--text-primary) !important;
+}
+
+.light-theme .text-muted {
+    color: var(--text-muted) !important;
+}
+
+.light-theme .text-secondary {
+    color: var(--text-secondary) !important;
+}
+
+.light-theme .text-success {
+    color: var(--success) !important;
+}
+
+.light-theme .text-warning {
+    color: var(--warning) !important;
+}
+
+.light-theme .text-danger {
+    color: var(--danger) !important;
+}
+
+.light-theme .text-info {
+    color: var(--info) !important;
+}
+
+/* ============================================
+   HORIZONTAL RULES
+   ============================================ */
+
+.light-theme hr {
+    border-color: var(--border-color) !important;
+    opacity: 0.25;
+}
+
+/* ============================================
+   CONTAINERS
+   ============================================ */
+
+.light-theme .container,
+.light-theme .container-fluid {
+    color: var(--text-primary) !important;
+}
+
+/* ============================================
+   ALERTS
+   ============================================ */
+
+.light-theme .alert {
+    background-color: var(--bg-tertiary) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.light-theme .alert-success {
+    background-color: #d4edda !important;
+    border-color: var(--success) !important;
+    color: #155724 !important;
+}
+
+.light-theme .alert-warning {
+    background-color: #fff3cd !important;
+    border-color: var(--warning) !important;
+    color: #856404 !important;
+}
+
+.light-theme .alert-danger {
+    background-color: #f8d7da !important;
+    border-color: var(--danger) !important;
+    color: #721c24 !important;
+}
+
+/* ============================================
+   SPINNERS
+   ============================================ */
+
+.light-theme .spinner-border {
+    border-color: var(--text-muted);
+    border-right-color: transparent !important;
+}
+
+/* ============================================
+   TABLES
+   ============================================ */
+
+.light-theme table {
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+
+.light-theme thead {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+}
+
+.light-theme tbody tr {
+    background-color: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+}
+
+.light-theme tbody tr:hover {
+    background-color: var(--bg-hover) !important;
+}
+
+.light-theme td,
+.light-theme th {
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+/* ============================================
+   PLOTLY GRAPHS
+   ============================================ */
+
+/* Ensure Plotly graphs have dark text in light theme */
+.light-theme .js-plotly-plot .plotly,
+.light-theme .js-plotly-plot .plotly .gtitle,
+.light-theme .js-plotly-plot .plotly .xtitle,
+.light-theme .js-plotly-plot .plotly .ytitle,
+.light-theme .js-plotly-plot .plotly text {
+    fill: var(--text-primary) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Plotly legend text */
+.light-theme .js-plotly-plot .legend text {
+    fill: var(--text-primary) !important;
+}
+
+/* Plotly axis labels and titles */
+.light-theme .js-plotly-plot .g-xtitle,
+.light-theme .js-plotly-plot .g-ytitle,
+.light-theme .js-plotly-plot .xtick text,
+.light-theme .js-plotly-plot .ytick text {
+    fill: var(--text-primary) !important;
+}
+
+/* Plotly grid lines */
+.light-theme .js-plotly-plot .gridlayer .x,
+.light-theme .js-plotly-plot .gridlayer .y {
+    stroke: var(--border-color) !important;
+}
+
+/* Plotly hover labels */
+.light-theme .js-plotly-plot .hoverlayer .hovertext {
+    fill: var(--text-primary) !important;
+}
+
+/* Plotly modebar (toolbar) */
+.light-theme .js-plotly-plot .modebar-btn path {
+    fill: var(--text-secondary) !important;
+}
+
+.light-theme .js-plotly-plot .modebar-btn:hover path {
+    fill: var(--text-primary) !important;
+}
+
+.light-theme .js-plotly-plot .modebar-btn.active path {
+    fill: var(--accent-primary) !important;
+}

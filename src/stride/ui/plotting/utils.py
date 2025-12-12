@@ -47,6 +47,38 @@ def get_plotly_template() -> str:
     return "plotly_dark"
 
 
+def get_hoverlabel_style(template: str) -> dict[str, Any]:
+    """
+    Get hover label styling based on the current template/theme.
+
+    Parameters
+    ----------
+    template : str
+        Plotly template name (e.g., 'plotly_white', 'plotly_dark')
+
+    Returns
+    -------
+    dict
+        Dictionary with bgcolor and font settings for hover labels
+    """
+    if "dark" in template.lower():
+        # Dark theme: use card header background color (#2d2d2d) and text color (#e0e0e0)
+        return {
+            "bgcolor": "#2d2d2d",
+            "font_size": 13,
+            "font_family": "Arial, sans-serif",
+            "font_color": "#e0e0e0",
+        }
+    else:
+        # Light theme: use card header background color (#f8f9fa) and text color (#212529)
+        return {
+            "bgcolor": "#f8f9fa",
+            "font_size": 13,
+            "font_family": "Arial, sans-serif",
+            "font_color": "#212529",
+        }
+
+
 def determine_facet_layout(df: pd.DataFrame) -> dict[str, Any]:
     """
     Determine faceting layout based on available columns in DataFrame.

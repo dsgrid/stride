@@ -1,0 +1,656 @@
+/* ============================================
+   STRIDE Dark Theme Stylesheet
+   ============================================ */
+
+/* Root variables for dark theme */
+.dark-theme {
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #2d2d2d;
+    --bg-tertiary: #3a3a3a;
+    --bg-hover: #404040;
+    --bg-card: #252525;
+
+    --text-primary: #e0e0e0;
+    --text-secondary: #b0b0b0;
+    --text-muted: #808080;
+
+    --border-color: #404040;
+    --border-hover: #606060;
+
+    --accent-primary: #4a9eff;
+    --accent-hover: #6ab0ff;
+
+    --input-bg: #2d2d2d;
+    --input-border: #404040;
+    --input-text: #e0e0e0;
+
+    --dropdown-bg: #2d2d2d;
+    --dropdown-text: #e0e0e0;
+    --dropdown-hover: #3a3a3a;
+
+    --modal-bg: #2d2d2d;
+    --modal-overlay: rgba(0, 0, 0, 0.7);
+
+    --success: #4caf50;
+    --warning: #ff9800;
+    --danger: #f44336;
+    --info: #2196f3;
+}
+
+/* ============================================
+   GLOBAL DARK THEME STYLES
+   ============================================ */
+
+html,
+body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.dark-theme {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+}
+
+.dark-theme body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+}
+
+/* Ensure page content fills viewport */
+.dark-theme #page-content {
+    min-height: 100vh;
+    background-color: var(--bg-primary);
+}
+
+.dark-theme #main-content-container {
+    min-height: calc(100vh - 200px);
+    background-color: var(--bg-primary);
+}
+
+.dark-theme #home-view,
+.dark-theme #scenario-view,
+.dark-theme #settings-view {
+    min-height: calc(100vh - 200px);
+    background-color: var(--bg-primary);
+}
+
+/* ============================================
+   SIDEBAR
+   ============================================ */
+
+.dark-theme #sidebar,
+.dark-theme .sidebar-nav {
+    background-color: var(--bg-secondary) !important;
+    border-right: 1px solid var(--border-color) !important;
+}
+
+.dark-theme #sidebar .navbar-brand {
+    color: var(--text-primary) !important;
+}
+
+.dark-theme #sidebar h4,
+.dark-theme #sidebar h6 {
+    color: var(--text-primary) !important;
+}
+
+.dark-theme #sidebar .text-white {
+    color: var(--text-primary) !important;
+}
+
+.dark-theme #sidebar .text-white-50 {
+    color: var(--text-secondary) !important;
+}
+
+.dark-theme #sidebar hr {
+    background-color: var(--border-color) !important;
+    border-color: var(--border-color) !important;
+    opacity: 0.5;
+}
+
+.dark-theme #sidebar .btn,
+.dark-theme #sidebar .btn-light {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+
+.dark-theme #sidebar .btn:hover,
+.dark-theme #sidebar .btn-light:hover {
+    background-color: var(--bg-hover) !important;
+    border-color: var(--border-hover) !important;
+}
+
+.dark-theme #sidebar .btn-outline-light {
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+    background-color: transparent !important;
+}
+
+.dark-theme #sidebar .btn-outline-light:hover {
+    background-color: var(--bg-hover) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Sidebar dropdown theming */
+.dark-theme #sidebar .Select-control {
+    background-color: var(--bg-tertiary) !important;
+    border-color: var(--border-color) !important;
+}
+
+.dark-theme #sidebar .Select-value-label {
+    color: var(--text-primary) !important;
+}
+
+/* Sidebar settings button - match nav tabs */
+.dark-theme #sidebar-settings-btn {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+
+.dark-theme #sidebar-settings-btn:hover {
+    background-color: var(--bg-hover) !important;
+    border-color: var(--border-hover) !important;
+}
+
+/* ============================================
+   HEADER
+   ============================================ */
+
+.dark-theme .stride-title {
+    color: var(--text-primary) !important;
+}
+
+.dark-theme .stride-title:hover {
+    color: var(--accent-primary) !important;
+}
+
+/* Sidebar toggle button (arrow) */
+.dark-theme #sidebar-toggle,
+.dark-theme .sidebar-toggle-btn {
+    background-color: var(--bg-secondary) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+    font-size: 1.5rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.dark-theme #sidebar-toggle:hover,
+.dark-theme .sidebar-toggle-btn:hover {
+    background-color: var(--accent-primary) !important;
+    border-color: var(--accent-primary) !important;
+    color: #ffffff !important;
+}
+
+.dark-theme #sidebar-toggle span,
+.dark-theme .sidebar-toggle-btn span {
+    color: var(--text-primary) !important;
+}
+
+.dark-theme #sidebar-toggle:hover span,
+.dark-theme .sidebar-toggle-btn:hover span {
+    color: #ffffff !important;
+}
+
+/* Bootstrap icons in dark mode */
+.dark-theme .bi {
+    color: var(--text-primary) !important;
+}
+
+/* Theme toggle icons */
+.dark-theme .theme-icon {
+    color: var(--text-primary) !important;
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+}
+
+.dark-theme .theme-icon:hover {
+    opacity: 1;
+}
+
+.dark-theme .sun-icon {
+    color: var(--text-primary) !important;
+}
+
+.dark-theme .moon-icon {
+    color: var(--text-primary) !important;
+}
+
+/* ============================================
+   CARDS
+   ============================================ */
+
+.dark-theme .card {
+    background-color: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.dark-theme .card-header {
+    background-color: var(--bg-secondary) !important;
+    border-bottom-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.dark-theme .card-body {
+    background-color: var(--bg-card) !important;
+    color: var(--text-primary) !important;
+}
+
+/* ============================================
+   DROPDOWNS & INPUTS
+   ============================================ */
+
+.dark-theme .Select-control,
+.dark-theme .dash-dropdown .Select-control {
+    background-color: var(--dropdown-bg) !important;
+    border-color: var(--input-border) !important;
+    color: var(--dropdown-text) !important;
+}
+
+.dark-theme .Select-placeholder,
+.dark-theme .Select-value-label {
+    color: var(--dropdown-text) !important;
+}
+
+.dark-theme .Select-menu-outer {
+    background-color: var(--dropdown-bg) !important;
+    border-color: var(--input-border) !important;
+}
+
+.dark-theme .Select-option {
+    background-color: var(--dropdown-bg) !important;
+    color: var(--dropdown-text) !important;
+}
+
+.dark-theme .Select-option:hover {
+    background-color: var(--dropdown-hover) !important;
+}
+
+.dark-theme .Select-option.is-selected {
+    background-color: var(--accent-primary) !important;
+    color: #ffffff !important;
+}
+
+/* Dash Bootstrap Components Dropdowns */
+.dark-theme .dropdown-menu {
+    background-color: var(--dropdown-bg) !important;
+    border-color: var(--input-border) !important;
+}
+
+.dark-theme .dropdown-item {
+    color: var(--dropdown-text) !important;
+}
+
+.dark-theme .dropdown-item:hover {
+    background-color: var(--dropdown-hover) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Form Inputs */
+.dark-theme input[type="text"],
+.dark-theme input[type="number"],
+.dark-theme input[type="email"],
+.dark-theme textarea,
+.dark-theme .form-control {
+    background-color: var(--input-bg) !important;
+    border-color: var(--input-border) !important;
+    color: var(--input-text) !important;
+}
+
+.dark-theme input:focus,
+.dark-theme textarea:focus,
+.dark-theme .form-control:focus {
+    background-color: var(--input-bg) !important;
+    border-color: var(--accent-primary) !important;
+    color: var(--input-text) !important;
+}
+
+.dark-theme .form-label {
+    color: var(--text-primary) !important;
+}
+
+/* ============================================
+   BUTTONS
+   ============================================ */
+
+.dark-theme .btn-primary {
+    background-color: var(--accent-primary) !important;
+    border-color: var(--accent-primary) !important;
+    color: #ffffff !important;
+}
+
+.dark-theme .btn-primary:hover {
+    background-color: var(--accent-hover) !important;
+    border-color: var(--accent-hover) !important;
+}
+
+.dark-theme .btn-secondary {
+    background-color: var(--bg-tertiary) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.dark-theme .btn-secondary:hover {
+    background-color: var(--bg-hover) !important;
+}
+
+.dark-theme .btn-success {
+    background-color: var(--success) !important;
+    border-color: var(--success) !important;
+}
+
+.dark-theme .btn-outline-success {
+    color: var(--success) !important;
+    border-color: var(--success) !important;
+}
+
+.dark-theme .btn-outline-success:hover {
+    background-color: var(--success) !important;
+    color: #ffffff !important;
+}
+
+/* ============================================
+   RADIO BUTTONS & CHECKBOXES
+   ============================================ */
+
+.dark-theme .form-check-label {
+    color: var(--text-primary) !important;
+}
+
+.dark-theme .form-check-input {
+    background-color: var(--input-bg) !important;
+    border-color: var(--input-border) !important;
+}
+
+.dark-theme .form-check-input:checked {
+    background-color: var(--accent-primary) !important;
+    border-color: var(--accent-primary) !important;
+}
+
+/* ============================================
+   TABS (Radio button tabs)
+   ============================================ */
+
+.dark-theme .nav-tabs {
+    background-color: var(--bg-secondary) !important;
+    border-bottom-color: var(--border-color) !important;
+}
+
+.dark-theme .nav-tabs .form-check-label {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-secondary) !important;
+    border-color: var(--border-color) !important;
+}
+
+.dark-theme .nav-tabs .form-check-label:hover {
+    background-color: var(--bg-hover) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-hover) !important;
+}
+
+.dark-theme .nav-tabs .form-check-input:checked + .form-check-label {
+    background-color: var(--accent-primary) !important;
+    color: #ffffff !important;
+    border-color: var(--accent-primary) !important;
+}
+
+/* ============================================
+   SCENARIO CHECKBOXES (Tab-like)
+   ============================================ */
+
+.dark-theme .scenario-checklist .form-check-label {
+    background-color: transparent !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.dark-theme .scenario-checklist .form-check-label:hover {
+    border-color: var(--border-hover) !important;
+}
+
+/* ============================================
+   MODALS
+   ============================================ */
+
+.dark-theme .modal-content {
+    background-color: var(--modal-bg) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.dark-theme .modal-header {
+    background-color: var(--bg-secondary) !important;
+    border-bottom-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.dark-theme .modal-body {
+    background-color: var(--modal-bg) !important;
+    color: var(--text-primary) !important;
+}
+
+.dark-theme .modal-footer {
+    background-color: var(--bg-secondary) !important;
+    border-top-color: var(--border-color) !important;
+}
+
+.dark-theme .modal-title {
+    color: var(--text-primary) !important;
+}
+
+.dark-theme .btn-close {
+    filter: invert(1);
+}
+
+/* ============================================
+   COLOR PICKER MODAL SPECIFIC
+   ============================================ */
+
+.dark-theme #color-picker-input {
+    background-color: var(--input-bg) !important;
+    border-color: var(--input-border) !important;
+}
+
+.dark-theme #color-picker-hex-input {
+    background-color: var(--input-bg) !important;
+    border-color: var(--input-border) !important;
+    color: var(--input-text) !important;
+}
+
+.dark-theme .color-item-button {
+    background-color: var(--bg-tertiary) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.dark-theme .color-item-button:hover {
+    background-color: var(--bg-hover) !important;
+    border-color: var(--accent-primary) !important;
+}
+
+/* ============================================
+   TEXT COLORS
+   ============================================ */
+
+.dark-theme h1,
+.dark-theme h2,
+.dark-theme h3,
+.dark-theme h4,
+.dark-theme h5,
+.dark-theme h6 {
+    color: var(--text-primary) !important;
+}
+
+.dark-theme p,
+.dark-theme span,
+.dark-theme label {
+    color: var(--text-primary) !important;
+}
+
+.dark-theme .text-muted {
+    color: var(--text-muted) !important;
+}
+
+.dark-theme .text-secondary {
+    color: var(--text-secondary) !important;
+}
+
+.dark-theme .text-success {
+    color: var(--success) !important;
+}
+
+.dark-theme .text-warning {
+    color: var(--warning) !important;
+}
+
+.dark-theme .text-danger {
+    color: var(--danger) !important;
+}
+
+.dark-theme .text-info {
+    color: var(--info) !important;
+}
+
+/* ============================================
+   HORIZONTAL RULES
+   ============================================ */
+
+.dark-theme hr {
+    border-color: var(--border-color) !important;
+    opacity: 0.5;
+}
+
+.dark-theme .bg-white {
+    background-color: var(--bg-secondary) !important;
+}
+
+/* ============================================
+   CONTAINERS
+   ============================================ */
+
+.dark-theme .container,
+.dark-theme .container-fluid {
+    color: var(--text-primary) !important;
+}
+
+/* ============================================
+   ALERTS
+   ============================================ */
+
+.dark-theme .alert {
+    background-color: var(--bg-tertiary) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.dark-theme .alert-success {
+    background-color: rgba(76, 175, 80, 0.2) !important;
+    border-color: var(--success) !important;
+    color: var(--success) !important;
+}
+
+.dark-theme .alert-warning {
+    background-color: rgba(255, 152, 0, 0.2) !important;
+    border-color: var(--warning) !important;
+    color: var(--warning) !important;
+}
+
+.dark-theme .alert-danger {
+    background-color: rgba(244, 67, 54, 0.2) !important;
+    border-color: var(--danger) !important;
+    color: var(--danger) !important;
+}
+
+/* ============================================
+   SPINNERS
+   ============================================ */
+
+.dark-theme .spinner-border {
+    border-color: var(--text-muted);
+    border-right-color: transparent !important;
+}
+
+/* ============================================
+   TABLES
+   ============================================ */
+
+.dark-theme table {
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+
+.dark-theme thead {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+}
+
+.dark-theme tbody tr {
+    background-color: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+}
+
+.dark-theme tbody tr:hover {
+    background-color: var(--bg-hover) !important;
+}
+
+.dark-theme td,
+.dark-theme th {
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+/* ============================================
+   PLOTLY GRAPHS
+   ============================================ */
+
+/* Ensure Plotly graphs have light text in dark theme */
+.dark-theme .js-plotly-plot .plotly,
+.dark-theme .js-plotly-plot .plotly .gtitle,
+.dark-text .js-plotly-plot .plotly .xtitle,
+.dark-theme .js-plotly-plot .plotly .ytitle,
+.dark-theme .js-plotly-plot .plotly text {
+    fill: var(--text-primary) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Plotly legend text */
+.dark-theme .js-plotly-plot .legend text {
+    fill: var(--text-primary) !important;
+}
+
+/* Plotly axis labels and titles */
+.dark-theme .js-plotly-plot .g-xtitle,
+.dark-theme .js-plotly-plot .g-ytitle,
+.dark-theme .js-plotly-plot .xtick text,
+.dark-theme .js-plotly-plot .ytick text {
+    fill: var(--text-primary) !important;
+}
+
+/* Plotly grid lines */
+.dark-theme .js-plotly-plot .gridlayer .x,
+.dark-theme .js-plotly-plot .gridlayer .y {
+    stroke: var(--border-color) !important;
+}
+
+/* Plotly hover labels */
+.dark-theme .js-plotly-plot .hoverlayer .hovertext {
+    fill: var(--text-primary) !important;
+}
+
+/* Plotly modebar (toolbar) */
+.dark-theme .js-plotly-plot .modebar-btn path {
+    fill: var(--text-secondary) !important;
+}
+
+.dark-theme .js-plotly-plot .modebar-btn:hover path {
+    fill: var(--text-primary) !important;
+}
+
+.dark-theme .js-plotly-plot .modebar-btn.active path {
+    fill: var(--accent-primary) !important;
+}

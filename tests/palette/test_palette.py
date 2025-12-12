@@ -458,8 +458,8 @@ class TestColorPaletteGroupedItems:
 
     def test_empty_groups(self) -> None:
         """Test handling of empty groups."""
-        palette = {}
-        groups = {}
+        palette: dict[str, str] = {}
+        groups: dict[str, dict[str, str]] = {}
 
         result: dict[str, list[dict[str, Any]]] = ColorPalette.palette_to_grouped_items(
             palette, groups

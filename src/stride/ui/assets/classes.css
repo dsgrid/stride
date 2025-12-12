@@ -92,6 +92,7 @@
 .form-check-label {
     font-size: 0.95rem;
     margin-right: 15px;
+    background-color: transparent !important;
 }
 
 /* Scenario button styling - custom colored buttons */

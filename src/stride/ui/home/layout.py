@@ -18,9 +18,6 @@ def create_home_layout(
     # Get stored values or use defaults
     stored_state = stored_state or {}
 
-    # Generate scenario CSS from ColorManager
-    scenario_css = color_manager.generate_scenario_css()
-
     def create_styled_checklist(scenarios_list: list[str], checklist_id: Any) -> html.Div:
         # Get stored value or default
         stored_value = stored_state.get(

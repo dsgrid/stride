@@ -10,6 +10,7 @@ from .utils import (
     create_faceted_traces,
     create_seasonal_annotations,
     determine_facet_layout,
+    get_hoverlabel_style,
     get_plotly_template,
     update_faceted_layout,
 )
@@ -59,7 +60,9 @@ def add_seasonal_line_traces(
                 fig.add_trace(go.Scatter(**trace_kwargs))
 
 
-def seasonal_load_lines(df: pd.DataFrame, color_generator: "ColorManager") -> go.Figure:
+def seasonal_load_lines(
+    df: pd.DataFrame, color_generator: "ColorManager", template: str = "plotly_dark"
+) -> go.Figure:
     """Create faceted subplots for seasonal load lines."""
     if df.empty:
         fig = go.Figure()
@@ -67,6 +70,9 @@ def seasonal_load_lines(df: pd.DataFrame, color_generator: "ColorManager") -> go
             text="No data available", x=0.5, y=0.5, xref="paper", yref="paper", showarrow=False
         )
         return fig
+
+    # Get hover label styling based on theme
+    hoverlabel_style = get_hoverlabel_style(template)
 
     layout_config = determine_facet_layout(df)
 
@@ -100,6 +106,8 @@ def seasonal_load_lines(df: pd.DataFrame, color_generator: "ColorManager") -> go
             legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02),
             height=400 if layout_config["rows"] == 1 else 600,
             annotations=annotations_list,
+            hoverlabel=hoverlabel_style,
+            hovermode="x unified",
         )
 
         fig.update_xaxes(
@@ -157,6 +165,8 @@ def seasonal_load_lines(df: pd.DataFrame, color_generator: "ColorManager") -> go
             ),
             yaxis=dict(showline=True, linewidth=1, linecolor="black", mirror=True),
             legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02),
+            hoverlabel=hoverlabel_style,
+            hovermode="x unified",
         )
 
         # Add vertical lines for single plot
@@ -255,7 +265,9 @@ def _add_stacked_area_traces(
                 fig.add_trace(go.Scatter(**trace_kwargs))
 
 
-def seasonal_load_area(df: pd.DataFrame, color_generator: "ColorManager") -> go.Figure:
+def seasonal_load_area(
+    df: pd.DataFrame, color_generator: "ColorManager", template: str = "plotly_dark"
+) -> go.Figure:
     """Create faceted area charts for seasonal load patterns."""
     if df.empty:
         fig = go.Figure()
@@ -263,6 +275,9 @@ def seasonal_load_area(df: pd.DataFrame, color_generator: "ColorManager") -> go.
             text="No data available", x=0.5, y=0.5, xref="paper", yref="paper", showarrow=False
         )
         return fig
+
+    # Get hover label styling based on theme
+    hoverlabel_style = get_hoverlabel_style(template)
 
     layout_config = determine_facet_layout(df)
     breakdown_col, breakdown_categories = _determine_breakdown_config(df)
@@ -302,6 +317,8 @@ def seasonal_load_area(df: pd.DataFrame, color_generator: "ColorManager") -> go.
             else None,
             height=400 if layout_config["rows"] == 1 else 600,
             annotations=annotations_list,
+            hoverlabel=hoverlabel_style,
+            hovermode="x unified",
         )
 
         fig.update_xaxes(
@@ -343,6 +360,8 @@ def seasonal_load_area(df: pd.DataFrame, color_generator: "ColorManager") -> go.
             legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02)
             if has_breakdown
             else None,
+            hoverlabel=hoverlabel_style,
+            hovermode="x unified",
         )
 
     return fig
@@ -354,6 +373,7 @@ def faceted_time_series(
     chart_type: str = "Line",
     group_by: str | None = None,
     value_col: str = "value",
+    template: str = "plotly_dark",
 ) -> go.Figure:
     """
     Create faceted subplots for each scenario with shared legend.
@@ -376,6 +396,9 @@ def faceted_time_series(
     go.Figure
         Plotly figure with subplots for each scenario
     """
+    # Get hover label styling based on theme
+    hoverlabel_style = get_hoverlabel_style(template)
+
     scenarios = sorted(df["scenario"].unique())
     rows, cols = calculate_subplot_layout(len(scenarios))
 
@@ -398,5 +421,11 @@ def faceted_time_series(
 
     # Update layout
     update_faceted_layout(fig, rows, group_by)
+
+    # Add hover styling
+    fig.update_layout(
+        hoverlabel=hoverlabel_style,
+        hovermode="x unified",
+    )
 
     return fig

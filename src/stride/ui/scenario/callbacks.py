@@ -562,7 +562,13 @@ def _register_timeseries_callbacks(data_handler: "APIClient", plotter: "StridePl
         refresh_trigger: int,
     ) -> go.Figure | dict[str, Any]:
         return update_timeseries_plot(
-            data_handler, plotter, scenario, breakdown, resample, weather_var, selected_years
+            data_handler,
+            plotter,
+            scenario,
+            breakdown,
+            resample,  # type: ignore[arg-type]
+            weather_var,  # type: ignore[arg-type]
+            selected_years,
         )
 
     @callback(
@@ -585,7 +591,13 @@ def _register_timeseries_callbacks(data_handler: "APIClient", plotter: "StridePl
         refresh_trigger: int,
     ) -> go.Figure | dict[str, Any]:
         return update_yearly_plot(
-            data_handler, plotter, scenario, breakdown, resample, weather_var, selected_year
+            data_handler,
+            plotter,
+            scenario,
+            breakdown,
+            resample,  # type: ignore[arg-type]
+            weather_var,  # type: ignore[arg-type]
+            selected_year,
         )
 
 
@@ -610,7 +622,12 @@ def _register_seasonal_callbacks(data_handler: "APIClient", plotter: "StridePlot
         refresh_trigger: int,
     ) -> go.Figure | dict[str, Any]:
         return update_seasonal_lines_plot(
-            data_handler, plotter, scenario, timegroup, agg_func, weather_var
+            data_handler,
+            plotter,
+            scenario,
+            timegroup,  # type: ignore[arg-type]
+            agg_func,  # type: ignore[arg-type]
+            weather_var,
         )
 
     @callback(

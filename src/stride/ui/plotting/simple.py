@@ -8,6 +8,7 @@ from .utils import (
     TRANSPARENT,
     create_time_series_area_traces,
     create_time_series_line_traces,
+    get_hoverlabel_style,
     get_plotly_template,
     get_time_series_breakdown_info,
 )
@@ -22,6 +23,7 @@ def grouped_single_bars(
     color_generator: "ColorManager",
     use_color_manager: bool = True,
     fixed_color: str | None = None,
+    template: str = "plotly_dark",
 ) -> go.Figure:
     """
     Create a bar plot with 2 levels of x axis.
@@ -38,6 +40,8 @@ def grouped_single_bars(
         Whether to use the color manager for bar colors, by default True
     fixed_color : str | None, optional
         Fixed color to use for all bars (overrides use_color_manager), by default None
+    template : str, optional
+        Plotly template name for theme-aware styling, by default "plotly_dark"
 
     Returns
     -------
@@ -45,6 +49,9 @@ def grouped_single_bars(
         Plotly figure with grouped bar chart
     """
     fig = go.Figure()
+
+    # Get hover label styling based on theme
+    hoverlabel_style = get_hoverlabel_style(template)
 
     df_grouped = df[group].unique()
     for group_value in df_grouped:
@@ -64,7 +71,8 @@ def grouped_single_bars(
                 y=df_subset["value"],
                 name=str(group_value),
                 marker_color=color,
-                showlegend=True,
+                showlegend=False,
+                hovertemplate="<b>Year: %{x}</b><br>Value: %{y:.2f}<extra></extra>",
             )
         )
 
@@ -77,6 +85,7 @@ def grouped_single_bars(
         margin_l=20,
         margin_r=20,
         barmode="group",
+        hoverlabel=hoverlabel_style,
     )
 
     return fig
@@ -87,6 +96,7 @@ def grouped_multi_bars(
     color_generator: "ColorManager",
     x_group: str = "scenario",
     y_group: str = "end_use",
+    template: str = "plotly_dark",
 ) -> go.Figure:
     """
     Create grouped and multi-level bar chart.
@@ -101,6 +111,8 @@ def grouped_multi_bars(
         Primary grouping column (creates offset groups), by default "scenario"
     y_group : str, optional
         Secondary grouping column (creates stacked bars), by default "end_use"
+    template : str, optional
+        Plotly template name for theme-aware styling, by default "plotly_dark"
 
     Returns
     -------
@@ -108,6 +120,9 @@ def grouped_multi_bars(
         Plotly figure with grouped multi-bars
     """
     bars = []
+
+    # Get hover label styling based on theme
+    hoverlabel_style = get_hoverlabel_style(template)
 
     # Get max value for indicator bar sizing
     max_value = df["value"].max()
@@ -135,6 +150,7 @@ def grouped_multi_bars(
                     else None,
                     legendrank=1,
                     showlegend=y_value not in added_y_legend,
+                    hovertemplate=y_value + ": %{y:.2f}<extra></extra>",
                 )
             )
             if not y_group_title_added:
@@ -184,6 +200,8 @@ def grouped_multi_bars(
             itemclick="toggle",  # Single click toggles sectors (or scenario indicators)
             itemdoubleclick=False,  # Disabled - can't handle 2D toggling properly
         ),
+        hoverlabel=hoverlabel_style,
+        hovermode="x unified",
     )
 
     return fig
@@ -197,6 +215,7 @@ def grouped_stacked_bars(
     stack_col: str = "metric",
     value_col: str = "demand",
     show_scenario_indicators: bool = True,
+    template: str = "plotly_dark",
 ) -> go.Figure:
     """
     Create grouped and stacked bar chart.
@@ -220,6 +239,8 @@ def grouped_stacked_bars(
         Column name for values (y-axis), by default "demand"
     show_scenario_indicators : bool, optional
         Whether to show hatched scenario indicator bars, by default True
+    template : str, optional
+        Plotly template name for theme-aware styling, by default "plotly_dark"
 
     Returns
     -------
@@ -227,6 +248,9 @@ def grouped_stacked_bars(
         Plotly figure with grouped stacked bars
     """
     fig = go.Figure()
+
+    # Get hover label styling based on theme
+    hoverlabel_style = get_hoverlabel_style(template)
 
     years = sorted(df[year_col].unique())
     groups = sorted(df[group_col].unique())
@@ -259,6 +283,7 @@ def grouped_stacked_bars(
                     offsetgroup=group,
                     legendrank=1,
                     showlegend=stack_cat not in added_stack_legend,
+                    hovertemplate=stack_cat + ": %{y:.2f}<extra></extra>",
                 )
             )
             if not stack_group_title_added:
@@ -310,6 +335,8 @@ def grouped_stacked_bars(
             itemclick="toggle",  # Single click toggles sectors (or scenario indicators)
             itemdoubleclick=False,  # Disabled - can't handle 2D toggling properly
         ),
+        hoverlabel=hoverlabel_style,
+        hovermode="x unified",
     )
 
     return fig
@@ -320,6 +347,7 @@ def time_series(
     color_generator: "ColorManager",
     group_by: str | None = None,
     chart_type: str = "Line",
+    template: str = "plotly_dark",
 ) -> go.Figure:
     """
     Plot time series data for multiple years of a single scenario.
@@ -335,6 +363,8 @@ def time_series(
         Column name for breakdown grouping (e.g., "sector", "end_use")
     chart_type : str, optional
         "Line" or "Area" chart type, by default "Line"
+    template : str, optional
+        Plotly template name for theme-aware styling, by default "plotly_dark"
 
     Returns
     -------
@@ -342,6 +372,9 @@ def time_series(
         Plotly figure with time series lines or area chart
     """
     fig = go.Figure()
+
+    # Get hover label styling based on theme
+    hoverlabel_style = get_hoverlabel_style(template)
 
     # Get breakdown information
     breakdown_info = get_time_series_breakdown_info(df, group_by)
@@ -375,12 +408,16 @@ def time_series(
         xaxis_title="Time Period",
         yaxis_title="Energy Consumption (TWh)",
         legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02),
+        hoverlabel=hoverlabel_style,
+        hovermode="x unified",
     )
 
     return fig
 
 
-def demand_curve(df: pd.DataFrame, color_generator: "ColorManager") -> go.Figure:
+def demand_curve(
+    df: pd.DataFrame, color_generator: "ColorManager", template: str = "plotly_dark"
+) -> go.Figure:
     """
     Create a load duration curve plot.
 
@@ -391,6 +428,8 @@ def demand_curve(df: pd.DataFrame, color_generator: "ColorManager") -> go.Figure
         sorted demand values from highest to lowest
     color_generator : Callable[[str], str]
         Color generator function
+    template : str, optional
+        Plotly template name for theme-aware styling, by default "plotly_dark"
 
     Returns
     -------
@@ -398,6 +437,10 @@ def demand_curve(df: pd.DataFrame, color_generator: "ColorManager") -> go.Figure
         Plotly figure with demand duration curves
     """
     fig = go.Figure()
+
+    # Get hover label styling based on theme
+    hoverlabel_style = get_hoverlabel_style(template)
+
     for scenario in df.columns:
         fig.add_trace(
             go.Scatter(
@@ -406,7 +449,8 @@ def demand_curve(df: pd.DataFrame, color_generator: "ColorManager") -> go.Figure
                 mode="lines",
                 marker=dict(color=color_generator.get_color(scenario)),
                 name=scenario,
-                showlegend=False,
+                showlegend=True,
+                hovertemplate="%{fullData.name}: %{y:.2f}<extra></extra>",
             )
         )
     fig.update_layout(
@@ -418,6 +462,8 @@ def demand_curve(df: pd.DataFrame, color_generator: "ColorManager") -> go.Figure
         margin_l=20,
         margin_r=20,
         barmode="stack",
+        hoverlabel=hoverlabel_style,
+        hovermode="x unified",
     )
     return fig
 

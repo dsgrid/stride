@@ -60,6 +60,7 @@ class StridePlots:
             self._color_generator,
             use_color_manager=use_color_manager,
             fixed_color=fixed_color,
+            template=self._template,
         )
         fig.update_layout(template=self._template)
         return fig
@@ -68,7 +69,9 @@ class StridePlots:
         self, df: pd.DataFrame, x_group: str = "scenario", y_group: str = "end_use"
     ) -> go.Figure:
         """Create grouped and multi-level bar chart."""
-        fig = simple.grouped_multi_bars(df, self._color_generator, x_group, y_group)
+        fig = simple.grouped_multi_bars(
+            df, self._color_generator, x_group, y_group, template=self._template
+        )
         fig.update_layout(template=self._template)
         return fig
 
@@ -90,6 +93,7 @@ class StridePlots:
             stack_col,
             value_col,
             show_scenario_indicators,
+            template=self._template,
         )
         fig.update_layout(template=self._template)
         return fig
@@ -98,13 +102,15 @@ class StridePlots:
         self, df: pd.DataFrame, group_by: str | None = None, chart_type: str = "Line"
     ) -> go.Figure:
         """Plot time series data for multiple years of a single scenario."""
-        fig = simple.time_series(df, self._color_generator, group_by, chart_type)
+        fig = simple.time_series(
+            df, self._color_generator, group_by, chart_type, template=self._template
+        )
         fig.update_layout(template=self._template)
         return fig
 
     def demand_curve(self, df: pd.DataFrame) -> go.Figure:
         """Create a load duration curve plot."""
-        fig = simple.demand_curve(df, self._color_generator)
+        fig = simple.demand_curve(df, self._color_generator, template=self._template)
         fig.update_layout(template=self._template)
         return fig
 
@@ -123,19 +129,19 @@ class StridePlots:
     ) -> go.Figure:
         """Create faceted subplots for each scenario with shared legend."""
         fig = facets.faceted_time_series(
-            df, self._color_generator, chart_type, group_by, value_col
+            df, self._color_generator, chart_type, group_by, value_col, template=self._template
         )
         fig.update_layout(template=self._template)
         return fig
 
     def seasonal_load_lines(self, df: pd.DataFrame) -> go.Figure:
         """Create faceted subplots for seasonal load lines."""
-        fig = facets.seasonal_load_lines(df, self._color_generator)
+        fig = facets.seasonal_load_lines(df, self._color_generator, template=self._template)
         fig.update_layout(template=self._template)
         return fig
 
     def seasonal_load_area(self, df: pd.DataFrame) -> go.Figure:
         """Create faceted area charts for seasonal load patterns."""
-        fig = facets.seasonal_load_area(df, self._color_generator)
+        fig = facets.seasonal_load_area(df, self._color_generator, template=self._template)
         fig.update_layout(template=self._template)
         return fig

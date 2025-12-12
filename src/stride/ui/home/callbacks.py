@@ -291,7 +291,7 @@ def update_home_scenario_timeseries(
         return {"data": [], "layout": {"title": f"Error: {str(e)}"}}
 
 
-def register_home_callbacks(
+def register_home_callbacks(  # noqa: C901
     data_handler: "APIClient",
     plotter: "StridePlots",
     scenarios: list[str],

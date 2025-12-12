@@ -6,7 +6,7 @@ from loguru import logger
 
 from stride.api import APIClient
 from stride.api.utils import Sectors, literal_to_list
-from stride.ui.color_manager import get_color_manager
+from stride.ui.color_manager import ColorManager, get_color_manager
 from stride.ui.home import create_home_layout, register_home_callbacks
 from stride.ui.palette import ColorPalette
 from stride.ui.plotting import StridePlots
@@ -33,7 +33,7 @@ _loaded_projects = {}  # project_path -> (data_handler, color_manager, plotter)
 _current_project_path = None
 
 
-def create_app(
+def create_app(  # noqa: C901
     data_handler: APIClient,
     user_palette: ColorPalette | None = None,
     available_projects: list[dict[str, str]] | None = None,
@@ -84,7 +84,7 @@ def create_app(
         end_uses=[],  # Add end uses here if available
     )
 
-    plotter = StridePlots(color_manager)
+    plotter = StridePlots(color_manager, template="plotly_dark")
 
     # Store in global cache
     _loaded_projects[current_project_path] = (data_handler, color_manager, plotter)
@@ -149,7 +149,7 @@ def create_app(
                             html.H6("Projects", className="text-white-50 mb-2"),
                             dcc.Dropdown(
                                 id="sidebar-project-selector",
-                                options=project_options,
+                                options=project_options,  # type: ignore[arg-type]
                                 value=current_project_path,
                                 clearable=False,
                                 className="mb-3",
@@ -346,7 +346,7 @@ def create_app(
         State("sidebar-open", "data"),
         prevent_initial_call=True,
     )
-    def toggle_sidebar(n_clicks, is_open):
+    def toggle_sidebar(n_clicks, is_open):  # type: ignore[no-untyped-def]
         """Toggle sidebar visibility."""
         if n_clicks is None:
             return (
@@ -406,7 +406,7 @@ def create_app(
         State("current-project-path", "data"),
         prevent_initial_call=True,
     )
-    def switch_project(new_project_path, current_path):
+    def switch_project(new_project_path, current_path):  # type: ignore[no-untyped-def]
         """Switch to a different project by loading it dynamically."""
         global _loaded_projects
 
@@ -437,7 +437,7 @@ def create_app(
                     end_uses=[],
                 )
 
-                plotter = StridePlots(color_manager)
+                plotter = StridePlots(color_manager, template="plotly_dark")
 
                 # Cache it
                 _loaded_projects[new_project_path] = (data_handler, color_manager, plotter)
@@ -599,8 +599,8 @@ def create_app(
 
         return theme, f"sidebar-nav {theme}", theme, refresh_count + 1
 
-    # Helper function for palette changes
-    def on_palette_change(palette: ColorPalette, palette_type: str, palette_name: str | None):
+    # Helper function for palette changes  # type: ignore[arg-type]
+    def on_palette_change(palette: ColorPalette, palette_type: str, palette_name: str | None):  # type: ignore[no-untyped-def]
         """Update the color manager when palette changes."""
         global _loaded_projects, _current_project_path
 
@@ -615,7 +615,7 @@ def create_app(
                 end_uses=[],
             )
 
-            plotter = StridePlots(color_manager)
+            plotter = StridePlots(color_manager, template="plotly_dark")
 
             # Update cache
             _loaded_projects[_current_project_path] = (data_handler, color_manager, plotter)
@@ -623,7 +623,7 @@ def create_app(
             logger.info(f"Palette changed to: {palette_type} / {palette_name}")
 
     # Helper function to get color manager
-    def get_current_color_manager():
+    def get_current_color_manager() -> ColorManager | None:
         """Get the current color manager instance."""
         if _current_project_path in _loaded_projects:
             _, color_manager, _ = _loaded_projects[_current_project_path]
@@ -631,7 +631,7 @@ def create_app(
         return None
 
     # Helper function to get data handler
-    def get_current_data_handler():
+    def get_current_data_handler() -> "APIClient | None":
         """Get the current data handler instance."""
         if _current_project_path in _loaded_projects:
             data_handler, _, _ = _loaded_projects[_current_project_path]
