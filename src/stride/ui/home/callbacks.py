@@ -487,7 +487,7 @@ def update_home_scenario_timeseries(  # noqa: C901
                     # Create specs for make_subplots with secondary y-axes
                     from plotly.subplots import make_subplots
 
-                    specs: list[list[dict[str, bool]]] = [
+                    specs: list[list[dict[str, str | bool | int | float] | None]] = [
                         [{"secondary_y": True} for _ in range(cols)] for _ in range(rows)
                     ]
 
