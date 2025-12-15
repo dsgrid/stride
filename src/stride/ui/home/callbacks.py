@@ -487,7 +487,9 @@ def update_home_scenario_timeseries(  # noqa: C901
                     # Create specs for make_subplots with secondary y-axes
                     from plotly.subplots import make_subplots
 
-                    specs = [[{"secondary_y": True} for _ in range(cols)] for _ in range(rows)]
+                    specs: list[list[dict[str, bool]]] = [
+                        [{"secondary_y": True} for _ in range(cols)] for _ in range(rows)
+                    ]
 
                     # Create figure with secondary y-axes
                     scenarios_sorted = sorted(selected_scenarios)
@@ -1186,9 +1188,10 @@ def register_home_callbacks(  # noqa: C901
         plotter = get_plotter_func()
         if data_handler is None or plotter is None:
             return go.Figure()
-        return update_home_scenario_comparison(
+        result = update_home_scenario_comparison(
             data_handler, plotter, selected_scenarios, breakdown, secondary_metric
         )
+        return result if isinstance(result, go.Figure) else go.Figure(result)
 
     @callback(
         Output("home-sector-breakdown", "figure"),
@@ -1208,9 +1211,10 @@ def register_home_callbacks(  # noqa: C901
         plotter = get_plotter_func()
         if data_handler is None or plotter is None:
             return go.Figure()
-        return update_home_sector_breakdown(
+        result = update_home_sector_breakdown(
             data_handler, plotter, selected_scenarios, breakdown, secondary_metric
         )
+        return result if isinstance(result, go.Figure) else go.Figure(result)
 
     @callback(
         Output("home-load-duration", "figure"),
@@ -1226,7 +1230,8 @@ def register_home_callbacks(  # noqa: C901
         plotter = get_plotter_func()
         if data_handler is None or plotter is None:
             return go.Figure()
-        return update_home_load_duration(data_handler, plotter, selected_scenarios, year)
+        result = update_home_load_duration(data_handler, plotter, selected_scenarios, year)
+        return result if isinstance(result, go.Figure) else go.Figure(result)
 
     @callback(
         Output("home-scenario-timeseries", "figure"),
@@ -1248,6 +1253,7 @@ def register_home_callbacks(  # noqa: C901
         plotter = get_plotter_func()
         if data_handler is None or plotter is None:
             return go.Figure()
-        return update_home_scenario_timeseries(
+        result = update_home_scenario_timeseries(
             data_handler, plotter, selected_scenarios, chart_type, breakdown, secondary_metric
         )
+        return result if isinstance(result, go.Figure) else go.Figure(result)

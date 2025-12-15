@@ -10,7 +10,7 @@ The class provides a class method to intialize a palette from a dictionary while
 
 import re
 from itertools import cycle
-from typing import Any, Mapping, MutableSequence, Self, TypedDict
+from typing import Any, Mapping, MutableSequence, TypedDict
 
 from plotly import colors
 

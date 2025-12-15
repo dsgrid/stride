@@ -112,7 +112,7 @@ def create_settings_layout(
                                                             dcc.Dropdown(
                                                                 id="user-palette-selector",
                                                                 options=[
-                                                                    {"label": p, "value": p}
+                                                                    {"label": p, "value": p}  # type: ignore[misc]
                                                                     for p in user_palettes
                                                                 ],
                                                                 value=current_palette_name,
