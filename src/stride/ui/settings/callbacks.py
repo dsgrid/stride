@@ -226,6 +226,99 @@ def register_settings_callbacks(  # type: ignore[no-untyped-def]  # noqa: C901
         return palette_type == "project" or not selected_palette
 
     @callback(
+        Output("revert-changes-status", "children"),
+        Output("color-edits-counter", "data", allow_duplicate=True),
+        Output("settings-palette-applied", "data", allow_duplicate=True),
+        Input("revert-changes-btn", "n_clicks"),
+        State("color-edits-counter", "data"),
+        State("settings-palette-applied", "data"),
+        prevent_initial_call=True,
+    )
+    def revert_changes(
+        n_clicks: int | None,
+        counter: int,
+        current_palette_data: dict[str, Any],
+    ) -> tuple[html.Div, int, dict[str, Any]]:
+        """Revert all unsaved color changes by reloading the palette from disk."""
+        if not n_clicks:
+            raise PreventUpdate
+
+        try:
+            data_handler = get_data_handler_func()
+            if data_handler is None:
+                return (
+                    html.Div(
+                        "✗ Error: No project loaded",
+                        className="text-danger mt-2",
+                    ),
+                    counter,
+                    current_palette_data,
+                )
+
+            # Check if there are any temporary edits
+            temp_edits = get_temp_color_edits()
+            if not temp_edits:
+                return (
+                    html.Div(
+                        "⚠ No unsaved changes to revert",
+                        className="text-warning mt-2",
+                    ),
+                    counter,
+                    current_palette_data,
+                )
+
+            # Get the current palette type and name
+            palette_type = current_palette_data.get("type", "project")
+            palette_name = current_palette_data.get("name")
+
+            # Reload the palette from disk
+            if palette_type == "project":
+                # Force reload from config by clearing cache and recreating
+                data_handler.project._palette = None
+                palette = data_handler.project.palette
+                logger.info("Reloaded project palette from disk")
+            elif palette_type == "user" and palette_name:
+                # Reload user palette from file
+                palette = load_user_palette(palette_name)
+                logger.info(f"Reloaded user palette '{palette_name}' from disk")
+            else:
+                return (
+                    html.Div(
+                        "✗ Error: No active palette to revert to",
+                        className="text-danger mt-2",
+                    ),
+                    counter,
+                    current_palette_data,
+                )
+
+            # Clear temporary edits
+            clear_temp_color_edits()
+
+            # Apply the reloaded palette to refresh the UI
+            on_palette_change_func(palette, palette_type, palette_name)
+
+            logger.info(f"Reverted {len(temp_edits)} unsaved color changes")
+
+            return (
+                html.Div(
+                    f"✓ Reverted {len(temp_edits)} unsaved color change(s)",
+                    className="text-success mt-2",
+                ),
+                counter + 1,  # Increment to trigger refresh
+                current_palette_data,
+            )
+        except Exception as e:
+            logger.error(f"Error reverting changes: {e}")
+            return (
+                html.Div(
+                    f"✗ Error: {str(e)}",
+                    className="text-danger mt-2",
+                ),
+                counter,
+                current_palette_data,
+            )
+
+    @callback(
         Output("settings-palette-applied", "data", allow_duplicate=True),
         Output("color-edits-counter", "data", allow_duplicate=True),
         Input("palette-type-selector", "value"),
@@ -313,21 +406,23 @@ def register_settings_callbacks(  # type: ignore[no-untyped-def]  # noqa: C901
                     className="text-danger mt-2",
                 )
 
-            # Apply temporary edits to palette
+            # Apply temporary edits to a copy of the palette
             temp_edits = get_temp_color_edits()
             palette = color_manager.get_palette()
+            palette_copy = palette.copy()
             for label, color in temp_edits.items():
-                palette.update(label, color)
+                palette_copy.update(label, color)
 
-            # Get the palette data
-            palette_data = palette.to_dict()
+            # Get the palette data from the copy
+            palette_data = palette_copy.to_dict()
 
             # Determine where to save based on current palette type
             palette_type = current_palette_data.get("type", "project")
             palette_name = current_palette_data.get("name")
 
             if palette_type == "project":
-                # Save to project
+                # Update project's palette with the modified copy
+                data_handler.project._palette = palette_copy
                 data_handler.project.save_palette()
                 message = "✓ Palette saved to project"
             elif palette_type == "user" and palette_name:
@@ -342,6 +437,12 @@ def register_settings_callbacks(  # type: ignore[no-untyped-def]  # noqa: C901
 
             # Clear temporary edits after saving
             clear_temp_color_edits()
+
+            # Refresh the palette in the UI by calling on_palette_change
+            if palette_type == "project":
+                on_palette_change_func(palette_copy, "project", None)
+            elif palette_type == "user" and palette_name:
+                on_palette_change_func(palette_copy, "user", palette_name)
 
             logger.info(f"Saved current palette ({palette_type}: {palette_name or 'project'})")
             return html.Div(
@@ -377,17 +478,23 @@ def register_settings_callbacks(  # type: ignore[no-untyped-def]  # noqa: C901
                     className="text-danger mt-2",
                 )
 
-            # Apply temporary edits to palette
+            # Apply temporary edits to a copy of the palette
             temp_edits = get_temp_color_edits()
             palette = color_manager.get_palette()
+            palette_copy = palette.copy()
             for label, color in temp_edits.items():
-                palette.update(label, color)
+                palette_copy.update(label, color)
 
+            # Update project's palette with the modified copy
+            data_handler.project._palette = palette_copy
             # Save to project
             data_handler.project.save_palette()
 
             # Clear temporary edits after saving
             clear_temp_color_edits()
+
+            # Refresh the palette in the UI
+            on_palette_change_func(palette_copy, "project", None)
 
             logger.info("Saved palette to project")
             return html.Div(
@@ -446,14 +553,15 @@ def register_settings_callbacks(  # type: ignore[no-untyped-def]  # noqa: C901
         try:
             color_manager = get_color_manager_func()
 
-            # Apply temporary edits to palette
+            # Apply temporary edits to a copy of the palette
             temp_edits = get_temp_color_edits()
             palette = color_manager.get_palette()
+            palette_copy = palette.copy()
             for label, color in temp_edits.items():
-                palette.update(label, color)
+                palette_copy.update(label, color)
 
-            # Get the palette data
-            palette_data = palette.to_dict()
+            # Get the palette data from the copy
+            palette_data = palette_copy.to_dict()
 
             # Save as new user palette
             save_user_palette(palette_name.strip(), palette_data)
@@ -465,6 +573,9 @@ def register_settings_callbacks(  # type: ignore[no-untyped-def]  # noqa: C901
             user_palettes_paths = list_user_palettes()
             user_palettes = [p.stem for p in user_palettes_paths]
             updated_options = [{"label": p, "value": p} for p in user_palettes]
+
+            # Refresh the palette in the UI to switch to the new palette
+            on_palette_change_func(palette_copy, "user", palette_name.strip())
 
             logger.info(f"Saved palette to new user palette: {palette_name}")
             return (

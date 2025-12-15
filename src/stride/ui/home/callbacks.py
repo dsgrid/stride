@@ -14,6 +14,7 @@ from stride.ui.plotting.utils import (
     get_hoverlabel_style,
     get_warning_annotation_style,
 )
+from stride.ui.settings.layout import get_temp_color_edits
 
 if TYPE_CHECKING:
     from stride.api import APIClient
@@ -747,30 +748,30 @@ def update_home_scenario_timeseries(  # noqa: C901
 
 
 def register_home_callbacks(  # noqa: C901
-    data_handler: "APIClient",
-    plotter: "StridePlots",
+    get_data_handler_func,
+    get_plotter_func,
     scenarios: list[str],
     sectors: list[str],
     years: list[int],
-    color_manager: "ColorManager",
+    get_color_manager_func,
 ) -> None:
     """
     Register all callbacks for the home module.
 
     Parameters
     ----------
-    data_handler : APIClient
-        API client for data access
-    plotter : StridePlots
-        Plotting utilities
+    get_data_handler_func : callable
+        Function to get the current data handler instance
+    get_plotter_func : callable
+        Function to get the current plotter instance
     scenarios : list[str]
         List of available scenarios
     sectors : list[str]
         List of available sectors
     years : list[int]
         List of available years
-    color_manager : ColorManager
-        Color management utilities
+    get_color_manager_func : callable
+        Function to get the current color manager instance
     """
 
     # Scenario button callbacks for each checklist
@@ -808,15 +809,25 @@ def register_home_callbacks(  # noqa: C901
         Output({"type": "home-scenarios-checklist", "index": ALL}, "style"),
         Input("home-scenarios-checklist", "data"),
         Input("settings-palette-applied", "data"),
+        Input("color-edits-counter", "data"),
         State({"type": "home-scenarios-checklist", "index": ALL}, "id"),
         prevent_initial_call=False,
     )
     def _update_button_styles_1(
         selected_scenarios: list[str],
         palette_data: dict[str, Any],
+        color_edits: int,
         button_ids: list[dict[str, str]],
     ) -> list[dict[str, Any]]:
         """Update button styles based on selected scenarios."""
+        # Get the current color manager to ensure we have the latest palette
+        current_color_manager = get_color_manager_func()
+        if current_color_manager is None:
+            return [{}] * len(button_ids)
+
+        # Get temporary color edits
+        temp_edits = get_temp_color_edits()
+
         styles = []
         selected_scenarios = selected_scenarios or []
 
@@ -824,8 +835,15 @@ def register_home_callbacks(  # noqa: C901
             scenario = button_id["index"]
             is_selected = scenario in selected_scenarios
 
-            base_color = color_manager.get_color(scenario)
-            r, g, b, _ = color_manager._str_to_rgba(base_color)
+            # Check if there's a temporary edit for this scenario
+            if scenario in temp_edits:
+                base_color = temp_edits[scenario]
+                # Temp edits are stored as hex, convert to rgba
+                if base_color.startswith("#"):
+                    base_color = current_color_manager._hex_to_rgba_str(base_color)
+            else:
+                base_color = current_color_manager.get_color(scenario)
+            r, g, b, _ = current_color_manager._str_to_rgba(base_color)
 
             alpha = 0.9 if is_selected else 0.3
             bg_color = f"rgba({r}, {g}, {b}, {alpha})"
@@ -883,15 +901,25 @@ def register_home_callbacks(  # noqa: C901
         Output({"type": "home-scenarios-2-checklist", "index": ALL}, "style"),
         Input("home-scenarios-2-checklist", "data"),
         Input("settings-palette-applied", "data"),
+        Input("color-edits-counter", "data"),
         State({"type": "home-scenarios-2-checklist", "index": ALL}, "id"),
         prevent_initial_call=False,
     )
     def _update_button_styles_2(
         selected_scenarios: list[str],
         palette_data: dict[str, Any],
+        color_edits: int,
         button_ids: list[dict[str, str]],
     ) -> list[dict[str, Any]]:
         """Update button styles based on selected scenarios."""
+        # Get the current color manager to ensure we have the latest palette
+        current_color_manager = get_color_manager_func()
+        if current_color_manager is None:
+            return [{}] * len(button_ids)
+
+        # Get temporary color edits
+        temp_edits = get_temp_color_edits()
+
         styles = []
         selected_scenarios = selected_scenarios or []
 
@@ -899,8 +927,15 @@ def register_home_callbacks(  # noqa: C901
             scenario = button_id["index"]
             is_selected = scenario in selected_scenarios
 
-            base_color = color_manager.get_color(scenario)
-            r, g, b, _ = color_manager._str_to_rgba(base_color)
+            # Check if there's a temporary edit for this scenario
+            if scenario in temp_edits:
+                base_color = temp_edits[scenario]
+                # Temp edits are stored as hex, convert to rgba
+                if base_color.startswith("#"):
+                    base_color = current_color_manager._hex_to_rgba_str(base_color)
+            else:
+                base_color = current_color_manager.get_color(scenario)
+            r, g, b, _ = current_color_manager._str_to_rgba(base_color)
 
             alpha = 0.9 if is_selected else 0.3
             bg_color = f"rgba({r}, {g}, {b}, {alpha})"
@@ -958,15 +993,25 @@ def register_home_callbacks(  # noqa: C901
         Output({"type": "home-scenarios-3-checklist", "index": ALL}, "style"),
         Input("home-scenarios-3-checklist", "data"),
         Input("settings-palette-applied", "data"),
+        Input("color-edits-counter", "data"),
         State({"type": "home-scenarios-3-checklist", "index": ALL}, "id"),
         prevent_initial_call=False,
     )
     def _update_button_styles_3(
         selected_scenarios: list[str],
         palette_data: dict[str, Any],
+        color_edits: int,
         button_ids: list[dict[str, str]],
     ) -> list[dict[str, Any]]:
         """Update button styles based on selected scenarios."""
+        # Get the current color manager to ensure we have the latest palette
+        current_color_manager = get_color_manager_func()
+        if current_color_manager is None:
+            return [{}] * len(button_ids)
+
+        # Get temporary color edits
+        temp_edits = get_temp_color_edits()
+
         styles = []
         selected_scenarios = selected_scenarios or []
 
@@ -974,8 +1019,15 @@ def register_home_callbacks(  # noqa: C901
             scenario = button_id["index"]
             is_selected = scenario in selected_scenarios
 
-            base_color = color_manager.get_color(scenario)
-            r, g, b, _ = color_manager._str_to_rgba(base_color)
+            # Check if there's a temporary edit for this scenario
+            if scenario in temp_edits:
+                base_color = temp_edits[scenario]
+                # Temp edits are stored as hex, convert to rgba
+                if base_color.startswith("#"):
+                    base_color = current_color_manager._hex_to_rgba_str(base_color)
+            else:
+                base_color = current_color_manager.get_color(scenario)
+            r, g, b, _ = current_color_manager._str_to_rgba(base_color)
 
             alpha = 0.9 if is_selected else 0.3
             bg_color = f"rgba({r}, {g}, {b}, {alpha})"
@@ -1033,15 +1085,25 @@ def register_home_callbacks(  # noqa: C901
         Output({"type": "home-scenarios-4-checklist", "index": ALL}, "style"),
         Input("home-scenarios-4-checklist", "data"),
         Input("settings-palette-applied", "data"),
+        Input("color-edits-counter", "data"),
         State({"type": "home-scenarios-4-checklist", "index": ALL}, "id"),
         prevent_initial_call=False,
     )
     def _update_button_styles_4(
         selected_scenarios: list[str],
         palette_data: dict[str, Any],
+        color_edits: int,
         button_ids: list[dict[str, str]],
     ) -> list[dict[str, Any]]:
         """Update button styles based on selected scenarios."""
+        # Get the current color manager to ensure we have the latest palette
+        current_color_manager = get_color_manager_func()
+        if current_color_manager is None:
+            return [{}] * len(button_ids)
+
+        # Get temporary color edits
+        temp_edits = get_temp_color_edits()
+
         styles = []
         selected_scenarios = selected_scenarios or []
 
@@ -1049,8 +1111,15 @@ def register_home_callbacks(  # noqa: C901
             scenario = button_id["index"]
             is_selected = scenario in selected_scenarios
 
-            base_color = color_manager.get_color(scenario)
-            r, g, b, _ = color_manager._str_to_rgba(base_color)
+            # Check if there's a temporary edit for this scenario
+            if scenario in temp_edits:
+                base_color = temp_edits[scenario]
+                # Temp edits are stored as hex, convert to rgba
+                if base_color.startswith("#"):
+                    base_color = current_color_manager._hex_to_rgba_str(base_color)
+            else:
+                base_color = current_color_manager.get_color(scenario)
+            r, g, b, _ = current_color_manager._str_to_rgba(base_color)
 
             alpha = 0.9 if is_selected else 0.3
             bg_color = f"rgba({r}, {g}, {b}, {alpha})"
@@ -1107,12 +1176,17 @@ def register_home_callbacks(  # noqa: C901
         Input("home-secondary-metric", "value"),
         Input("chart-refresh-trigger", "data"),
     )
-    def _update_home_scenario_comparison_callback(
+    def _update_home_scenario_comparison_chart(
         selected_scenarios: list[str],
         breakdown: ConsumptionBreakdown | Literal["None"],
         secondary_metric: SecondaryMetric | Literal["None"],
         refresh_trigger: int,
-    ) -> go.Figure | dict[str, Any]:
+    ) -> go.Figure:
+        """Update the home scenario comparison chart."""
+        data_handler = get_data_handler_func()
+        plotter = get_plotter_func()
+        if data_handler is None or plotter is None:
+            return go.Figure()
         return update_home_scenario_comparison(
             data_handler, plotter, selected_scenarios, breakdown, secondary_metric
         )
@@ -1124,12 +1198,17 @@ def register_home_callbacks(  # noqa: C901
         Input("home-peak-secondary-metric", "value"),
         Input("chart-refresh-trigger", "data"),
     )
-    def _update_home_sector_breakdown_callback(
+    def _update_home_sector_breakdown_chart(
         selected_scenarios: list[str],
         breakdown: ConsumptionBreakdown | Literal["None"],
         secondary_metric: SecondaryMetric | Literal["None"],
         refresh_trigger: int,
-    ) -> go.Figure | dict[str, Any]:
+    ) -> go.Figure:
+        """Update the home sector breakdown chart."""
+        data_handler = get_data_handler_func()
+        plotter = get_plotter_func()
+        if data_handler is None or plotter is None:
+            return go.Figure()
         return update_home_sector_breakdown(
             data_handler, plotter, selected_scenarios, breakdown, secondary_metric
         )
@@ -1140,10 +1219,15 @@ def register_home_callbacks(  # noqa: C901
         Input("home-year-dropdown", "value"),
         Input("chart-refresh-trigger", "data"),
     )
-    def _update_home_load_duration_callback(
-        selected_scenarios: list[str], selected_year: int, refresh_trigger: int
-    ) -> go.Figure | dict[str, Any]:
-        return update_home_load_duration(data_handler, plotter, selected_scenarios, selected_year)
+    def _update_home_load_duration_chart(
+        selected_scenarios: list[str], year: int, refresh_trigger: int
+    ) -> go.Figure:
+        """Update the home load duration chart."""
+        data_handler = get_data_handler_func()
+        plotter = get_plotter_func()
+        if data_handler is None or plotter is None:
+            return go.Figure()
+        return update_home_load_duration(data_handler, plotter, selected_scenarios, year)
 
     @callback(
         Output("home-scenario-timeseries", "figure"),
@@ -1153,13 +1237,18 @@ def register_home_callbacks(  # noqa: C901
         Input("home-timeseries-secondary-metric", "value"),
         Input("chart-refresh-trigger", "data"),
     )
-    def _update_home_scenario_timeseries_callback(
+    def _update_home_scenario_timeseries_chart(
         selected_scenarios: list[str],
         chart_type: ChartType,
         breakdown: ConsumptionBreakdown | Literal["None"],
         secondary_metric: SecondaryMetric | Literal["None"],
         refresh_trigger: int,
-    ) -> go.Figure | dict[str, Any]:
+    ) -> go.Figure:
+        """Update the home scenario timeseries chart."""
+        data_handler = get_data_handler_func()
+        plotter = get_plotter_func()
+        if data_handler is None or plotter is None:
+            return go.Figure()
         return update_home_scenario_timeseries(
             data_handler, plotter, selected_scenarios, chart_type, breakdown, secondary_metric
         )

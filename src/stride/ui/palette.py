@@ -10,7 +10,7 @@ The class provides a class method to intialize a palette from a dictionary while
 
 import re
 from itertools import cycle
-from typing import Any, Mapping, MutableSequence, TypedDict
+from typing import Any, Mapping, MutableSequence, Self, TypedDict
 
 from plotly import colors
 
@@ -122,6 +122,16 @@ class ColorPalette:
     def __repr__(self) -> str:
         """Return a detailed string representation of the palette."""
         return self.__str__()
+
+    def copy(self) -> Self:
+        """Create a deep copy of this ColorPalette.
+
+        Returns
+        -------
+        ColorPalette
+            A new ColorPalette instance with the same colors and structure.
+        """
+        return ColorPalette(self.to_dict())
 
     def update(self, key: str, color: str | None = None, category: str | None = None) -> None:  # noqa: C901
         """Updates or creates a new color for the given *key* in the specified category.

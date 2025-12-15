@@ -75,18 +75,39 @@ class ColorManager:
         """Get all scenario styling colors."""
         return self._scenario_colors.copy()
 
-    def generate_scenario_css(self) -> str:
-        """Generate CSS string for scenario checkbox styling."""
-        css_rules = []
+    def generate_scenario_css(self, temp_edits: dict[str, str] | None = None) -> str:
+        """Generate CSS string for scenario checkbox styling.
 
-        for scenario, scolors in self._scenario_colors.items():
+        Parameters
+        ----------
+        temp_edits : dict[str, str] | None
+            Optional dictionary of temporary color edits (label -> color)
+        """
+        css_rules = []
+        temp_edits = temp_edits or {}
+
+        for scenario in self._scenario_colors.keys():
+            # Check if there's a temporary edit for this scenario
+            if scenario in temp_edits:
+                base_color = temp_edits[scenario]
+                # Temp edits are stored as hex, convert to rgba if needed
+                if base_color.startswith("#"):
+                    base_color = self._hex_to_rgba_str(base_color)
+                r, g, b, _ = self._str_to_rgba(base_color)
+                bg_color = self._rgba_to_str(r, g, b, 0.2)
+                border_color = self._rgba_to_str(r, g, b, 0.8)
+            else:
+                # Use the stored scenario colors
+                bg_color = self._scenario_colors[scenario]["bg"]
+                border_color = self._scenario_colors[scenario]["border"]
+
             # Escape scenario name for CSS selector
             escaped_scenario = scenario.replace(" ", "\\ ").replace("(", "\\(").replace(")", "\\)")
 
             css_rule = f"""
             .scenario-checklist .form-check-input[value='{escaped_scenario}']:checked + .form-check-label {{
-                background-color: {scolors["bg"]} !important;
-                border-color: {scolors["border"]} !important;
+                background-color: {bg_color} !important;
+                border-color: {border_color} !important;
             }}"""
             css_rules.append(css_rule)
 

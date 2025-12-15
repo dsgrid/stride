@@ -443,6 +443,13 @@ def create_settings_layout(
                                                                     className="m-1 theme-text",
                                                                 ),
                                                                 dbc.Button(
+                                                                    "Revert Changes",
+                                                                    id="revert-changes-btn",
+                                                                    color="warning",
+                                                                    outline=True,
+                                                                    className="m-1 theme-text",
+                                                                ),
+                                                                dbc.Button(
                                                                     "Delete Selected User Palette",
                                                                     id="delete-user-palette-btn",
                                                                     color="danger",
@@ -457,6 +464,7 @@ def create_settings_layout(
                                                             ],
                                                             className="d-flex flex-wrap mb-3",
                                                         ),
+                                                        html.Div(id="revert-changes-status"),
                                                         html.Div(id="delete-palette-status"),
                                                         html.Div(id="save-palette-status"),
                                                         # New palette name input (hidden by default)

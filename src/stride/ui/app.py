@@ -15,6 +15,7 @@ from stride.ui.plotting import StridePlots
 from stride.ui.project_manager import add_recent_project, discover_projects, load_project_by_path
 from stride.ui.scenario import create_scenario_layout, register_scenario_callbacks
 from stride.ui.settings import create_settings_layout, register_settings_callbacks
+from stride.ui.settings.layout import get_temp_color_edits
 from stride.ui.tui import list_user_palettes
 
 assets_path = Path(__file__).parent.absolute() / "assets"
@@ -498,7 +499,12 @@ def create_app(  # noqa: C901
 
             # Re-register callbacks for new data
             register_home_callbacks(
-                data_handler, plotter, scenarios, literal_to_list(Sectors), years, color_manager
+                get_current_data_handler,
+                get_current_plotter,
+                scenarios,
+                literal_to_list(Sectors),
+                years,
+                get_current_color_manager,
             )
             register_scenario_callbacks(scenarios, years, data_handler, plotter)
 
@@ -630,8 +636,11 @@ def create_app(  # noqa: C901
         if _current_project_path in _loaded_projects:
             data_handler, _, _ = _loaded_projects[_current_project_path]
 
-            # Reinitialize color manager with new palette
-            color_manager = get_color_manager(palette=palette)
+            # Create a copy of the palette to avoid modifying the original
+            palette_copy = palette.copy()
+
+            # Reinitialize color manager with new palette copy
+            color_manager = get_color_manager(palette=palette_copy)
             color_manager.initialize_colors(
                 scenarios=data_handler.scenarios,
                 sectors=literal_to_list(Sectors),
@@ -661,9 +670,22 @@ def create_app(  # noqa: C901
             return data_handler
         return None
 
+    # Helper function to get plotter
+    def get_current_plotter() -> "StridePlots | None":
+        """Get the current plotter instance."""
+        if _current_project_path in _loaded_projects:
+            _, _, plotter = _loaded_projects[_current_project_path]
+            return plotter
+        return None
+
     # Register callbacks
     register_home_callbacks(
-        data_handler, plotter, scenarios, literal_to_list(Sectors), years, color_manager
+        get_current_data_handler,
+        get_current_plotter,
+        scenarios,
+        literal_to_list(Sectors),
+        years,
+        get_current_color_manager,
     )
 
     register_scenario_callbacks(scenarios, years, data_handler, plotter)
@@ -678,12 +700,17 @@ def create_app(  # noqa: C901
     @callback(
         Output("scenario-css-container", "children"),
         Input("settings-palette-applied", "data"),
+        Input("color-edits-counter", "data"),
     )
-    def update_scenario_css(palette_data: dict[str, Any]) -> list[Any]:
-        """Update scenario CSS when palette changes."""
+    def update_scenario_css(palette_data: dict[str, Any], color_edits: int) -> list[Any]:
+        """Update scenario CSS when palette changes or colors are edited."""
         color_manager = get_current_color_manager()
         if color_manager is None:
             raise PreventUpdate
+
+        # Get temporary color edits to apply to CSS
+        temp_edits = get_temp_color_edits()
+
         return [
             html.Script(
                 f"""
@@ -694,7 +721,7 @@ def create_app(  # noqa: C901
                     }}
                     var style = document.createElement('style');
                     style.id = 'scenario-dynamic-css';
-                    style.textContent = `{color_manager.generate_scenario_css()}`;
+                    style.textContent = `{color_manager.generate_scenario_css(temp_edits)}`;
                     document.head.appendChild(style);
                 }})();
                 """
