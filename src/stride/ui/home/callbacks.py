@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Callable, Literal
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -6,7 +6,6 @@ from dash import ALL, Input, Output, State, callback, ctx
 from loguru import logger
 
 from stride.api.utils import ChartType, ConsumptionBreakdown, SecondaryMetric
-from stride.ui.color_manager import ColorManager
 from stride.ui.plotting import StridePlots
 from stride.ui.plotting.utils import (
     get_background_color,
@@ -748,12 +747,12 @@ def update_home_scenario_timeseries(  # noqa: C901
 
 
 def register_home_callbacks(  # noqa: C901
-    get_data_handler_func,
-    get_plotter_func,
+    get_data_handler_func: Callable[[], "APIClient | None"],
+    get_plotter_func: Callable[[], "StridePlots | None"],
     scenarios: list[str],
     sectors: list[str],
     years: list[int],
-    get_color_manager_func,
+    get_color_manager_func: Callable[[], "ColorManager | None"],
 ) -> None:
     """
     Register all callbacks for the home module.

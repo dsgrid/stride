@@ -123,7 +123,7 @@ class ColorPalette:
         """Return a detailed string representation of the palette."""
         return self.__str__()
 
-    def copy(self) -> Self:
+    def copy(self) -> "ColorPalette":
         """Create a deep copy of this ColorPalette.
 
         Returns
