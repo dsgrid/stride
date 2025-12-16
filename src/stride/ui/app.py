@@ -12,7 +12,7 @@ from stride.ui.color_manager import ColorManager, get_color_manager
 from stride.ui.home import create_home_layout, register_home_callbacks
 from stride.ui.palette import ColorPalette
 from stride.ui.plotting import StridePlots
-from stride.ui.project_manager import add_recent_project, discover_projects, load_project_by_path
+from stride.ui.project_manager import add_recent_project, discover_projects
 from stride.ui.scenario import create_scenario_layout, register_scenario_callbacks
 from stride.ui.settings import create_settings_layout, register_settings_callbacks
 from stride.ui.settings.layout import get_temp_color_edits
@@ -134,10 +134,8 @@ def create_app(  # noqa: C901
         color_manager=color_manager,
     )
 
-    # Create project options for dropdown
-    project_options = [
-        {"label": p["display_name"], "value": p["path"]} for p in available_projects
-    ]
+    # Get current project display name
+    current_project_name = data_handler.project.config.project_id
 
     # Create sidebar
     sidebar = html.Div(
@@ -149,13 +147,11 @@ def create_app(  # noqa: C901
                     # Projects section
                     html.Div(
                         [
-                            html.H6("Projects", className="text-white-50 mb-2"),
-                            dcc.Dropdown(
-                                id="sidebar-project-selector",
-                                options=project_options,  # type: ignore[arg-type]
-                                value=current_project_path,
-                                clearable=False,
-                                className="mb-3",
+                            html.H6("Project", className="text-white-50 mb-2"),
+                            html.Div(
+                                current_project_name,
+                                className="text-white mb-3 p-2 bg-dark rounded",
+                                style={"fontSize": "0.95rem"},
                             ),
                         ]
                     ),
@@ -419,104 +415,6 @@ def create_app(  # noqa: C901
             content_style = {"marginLeft": "0px", "transition": "margin-left 0.3s"}
 
         return sidebar_style, content_style, new_state, button_icon
-
-    # Project switching callback
-    @callback(
-        Output("current-project-path", "data"),
-        Output("nav-tabs-container", "children"),
-        Output("home-view", "children"),
-        Output("scenario-view", "children"),
-        Input("sidebar-project-selector", "value"),
-        State("current-project-path", "data"),
-        prevent_initial_call=True,
-    )
-    def switch_project(new_project_path, current_path):  # type: ignore[no-untyped-def]
-        """Switch to a different project by loading it dynamically."""
-        global _loaded_projects
-
-        if new_project_path == current_path or new_project_path is None:
-            from dash.exceptions import PreventUpdate
-
-            raise PreventUpdate
-
-        logger.info(f"Switching from {current_path} to {new_project_path}")
-
-        try:
-            # Check if project is already loaded
-            if new_project_path in _loaded_projects:
-                logger.info(f"Using cached project: {new_project_path}")
-                data_handler, color_manager, plotter = _loaded_projects[new_project_path]
-            else:
-                logger.info(f"Loading new project: {new_project_path}")
-                # Load the new project
-                project = load_project_by_path(new_project_path, read_only=True)
-                data_handler = APIClient(project=project)
-
-                # Initialize color manager
-                palette = data_handler.project.palette
-                color_manager = get_color_manager(palette=palette)
-                color_manager.initialize_colors(
-                    scenarios=data_handler.scenarios,
-                    sectors=literal_to_list(Sectors),
-                    end_uses=[],
-                )
-
-                plotter = StridePlots(color_manager, template="plotly_dark")
-
-                # Cache it
-                _loaded_projects[new_project_path] = (data_handler, color_manager, plotter)
-
-            # Add to recent projects
-            try:
-                add_recent_project(
-                    data_handler.project.path,
-                    data_handler.project.config.project_id,
-                )
-            except Exception as e:
-                logger.warning(f"Could not add to recent projects: {e}")
-
-            # Get new project data
-            scenarios = data_handler.scenarios
-            years = data_handler.years
-
-            # Create new layouts
-            home_layout = create_home_layout(scenarios, years, color_manager)
-            scenario_layout = create_scenario_layout(years, color_manager)
-
-            # Create new nav tabs
-            nav_tabs = dbc.RadioItems(
-                id="view-selector",
-                className="btn-group",
-                inputClassName="btn-check",
-                labelClassName="btn btn-outline-primary",
-                labelCheckedClassName="active",
-                options=[
-                    {"label": "Home", "value": "compare"},
-                    *[{"label": s, "value": s} for s in scenarios],
-                ],
-                value="compare",
-            )
-
-            # Re-register callbacks for new data
-            register_home_callbacks(
-                get_current_data_handler,
-                get_current_plotter,
-                scenarios,
-                literal_to_list(Sectors),
-                years,
-                get_current_color_manager,
-            )
-            register_scenario_callbacks(scenarios, years, data_handler, plotter)
-
-            logger.info(f"Successfully switched to project: {new_project_path}")
-
-            return new_project_path, nav_tabs, home_layout, scenario_layout
-
-        except Exception as e:
-            logger.error(f"Error switching project: {e}")
-            from dash.exceptions import PreventUpdate
-
-            raise PreventUpdate
 
     # View toggle callback
     @callback(
