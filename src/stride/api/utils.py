@@ -4,7 +4,7 @@ from typing import Any, Literal, get_args
 ConsumptionBreakdown = Literal["End Use", "Sector"]
 TimeGroup = Literal["Seasonal", "Seasonal and Weekday/Weekend", "Weekday/Weekend"]
 TimeGroupAgg = Literal["Average Day", "Peak Day", "Minimum Day", "Median Day"]
-Unit = Literal["kW", "MW", "TW", "TWh"]
+Unit = Literal["kW", "MW", "GW", "MWh", "GWh", "TWh"]
 SecondaryMetric = Literal[
     "GDP",
     "GDP Per Capita",

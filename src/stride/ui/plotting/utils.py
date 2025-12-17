@@ -573,4 +573,4 @@ def update_faceted_layout(fig: go.Figure, rows: int, group_by: str | None = None
     )
 
     fig.update_xaxes(title_text="Year")
-    fig.update_yaxes(title_text="Energy Consumption (TWh)", col=1)
+    fig.update_yaxes(title_text="Energy Consumption (MWh)", col=1)

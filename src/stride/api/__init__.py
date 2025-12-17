@@ -274,7 +274,7 @@ class APIClient:
             - scenario: str, scenario name
             - year: int, projection year
             - sector/end_use: str, breakdown category (if group_by specified)
-            - value: float, consumption value in TWh
+            - value: float, consumption value in MWh
 
         Examples
         --------
@@ -706,7 +706,7 @@ class APIClient:
             Dictionary of KPI metrics with metric names as keys and values as floats.
 
             Keys:
-            - TOTAL_CONSUMPTION: float, total electricity consumption (TWh)
+            - TOTAL_CONSUMPTION: float, total electricity consumption (MWh)
             - PERCENT_GROWTH: float, percentage growth from base year
             - PEAK_DEMAND: float, peak demand (MW)
             - Additional KPIs to be defined

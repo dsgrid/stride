@@ -174,7 +174,7 @@ def create_scenario_layout(
                                         [
                                             create_summary_stat_card(
                                                 "scenario-total-consumption",
-                                                "Total Consumption (TWh)",
+                                                "Total Consumption (MWh)",
                                             )
                                         ],
                                         width=4,

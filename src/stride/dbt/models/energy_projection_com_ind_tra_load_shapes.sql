@@ -8,7 +8,7 @@ WITH load_shapes_filtered AS (
         timestamp,
         adjusted_value
     FROM {{ ref('load_shapes_expanded') }}
-    WHERE sector IN ('commercial', 'industrial', 'transportation')
+    WHERE sector IN ('Commercial', 'Industrial', 'Transportation')
 ),
 
 load_shapes_annual_totals AS (
@@ -25,11 +25,12 @@ load_shapes_annual_totals AS (
 
 stride_annual_energy AS (
     -- Get STRIDE annual energy projections (from energy intensity calculations)
+    -- Convert from TJ to MWh (1 TJ = 277.777777778 MWh)
     SELECT
         geography,
         model_year,
         sector,
-        value AS stride_annual_total
+        value * 277.777777778 AS stride_annual_total
     FROM {{ table_ref('energy_intensity_com_ind_tra_gdp_applied_regression') }}
 ),
 

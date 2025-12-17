@@ -263,7 +263,7 @@ def time_series(
         paper_bgcolor=TRANSPARENT,
         margin=dict(l=20, r=20, t=20, b=40),
         xaxis_title="Time Period",
-        yaxis_title="Energy Consumption (TWh)",
+        yaxis_title="Energy Consumption (MWh)",
         legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02),
     )
 
