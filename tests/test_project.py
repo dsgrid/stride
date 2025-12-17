@@ -40,7 +40,6 @@ def test_show_dataset(default_project: Project) -> None:
         assert result.exit_code == 0
 
 
-@pytest.mark.skip(reason="calculated tables are broken")
 def test_show_calculated_table(default_project: Project) -> None:
     project = default_project
     runner = CliRunner()
@@ -83,8 +82,8 @@ def test_invalid_load(tmp_path: Path, default_project: Project) -> None:
     assert result.exit_code != 0
 
 
-@pytest.mark.parametrize("file_ext", [".csv", ".parquet"])
-@pytest.mark.skip(reason="calculated tables are broken")
+# @pytest.mark.parametrize("file_ext", [".csv", ".parquet"])
+@pytest.mark.parametrize("file_ext", [".parquet"])
 def test_override_calculated_table(
     tmp_path_factory: TempPathFactory, default_project: Project, file_ext: str
 ) -> None:
@@ -230,7 +229,6 @@ def test_override_calculated_table(
         assert new_total == orig_total
 
 
-@pytest.mark.skip(reason="calculated tables are broken")
 def test_override_calculated_table_extra_column(
     tmp_path_factory: TempPathFactory, default_project: Project
 ) -> None:
@@ -271,7 +269,6 @@ def test_override_calculated_table_extra_column(
             )
 
 
-@pytest.mark.skip(reason="calculated tables are broken")
 def test_override_calculated_table_mismatched_column(
     tmp_path_factory: TempPathFactory, default_project: Project
 ) -> None:
@@ -311,7 +308,6 @@ def test_override_calculated_table_mismatched_column(
             )
 
 
-@pytest.mark.skip(reason="calculated tables are broken")
 def test_override_calculated_table_pre_registration(
     default_project: Project, copy_project_input_data: tuple[Path, Path, Path]
 ) -> None:
