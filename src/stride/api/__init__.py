@@ -675,12 +675,13 @@ class APIClient:
             err = f"Error querying {metric} table for scenario '{scenario}': {str(e)}"
             raise ValueError(err) from e
 
-        # For GDP Per Capita, divide GDP by population
+        # For GDP Per Capita, divide GDP by population and convert to USD/person
         if metric == "GDP Per Capita":
             pop_df = self.get_secondary_metric(scenario, "Population", years)
             if not pop_df.empty and not df.empty:
                 df = df.merge(pop_df, on="year", suffixes=("_gdp", "_pop"))
-                df["value"] = df["value_gdp"] / df["value_pop"]
+                # GDP is in billion USD-2024, so multiply by 1e9 to get USD-2024/person
+                df["value"] = (df["value_gdp"] * 1e9) / df["value_pop"]
                 df = df[["year", "value"]]
 
         logger.debug(f"Returning {len(df)} rows.")
@@ -969,15 +970,19 @@ class APIClient:
             ORDER BY datetime
             """.format(table=table_to_query, column=column_name)
         elif resample == "Weekly Mean":
-            # Aggregate to weekly mean
+            # Aggregate to weekly mean using day-of-year to avoid cross-year week issues
+            # Week calculation: FLOOR((DOY - 1) / 7) groups days 1-7 as week 0, 8-14 as week 1, etc.
+            # This matches the calculation in get_time_series_comparison() but without the +1
+            # since we only use this for grouping and then take MIN(timestamp) for the x-axis
+            # Rescale by (7 / days_in_week) to normalize partial weeks (especially the last week)
             sql = """
             SELECT
-                DATE_TRUNC('week', timestamp) as datetime,
-                AVG({column}) as value
+                MIN(timestamp) as datetime,
+                AVG({column}) * (7.0 / COUNT(*)) as value
             FROM {table}
             WHERE geography = ?
             AND EXTRACT(YEAR FROM timestamp) = ?
-            GROUP BY DATE_TRUNC('week', timestamp)
+            GROUP BY FLOOR((EXTRACT(DOY FROM timestamp) - 1) / 7)
             ORDER BY datetime
             """.format(table=table_to_query, column=column_name)
         else:
@@ -1144,10 +1149,19 @@ class APIClient:
             if resample == "Daily Mean":
                 time_period_calc = "FLOOR(EXTRACT(DOY FROM timestamp)) + 1"
             elif resample == "Weekly Mean":
+                # Week calculation: FLOOR((DOY - 1) / 7) + 1 gives 1-indexed weeks
+                # Days 1-7 = week 1, 8-14 = week 2, etc. This avoids DATE_TRUNC cross-year issues.
+                # Same base calculation used in get_weather_metric() for consistency.
                 time_period_calc = "FLOOR((EXTRACT(DOY FROM timestamp) - 1) / 7) + 1"
             else:
                 err = f"Invalid resample option: {resample}"
                 raise ValueError(err)
+
+            # For Weekly Mean, apply rescaling factor to normalize partial weeks
+            if resample == "Weekly Mean":
+                rescale_factor = "(7.0 / COUNT(*))"
+            else:
+                rescale_factor = "1"
 
             if group_by:
                 if group_by == "End Use":
@@ -1160,7 +1174,7 @@ class APIClient:
                     model_year as year,
                     {time_period_calc} as time_period,
                     {group_col},
-                    AVG(value) as value
+                    AVG(value) * {rescale_factor} as value
                 FROM energy_projection
                 WHERE geography = ?
                     AND scenario = ?
@@ -1175,7 +1189,7 @@ class APIClient:
                     scenario,
                     model_year as year,
                     {time_period_calc} as time_period,
-                    SUM(value) as value
+                    SUM(value) * {rescale_factor} as value
                 FROM energy_projection
                 WHERE geography = ?
                     AND scenario = ?

@@ -14,7 +14,13 @@ WITH load_shapes_base AS (
         month,
         hour,
         is_weekday,
-        sector,
+        -- Map sector names to match energy_intensity table convention
+        CASE 
+            WHEN sector = 'Industry' THEN 'Industrial'
+            WHEN sector = 'Transport' THEN 'Transportation'
+            WHEN sector = 'Service' THEN 'Commercial'
+            ELSE sector
+        END AS sector,
         metric AS enduse,
         value AS load_shape_value,
         -- Determine day type for joining with temperature multipliers

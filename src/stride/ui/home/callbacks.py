@@ -21,6 +21,27 @@ if TYPE_CHECKING:
     from stride.ui.plotting import StridePlots
 
 
+def get_secondary_metric_label(metric: str) -> str:
+    """
+    Get the display label with units for a secondary metric.
+
+    Parameters
+    ----------
+    metric : str
+        The metric name
+
+    Returns
+    -------
+    str
+        Display label with units
+    """
+    metric_labels = {
+        "GDP": "GDP (Billion USD-2024)",
+        "GDP Per Capita": "GDP Per Capita (USD-2024/person)",
+    }
+    return metric_labels.get(metric, metric)
+
+
 def save_home_state(*values: object) -> dict[str, Any]:
     """
     Save the current state of all home tab inputs.
@@ -153,7 +174,7 @@ def update_home_scenario_comparison(  # noqa: C901
                 hoverlabel_style = get_hoverlabel_style(plotter.get_template())
                 fig.update_layout(
                     yaxis2=dict(
-                        title=secondary_metric,
+                        title=get_secondary_metric_label(secondary_metric),
                         overlaying="y",
                         side="right",
                     ),
@@ -195,6 +216,14 @@ def update_home_scenario_comparison(  # noqa: C901
                     borderwidth=2,
                 )
                 logger.error(f"Secondary metric error: {e}")
+
+        # Set primary y-axis label
+        if secondary_metric and secondary_metric != "None":
+            # When there's a secondary axis, only update the primary (left) axis
+            fig.update_layout(yaxis=dict(title="Energy Consumption (MWh)"))
+        else:
+            # When there's no secondary axis, use the simpler update method
+            fig.update_yaxes(title_text="Energy Consumption (MWh)")
 
         return fig
 
@@ -309,8 +338,9 @@ def update_home_sector_breakdown(  # noqa: C901
                 # Update layout to add secondary y-axis and unified hover styling
                 hoverlabel_style = get_hoverlabel_style(plotter.get_template())
                 fig.update_layout(
+                    yaxis=dict(title="Power Demand (MW)"),
                     yaxis2=dict(
-                        title=secondary_metric,
+                        title=get_secondary_metric_label(secondary_metric),
                         overlaying="y",
                         side="right",
                     ),
@@ -352,6 +382,9 @@ def update_home_sector_breakdown(  # noqa: C901
                     borderwidth=2,
                 )
                 logger.error(f"Secondary metric error: {e}")
+        else:
+            # No secondary metric - just update primary y-axis label
+            fig.update_layout(yaxis=dict(title="Power Demand (MW)"))
 
         return fig
 
@@ -641,11 +674,14 @@ def update_home_scenario_timeseries(  # noqa: C901
                         row = (idx // cols) + 1
                         col = (idx % cols) + 1
                         fig.update_yaxes(
-                            title_text="Energy (TWh)", row=row, col=col, secondary_y=False
+                            title_text="Energy Consumption (MWh)",
+                            row=row,
+                            col=col,
+                            secondary_y=False,
                         )
                         if col == cols:  # Only rightmost column
                             fig.update_yaxes(
-                                title_text=secondary_metric,
+                                title_text=get_secondary_metric_label(secondary_metric),
                                 row=row,
                                 col=col,
                                 secondary_y=True,

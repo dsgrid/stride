@@ -148,6 +148,27 @@ def create_scenario_layout(
                                         ],
                                         width=3,
                                     ),
+                                    dbc.Col(
+                                        [
+                                            html.Label(
+                                                "Start Year for Compound Annual Growth Rate (CAGR):",
+                                                style={"fontWeight": "bold", "fontSize": "0.9em"},
+                                            ),
+                                            dcc.Dropdown(
+                                                id="scenario-summary-start-year",
+                                                options=[
+                                                    {"label": str(year), "value": year}
+                                                    for year in years
+                                                ],
+                                                value=stored_state.get(
+                                                    "scenario-summary-start-year",
+                                                    years[0] if years else None,
+                                                ),
+                                                clearable=False,
+                                            ),
+                                        ],
+                                        width=3,
+                                    ),
                                 ],
                                 align="center",
                             )
@@ -161,18 +182,18 @@ def create_scenario_layout(
                                         [
                                             create_summary_stat_card(
                                                 "scenario-total-consumption",
-                                                "Total Consumption (MWh)",
+                                                "Annual Consumption (MWh)",
                                             )
                                         ],
-                                        width=4,
+                                        width=3,
                                     ),
                                     dbc.Col(
                                         [
                                             create_summary_stat_card(
-                                                "scenario-percent-growth", "Percent Growth (%)"
+                                                "scenario-consumption-cagr", "Consumption CAGR"
                                             )
                                         ],
-                                        width=4,
+                                        width=3,
                                     ),
                                     dbc.Col(
                                         [
@@ -180,7 +201,15 @@ def create_scenario_layout(
                                                 "scenario-peak-demand", "Peak Demand (MW)"
                                             )
                                         ],
-                                        width=4,
+                                        width=3,
+                                    ),
+                                    dbc.Col(
+                                        [
+                                            create_summary_stat_card(
+                                                "scenario-peak-demand-cagr", "Peak Demand CAGR"
+                                            )
+                                        ],
+                                        width=3,
                                     ),
                                 ]
                             )

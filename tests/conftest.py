@@ -85,7 +85,7 @@ def weekday_weekend_test_data(default_project: Project) -> DuckDBPyConnection:
 
     # Create 2018 hourly datetime index (8760 hours)
     datetime_index = pd.date_range(
-        start="2018-01-01 00:00:00", end="2018-12-31 23:00:00", freq="H"
+        start="2018-01-01 00:00:00", end="2018-12-31 23:00:00", freq="h"
     )
 
     # Create test data

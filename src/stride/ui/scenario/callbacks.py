@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, Any, Literal
 
 import plotly.graph_objects as go
-from dash import Input, Output, callback
+from dash import Input, Output, State, callback
 from loguru import logger
 
 from stride.api.utils import (
@@ -19,9 +19,18 @@ if TYPE_CHECKING:
     from stride.ui.plotting import StridePlots
 
 
+def get_secondary_metric_label(metric: str) -> str:
+    """Get a formatted label with units for a secondary metric."""
+    metric_labels = {
+        "GDP": "GDP (Billion USD-2024)",
+        "GDP Per Capita": "GDP Per Capita (USD-2024/person)",
+    }
+    return metric_labels.get(metric, metric)
+
+
 def update_summary_stats(
-    data_handler: "APIClient", scenario: str, selected_year: int
-) -> tuple[str, str, str]:
+    data_handler: "APIClient", scenario: str, selected_year: int, start_year: int | None = None
+) -> tuple[str, str, str, str]:
     """
     Update summary statistics for a given scenario and year.
 
@@ -33,17 +42,19 @@ def update_summary_stats(
         Selected scenario name
     selected_year : int
         Selected year for summary statistics
+    start_year : int, optional
+        Start year for CAGR calculation. If None, uses the first year in the dataset.
 
     Returns
     -------
-    tuple[str, str, str]
-        Tuple containing (total_consumption, percent_growth, peak_demand) as formatted strings
+    tuple[str, str, str, str]
+        Tuple containing (annual_consumption, consumption_cagr, peak_demand, peak_demand_cagr) as formatted strings
     """
 
     years = data_handler.years
 
     if not selected_year or scenario not in data_handler.scenarios:
-        return "---", "---", "---"
+        return "---", "---", "---", "---"
 
     try:
         # Get all consumption and peak demand data for this scenario
@@ -54,35 +65,52 @@ def update_summary_stats(
         # Convert to dictionaries for fast lookup
         consumption_by_year = consumption_df.set_index("year")["value"].to_dict()
         peak_demand_by_year = peak_demand_df.set_index("year")["value"].to_dict()
-        # Get total consumption for selected year
-        total_consumption = consumption_by_year.get(selected_year, 0)
-        # Calculate percent growth compared to previous year
-        if selected_year == min(years):
-            # First year - no previous year to compare
-            percent_growth = "N/A"
-        else:
-            # Find previous year in the sorted years list
-            sorted_years = sorted(years)
-            current_index = sorted_years.index(selected_year)
-            if current_index > 0:
-                previous_year = sorted_years[current_index - 1]
-                previous_consumption = consumption_by_year.get(previous_year, 0)
-                if previous_consumption > 0:
-                    growth = (
-                        (total_consumption - previous_consumption) / previous_consumption
-                    ) * 100
-                    percent_growth = f"{growth:.1f}"
-                else:
-                    percent_growth = "N/A"
-            else:
-                percent_growth = "N/A"
-        # Get peak demand for selected year
+
+        # Get values for selected year
+        annual_consumption = consumption_by_year.get(selected_year, 0)
         peak_demand = peak_demand_by_year.get(selected_year, 0)
-        return (f"{total_consumption / 1e12:.1f}", percent_growth, f"{peak_demand / 1e6:,.0f}")
+
+        # Use provided start year or default to first year
+        sorted_years = sorted(years)
+        if start_year is None:
+            start_year = sorted_years[0]
+
+        if selected_year == start_year:
+            # Same year - no growth to calculate
+            consumption_cagr = "N/A"
+            peak_demand_cagr = "N/A"
+        else:
+            # Calculate CAGR: ((End Value / Start Value) ^ (1 / Number of Years)) - 1
+            num_years = selected_year - start_year
+            start_consumption = consumption_by_year.get(start_year, 0)
+            start_peak_demand = peak_demand_by_year.get(start_year, 0)
+
+            if start_consumption > 0 and annual_consumption > 0:
+                consumption_cagr_value = (
+                    (annual_consumption / start_consumption) ** (1 / num_years) - 1
+                ) * 100
+                consumption_cagr = f"{consumption_cagr_value:.2f}%"
+            else:
+                consumption_cagr = "N/A"
+
+            if start_peak_demand > 0 and peak_demand > 0:
+                peak_demand_cagr_value = (
+                    (peak_demand / start_peak_demand) ** (1 / num_years) - 1
+                ) * 100
+                peak_demand_cagr = f"{peak_demand_cagr_value:.2f}%"
+            else:
+                peak_demand_cagr = "N/A"
+
+        return (
+            f"{annual_consumption:,.0f}",
+            consumption_cagr,
+            f"{peak_demand:,.0f}",
+            peak_demand_cagr,
+        )
 
     except Exception as e:
         print(f"Error calculating summary stats for {scenario}, year {selected_year}: {e}")
-        return "Error", "Error", "Error"
+        return "Error", "Error", "Error", "Error"
 
 
 def update_consumption_plot(
@@ -167,8 +195,9 @@ def update_consumption_plot(
 
                     # Update layout to add secondary y-axis
                     fig.update_layout(
+                        yaxis=dict(title="Energy Consumption (MWh)"),
                         yaxis2=dict(
-                            title=secondary_metric,
+                            title=get_secondary_metric_label(secondary_metric),
                             overlaying="y",
                             side="right",
                         ),
@@ -209,6 +238,9 @@ def update_consumption_plot(
                     borderwidth=2,
                 )
                 logger.error(f"Secondary metric error: {e}")
+        else:
+            # No secondary metric - just update primary y-axis label
+            fig.update_layout(yaxis=dict(title="Energy Consumption (MWh)"))
 
         return fig
     except Exception as e:
@@ -295,8 +327,9 @@ def update_peak_plot(
 
                     # Update layout to add secondary y-axis
                     fig.update_layout(
+                        yaxis=dict(title="Power Demand (MW)"),
                         yaxis2=dict(
-                            title=secondary_metric,
+                            title=get_secondary_metric_label(secondary_metric),
                             overlaying="y",
                             side="right",
                         ),
@@ -337,6 +370,9 @@ def update_peak_plot(
                     borderwidth=2,
                 )
                 logger.error(f"Secondary metric error: {e}")
+        else:
+            # No secondary metric - just update primary y-axis label
+            fig.update_layout(yaxis=dict(title="Power Demand (MW)"))
 
         return fig
     except Exception as e:
@@ -430,6 +466,7 @@ def update_timeseries_plot(
 
                 # Update layout to add secondary y-axis for weather
                 fig.update_layout(
+                    yaxis=dict(rangemode="tozero"),
                     yaxis2=dict(
                         title=weather_var,
                         overlaying="y",
@@ -472,6 +509,9 @@ def update_timeseries_plot(
                     borderwidth=2,
                 )
                 logger.error(f"Weather variable error: {e}")
+        else:
+            # No weather variable - just ensure y-axis starts at zero
+            fig.update_yaxes(rangemode="tozero")
 
         return fig
     except Exception as e:
@@ -770,14 +810,49 @@ def _register_summary_callbacks(data_handler: "APIClient", plotter: "StridePlots
 
     @callback(
         [
-            Output("scenario-total-consumption", "children"),
-            Output("scenario-percent-growth", "children"),
-            Output("scenario-peak-demand", "children"),
+            Output("scenario-summary-start-year", "options"),
+            Output("scenario-summary-start-year", "value"),
         ],
-        [Input("view-selector", "value"), Input("scenario-summary-year", "value")],
+        [Input("scenario-summary-year", "value")],
+        [State("scenario-summary-start-year", "value")],
     )
-    def _update_summary_stats_callback(scenario: str, selected_year: int) -> tuple[str, str, str]:
-        return update_summary_stats(data_handler, scenario, selected_year)
+    def _update_start_year_options(
+        selected_year: int, current_start_year: int | None
+    ) -> tuple[list[dict[str, int]], int]:
+        """Update start year dropdown to only show years <= selected year, preserving current value if valid."""
+        if not selected_year:
+            years = data_handler.years
+            return [{"label": str(year), "value": year} for year in years], years[0]
+
+        # Filter years to only those <= selected_year
+        valid_years = [year for year in data_handler.years if year <= selected_year]
+        options = [{"label": str(year), "value": year} for year in valid_years]
+
+        # If current start year is still valid, keep it; otherwise default to first year
+        if current_start_year is not None and current_start_year in valid_years:
+            default_value = current_start_year
+        else:
+            default_value = valid_years[0] if valid_years else selected_year
+
+        return options, default_value
+
+    @callback(
+        [
+            Output("scenario-total-consumption", "children"),
+            Output("scenario-consumption-cagr", "children"),
+            Output("scenario-peak-demand", "children"),
+            Output("scenario-peak-demand-cagr", "children"),
+        ],
+        [
+            Input("view-selector", "value"),
+            Input("scenario-summary-year", "value"),
+            Input("scenario-summary-start-year", "value"),
+        ],
+    )
+    def _update_summary_stats_callback(
+        scenario: str, selected_year: int, start_year: int
+    ) -> tuple[str, str, str, str]:
+        return update_summary_stats(data_handler, scenario, selected_year, start_year)
 
     @callback(Output("scenario-title", "children"), Input("view-selector", "value"))
     def _update_scenario_title(selected_view: str) -> str:

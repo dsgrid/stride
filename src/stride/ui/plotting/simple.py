@@ -470,6 +470,7 @@ def demand_curve(
         margin_l=20,
         margin_r=20,
         barmode="stack",
+        yaxis=dict(title="Power Demand (MW)"),
         hoverlabel=hoverlabel_style,
         hovermode="x unified",
     )

@@ -9,9 +9,7 @@ SecondaryMetric = Literal[
     "GDP",
     "GDP Per Capita",
     "Human Development Index",
-    "Percent EV Adoption",
     "Population",
-    "Stock",
 ]
 WeatherVar = Literal["BAIT"]
 Sectors = Literal["Commercial", "Industrial", "Residential", "Transportation", "Other"]
