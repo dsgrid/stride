@@ -3,9 +3,8 @@ from pathlib import Path
 from typing import Self
 
 from chronify.exceptions import InvalidParameter
-from pydantic import Field, field_validator
-
 from dsgrid.data_models import DSGBaseModel
+from pydantic import Field, field_validator
 
 
 class DatasetType(StrEnum):
@@ -138,6 +137,10 @@ class ProjectConfig(DSGBaseModel):  # type: ignore
     calculated_table_overrides: list[CalculatedTableOverride] = Field(
         default=[],
         description="Calculated tables to override",
+    )
+    color_palette: dict[str, dict[str, str]] = Field(
+        default={"scenarios": {}, "model_years": {}, "metrics": {}},
+        description="Color palette organized into scenarios, model_years, and metrics categories. Each category maps labels to hex/rgb color strings for the UI.",
     )
 
     @classmethod

@@ -1,15 +1,15 @@
 import shutil
 from pathlib import Path
 from typing import Generator
-from duckdb import DuckDBPyConnection
 
 import pytest
 from click.testing import CliRunner
+from duckdb import DuckDBPyConnection
 from pytest import TempPathFactory
 
+from stride.api import APIClient
 from stride.cli.stride import cli
 from stride.project import Project
-from stride.api import APIClient
 
 TEST_PROJECT_CONFIG = Path("tests") / "data" / "project_input.json5"
 
@@ -77,8 +77,8 @@ def weekday_weekend_test_data(default_project: Project) -> DuckDBPyConnection:
     - Weekend values = 8
     - Full year 2018 hourly data (8760 hours)
     """
-    import pandas as pd
     import duckdb
+    import pandas as pd
 
     # Create a separate in-memory database for testing
     test_con = duckdb.connect(":memory:")

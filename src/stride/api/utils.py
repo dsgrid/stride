@@ -13,7 +13,7 @@ SecondaryMetric = Literal[
     "Population",
     "Stock",
 ]
-WeatherVar = Literal["Humidity", "Temperature"]
+WeatherVar = Literal["BAIT"]
 Sectors = Literal["Commercial", "Industrial", "Residential", "Transportation", "Other"]
 ChartType = Literal["Area", "Line"]
 ResampleOptions = Literal["Daily Mean", "Weekly Mean", "Hourly"]

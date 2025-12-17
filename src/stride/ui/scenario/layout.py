@@ -1,13 +1,15 @@
 from typing import Any
-from dash import html, dcc
+
 import dash_bootstrap_components as dbc  # type: ignore
+from dash import dcc, html
+
 from stride.api.utils import (
-    literal_to_list,
-    SecondaryMetric,
     ResampleOptions,
-    WeatherVar,
+    SecondaryMetric,
     TimeGroup,
     TimeGroupAgg,
+    WeatherVar,
+    literal_to_list,
 )
 from stride.ui.color_manager import ColorManager
 
@@ -38,9 +40,6 @@ def create_scenario_layout(
     # Get stored values or use defaults
     stored_state = stored_state or {}
 
-    # Generate scenario CSS from ColorManager
-    scenario_css = color_manager.generate_scenario_css()
-
     def create_styled_checklist(
         items_list: list[Any], checklist_id: str, default_selection: list[Any] | None = None
     ) -> html.Div:
@@ -68,18 +67,6 @@ def create_scenario_layout(
 
         return html.Div(
             [
-                # Add scenario-specific CSS styles
-                html.Div(
-                    [
-                        html.Script(
-                            f"""
-                var style = document.createElement('style');
-                style.textContent = `{scenario_css}`;
-                document.head.appendChild(style);
-                """
-                        )
-                    ]
-                ),
                 dbc.Checklist(
                     id=checklist_id,
                     options=[{"label": item, "value": item} for item in items_list],
@@ -604,7 +591,7 @@ def create_scenario_layout(
                                                     {"label": val, "value": val}
                                                     for val in literal_to_list(WeatherVar)
                                                 ],
-                                                value="Temperature",
+                                                value="BAIT",
                                                 clearable=False,
                                             ),
                                         ],
@@ -728,7 +715,7 @@ def create_scenario_layout(
                                                     {"label": val, "value": val}
                                                     for val in literal_to_list(WeatherVar)
                                                 ],
-                                                value="Temperature",
+                                                value="BAIT",
                                                 clearable=False,
                                             ),
                                         ],
