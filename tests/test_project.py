@@ -82,8 +82,7 @@ def test_invalid_load(tmp_path: Path, default_project: Project) -> None:
     assert result.exit_code != 0
 
 
-# @pytest.mark.parametrize("file_ext", [".csv", ".parquet"])
-@pytest.mark.parametrize("file_ext", [".parquet"])
+@pytest.mark.parametrize("file_ext", [".csv", ".parquet"])
 def test_override_calculated_table(
     tmp_path_factory: TempPathFactory, default_project: Project, file_ext: str
 ) -> None:
@@ -344,6 +343,7 @@ def test_override_calculated_table_pre_registration(
         str(project_config_file),
         "-d",
         str(new_base_dir),
+        "--use-test-data",
     ]
     runner = CliRunner()
     result = runner.invoke(cli, cmd)
