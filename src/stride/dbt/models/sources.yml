@@ -10,6 +10,6 @@ sources:
       - name: hdi
         identifier: "{{ var('scenario', 'active_scenario') }}__hdi__1_0_0"
       - name: load_shapes
-        identifier: "{{ var('scenario', 'active_scenario') }}__load_shapes"
+        identifier: "{{ var('scenario', 'active_scenario') }}__load_shapes__1_0_0"
       - name: population
         identifier: "{{ var('scenario', 'active_scenario') }}__population__1_0_0"

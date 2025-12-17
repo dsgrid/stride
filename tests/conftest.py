@@ -29,10 +29,17 @@ def default_project(
     tmp_path = tmp_path_factory.mktemp("tmpdir")
     project_dir = tmp_path / "test_project"
     assert not project_dir.exists()
-    cmd = ["projects", "create", str(project_config_file), "--directory", str(tmp_path)]
+    cmd = [
+        "projects",
+        "create",
+        str(project_config_file),
+        "--directory",
+        str(tmp_path),
+        "--use-test-data",
+    ]
     runner = CliRunner()
     result = runner.invoke(cli, cmd)
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.output
     assert project_dir.exists()
     with Project.load(project_dir, read_only=True) as project:
         yield project

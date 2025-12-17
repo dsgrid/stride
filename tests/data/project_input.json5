@@ -11,9 +11,10 @@
         {
             name: "baseline",
         },
-        {
-            name: "alternate_gdp",
-            gdp: "alternate_gdp.csv",
-        },
+        // TODO: Temporarily disabled
+        //{
+        //    name: "alternate_gdp",
+        //    gdp: "alternate_gdp.csv",
+        //},
     ]
 }

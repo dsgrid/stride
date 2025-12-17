@@ -325,9 +325,9 @@ def test_seasonal_load_lines_time_groupings(  # noqa: C901
             )
             # Verify that each season has different values (since different weekday/weekend ratios)
             season_values = df_api.groupby("season")["value"].first()
-            assert len(season_values.unique()) == 4, (
-                "Each season should have a different weekday/weekend ratio"
-            )
+            assert (
+                len(season_values.unique()) == 4
+            ), "Each season should have a different weekday/weekend ratio"
             # All values should be between 1 and 8 (weighted averages)
             all_values = df_api["value"].unique()
             assert all(1 <= val <= 8 for val in all_values), "All values should be between 1 and 8"

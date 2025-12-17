@@ -11,6 +11,15 @@ from loguru import logger
 
 from stride import Project
 from stride.models import CalculatedTableOverride
+from stride.dataset_download import (
+    DatasetDownloadError,
+    download_dataset,
+    download_dataset_from_repo,
+    get_default_data_directory,
+    get_release_tags,
+    list_known_datasets,
+    _get_github_token,
+)
 
 
 LOGURU_LEVELS = ["TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"]
@@ -81,11 +90,25 @@ $ stride projects create my_project.json5\n
     is_flag=True,
     help="Overwrite the output directory if it exists.",
 )
+@click.option(
+    "--use-test-data",
+    default=False,
+    show_default=True,
+    is_flag=True,
+    help="Use the smaller test dataset (global-test) instead of the full dataset (global).",
+)
 @click.pass_context
-def create_project(ctx: click.Context, config_file: Path, directory: Path, overwrite: bool) -> Any:
+def create_project(
+    ctx: click.Context, config_file: Path, directory: Path, overwrite: bool, use_test_data: bool
+) -> Any:
     """Create a Stride project."""
     res = handle_stride_exception(
-        ctx, Project.create, config_file, base_dir=directory, overwrite=overwrite
+        ctx,
+        Project.create,
+        config_file,
+        base_dir=directory,
+        overwrite=overwrite,
+        use_test_data=use_test_data,
     )
     if res[1] != 0:
         ctx.exit(res[1])
@@ -158,6 +181,156 @@ def show_dataset(
     """Print a limited number of rows of the dataset to the console."""
     project = safe_get_project_from_context(ctx, project_path, read_only=True)
     project.show_dataset(scenario, dataset_id, limit=limit)
+
+
+@click.command(name="list-remote")
+def list_remote_datasets() -> None:
+    """List known datasets available for download."""
+    datasets = list_known_datasets()
+    token = _get_github_token()
+
+    # Group datasets by repo to avoid duplicate API calls
+    repos = {dataset.repo for dataset in datasets}
+    repo_versions: dict[str, list[str]] = {}
+    for repo in repos:
+        try:
+            repo_versions[repo] = get_release_tags(repo, token=token)
+        except DatasetDownloadError:
+            repo_versions[repo] = []
+
+    print("Known datasets available for download:\n")
+    for dataset in datasets:
+        print(f"  {dataset.name}")
+        print(f"    Repository: {dataset.repo}")
+        print(f"    Subdirectory: {dataset.subdirectory}")
+        print(f"    Description: {dataset.description}")
+        versions = repo_versions.get(dataset.repo, [])
+        if versions:
+            print(f"    Available versions: {', '.join(versions)}")
+        else:
+            print("    Available versions: (unable to fetch)")
+        print()
+
+
+_download_dataset_epilog = """
+Examples:\n
+Download a known dataset to the default location (~/.stride/data):\n
+$ stride datasets download global\n
+\n
+Download to a specific directory:\n
+$ stride datasets download global --destination ./my_data\n
+\n
+Download a specific version:\n
+$ stride datasets download global --version v0.1.0.beta.1\n
+\n
+Download from a custom repository:\n
+$ stride datasets download --url https://github.com/user/repo --subdirectory data\n
+"""
+
+
+@click.command(name="download", epilog=_download_dataset_epilog)
+@click.argument("name", type=str, required=False)
+@click.option(
+    "-d",
+    "--destination",
+    type=click.Path(),
+    default=None,
+    help=f"Directory where the dataset will be placed. Defaults to {get_default_data_directory()}.",
+    callback=path_callback,
+)
+@click.option(
+    "-v",
+    "--version",
+    type=str,
+    default=None,
+    help="Release version/tag to download. Defaults to the latest release.",
+)
+@click.option(
+    "--url",
+    type=str,
+    default=None,
+    help="GitHub repository URL for custom datasets (e.g., https://github.com/owner/repo)",
+)
+@click.option(
+    "--subdirectory",
+    type=str,
+    default=None,
+    help="Subdirectory within the repository containing the dataset. Required with --url.",
+)
+@click.pass_context
+def download_dataset_command(
+    ctx: click.Context,
+    name: str | None,
+    destination: Path | None,
+    version: str | None,
+    url: str | None,
+    subdirectory: str | None,
+) -> None:
+    """Download a dataset from a remote repository.
+
+    NAME is the name of a known dataset (use 'stride datasets list-remote' to see available
+    datasets). Alternatively, use --url and --subdirectory to download from a custom repository.
+    """
+    try:
+        if url is not None:
+            # Custom repository
+            if subdirectory is None:
+                msg = "--subdirectory is required when using --url"
+                raise click.UsageError(msg)
+            # Parse repo from URL (e.g., https://github.com/owner/repo -> owner/repo)
+            repo = _parse_github_url(url)
+            result = download_dataset_from_repo(
+                repo=repo,
+                subdirectory=subdirectory,
+                destination=destination,
+                version=version,
+            )
+        elif name is not None:
+            # Known dataset
+            result = download_dataset(
+                name=name,
+                destination=destination,
+                version=version,
+            )
+        else:
+            msg = (
+                "Either NAME or --url must be provided. "
+                "Use 'stride datasets list-remote' to see available datasets."
+            )
+            raise click.UsageError(msg)
+        print(f"Dataset downloaded to: {result}")
+    except DatasetDownloadError as e:
+        logger.error("Download failed: {}", e)
+        ctx.exit(1)
+
+
+def _parse_github_url(url: str) -> str:
+    """Parse a GitHub URL to extract owner/repo.
+
+    Parameters
+    ----------
+    url : str
+        GitHub URL (e.g., https://github.com/owner/repo)
+
+    Returns
+    -------
+    str
+        Repository in owner/repo format
+
+    Raises
+    ------
+    click.UsageError
+        If the URL is not a valid GitHub URL
+    """
+    import re
+
+    # Match https://github.com/owner/repo or github.com/owner/repo
+    pattern = r"(?:https?://)?github\.com/([^/]+)/([^/]+?)(?:\.git)?/?$"
+    match = re.match(pattern, url)
+    if not match:
+        msg = f"Invalid GitHub URL: {url}. Expected format: https://github.com/owner/repo"
+        raise click.UsageError(msg)
+    return f"{match.group(1)}/{match.group(2)}"
 
 
 @click.group()
@@ -454,6 +627,8 @@ projects.add_command(create_project)
 projects.add_command(export_energy_projection)
 datasets.add_command(list_datasets)
 datasets.add_command(show_dataset)
+datasets.add_command(list_remote_datasets)
+datasets.add_command(download_dataset_command)
 scenarios.add_command(list_scenarios)
 calculated_tables.add_command(list_calculated_tables)
 calculated_tables.add_command(show_calculated_table)

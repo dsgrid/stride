@@ -1,13 +1,11 @@
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, Self
+from typing import Self
 
 from chronify.exceptions import InvalidParameter
 from pydantic import Field, field_validator
 
 from dsgrid.data_models import DSGBaseModel
-from dsgrid.dimension.base_models import DimensionType
-from dsgrid.dimension.time import TimeDimensionType
 
 
 class DatasetType(StrEnum):
@@ -23,37 +21,6 @@ class ProjectionSliceType(StrEnum):
     ENERGY_BY_SECTOR = "energy_by_sector"
     EVS = "evs"
     HEAT_PUMPS = "heat_pumps"
-
-
-class DatasetConfig(DSGBaseModel):  # type: ignore
-    """Defines a Stride dataset."""
-
-    dataset_id: str
-    path: Path
-    # dataset_type: DatasetType
-    # projection_slice: ProjectionSliceType | None = None  # TODO
-    metric_class: str
-    metric_dimension_name: str
-    time_type: TimeDimensionType | None = None
-    time_columns: list[str] = []
-    dimension_columns: dict[str, DimensionType] = {}
-    trivial_dimensions: list[DimensionType] = []
-    dimensions: list[dict[str, Any]]
-    missing_associations_file: Path | None = None
-    value_column: str = "value"
-
-    @field_validator("dimension_columns")
-    @classmethod
-    def assign_dimensions(
-        cls, columns: dict[str, DimensionType | str]
-    ) -> dict[str, DimensionType]:
-        final: dict[str, DimensionType] = {}
-        for name, value in columns.items():
-            if isinstance(value, DimensionType):
-                final[name] = value
-            else:
-                final[name] = DimensionType(value)
-        return final
 
 
 class Scenario(DSGBaseModel):  # type: ignore
@@ -80,7 +47,30 @@ class Scenario(DSGBaseModel):  # type: ignore
         default=None,
         description="Optional path to a user-provided population table",
     )
-    # TODO: bait, ev_share, vmt_per_capita
+    weather_bait: Path | None = Field(
+        default=None,
+        description="Optional path to a user-provided weather_bait table",
+    )
+    electricity_per_vehicle_km_projections: Path | None = Field(
+        default=None,
+        description="Optional path to a user-provided population table",
+    )
+    ev_stock_share_projections: Path | None = Field(
+        default=None,
+        description="Optional path to a user-provided ev_stock_share_projections table",
+    )
+    km_per_vehicle_year_regressions: Path | None = Field(
+        default=None,
+        description="Optional path to a user-provided km_per_vehicle_year_regressions table",
+    )
+    phev_share_projections: Path | None = Field(
+        default=None,
+        description="Optional path to a user-provided phev_share_projections table",
+    )
+    vehicle_per_capita_regressions: Path | None = Field(
+        default=None,
+        description="Optional path to a user-provided vehicle_per_capita_regressions table",
+    )
 
     @field_validator("name")
     @classmethod

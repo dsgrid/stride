@@ -7,4 +7,5 @@
     :caption: Contents:
 
     getting_started/index
+    download_datasets/index
 ```

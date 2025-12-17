@@ -2,6 +2,7 @@ import importlib.resources
 import os
 import shutil
 import subprocess
+import sys
 import time
 from collections import defaultdict
 from pathlib import Path
@@ -14,10 +15,9 @@ from dsgrid.utils.files import dump_json_file
 from duckdb import DuckDBPyConnection, DuckDBPyRelation
 from loguru import logger
 
+from stride.dataset_download import get_default_data_directory
 from stride.db_interface import make_dsgrid_data_table_name
-from stride.default_datasets import create_test_datasets
-from stride.default_project import create_dsgrid_project
-from stride.dsgrid_integration import deploy_to_dsgrid_registry, make_mapped_datasets
+from stride.dsgrid_integration import deploy_to_dsgrid_registry, register_scenario_datasets
 from stride.io import create_table_from_file, export_table
 from stride.models import (
     CalculatedTableOverride,
@@ -56,7 +56,11 @@ class Project:
 
     @classmethod
     def create(
-        cls, config_file: Path | str, base_dir: Path = Path(), overwrite: bool = False
+        cls,
+        config_file: Path | str,
+        base_dir: Path = Path(),
+        overwrite: bool = False,
+        use_test_data: bool = False,
     ) -> Self:
         """Create a project from a config file.
 
@@ -69,6 +73,9 @@ class Project:
             The project directory will be `base_dir / project_id`.
         overwrite
             Set to True to overwrite the project directory if it already exists.
+        use_test_data
+            If True, use the smaller test dataset (global-test).
+            If False (default), use the full dataset (global).
 
         Examples
         --------
@@ -78,19 +85,42 @@ class Project:
         project_path = base_dir / config.project_id
         check_overwrite(project_path, overwrite)
         project_path.mkdir()
-        dsg_project = create_dsgrid_project(config)
-        # TODO: this eventually needs a switch between test and real datasets.
-        datasets = create_test_datasets(config, dsg_project)
-        deploy_to_dsgrid_registry(project_path, dsg_project, datasets)
+
+        dataset_name = "global-test" if use_test_data else "global"
+        dataset_dir = get_default_data_directory() / dataset_name
+        if not dataset_dir.exists():
+            msg = (
+                f"Dataset directory not found: {dataset_dir}. "
+                f"Please download it first using: stride datasets download {dataset_name}"
+            )
+            raise InvalidParameter(msg)
+
+        deploy_to_dsgrid_registry(project_path, dataset_dir)
+
+        # Register alias datasets with dsgrid for non-baseline scenarios
+        # TODO: Custom scenarios are untested
+        datasets = cls.list_datasets()
+        for scenario in config.scenarios:
+            if scenario.name != "baseline":
+                unchanged_tables = [d for d in datasets if getattr(scenario, d) is None]
+                if unchanged_tables:
+                    register_scenario_datasets(project_path, scenario.name, unchanged_tables)
+
         project = cls(config, project_path)
         project.con.sql("CREATE SCHEMA stride")
         for scenario in config.scenarios:
-            make_mapped_datasets(project.con, project_path, config.project_id, scenario.name)
             for dataset in project.list_datasets():
                 # There is no reason to keep the user's dataset paths.
                 setattr(scenario, dataset, None)
         project.persist()
         project.copy_dbt_template()
+
+        # Create views for unchanged tables in non-baseline scenarios
+        # This must happen before compute_energy_projection so dbt can reference them
+        for scenario in config.scenarios:
+            if scenario.name != "baseline":
+                project._create_baseline_views(scenario.name, datasets)
+
         project.compute_energy_projection(use_table_overrides=False)
         if config.calculated_table_overrides:
             overrides = config.calculated_table_overrides
@@ -338,7 +368,9 @@ class Project:
                 f"{override_str}}}"
             )
             # TODO: May want to run `build` instead of `run` if we add dbt tests.
-            cmd = ["dbt", "run", "--vars", vars_string]
+            # Use dbt from the same environment as the running Python interpreter
+            dbt_executable = Path(sys.executable).parent / "dbt"
+            cmd = [str(dbt_executable), "run", "--vars", vars_string]
             self._con.close()
             try:
                 os.chdir(self._path / DBT_DIR)
@@ -493,6 +525,39 @@ class Project:
             {"column_name": x[0], "column_type": x[1]}
             for x in self._con.sql(f"DESCRIBE {table_name}").fetchall()
         ]
+
+    def _create_baseline_views(self, scenario: str, table_names: list[str]) -> None:
+        """Create views in a scenario schema that point to baseline tables.
+
+        For tables that are not overridden in a non-baseline scenario, create
+        database views that reference the baseline tables instead of duplicating data.
+
+        Parameters
+        ----------
+        scenario : str
+            Name of the scenario
+        table_names : list[str]
+            Names of tables to potentially create views for
+        """
+        scenario_config = next((s for s in self._config.scenarios if s.name == scenario), None)
+        if scenario_config is None:
+            return
+
+        self._con.sql(f"CREATE SCHEMA IF NOT EXISTS {scenario}")
+
+        for table_name in table_names:
+            # Only create view if the table is not overridden (value is None)
+            if getattr(scenario_config, table_name, None) is None:
+                # Check if baseline table exists before creating view
+                baseline_tables = self.list_tables(schema="baseline")
+                if table_name in baseline_tables:
+                    self._con.sql(
+                        f"CREATE OR REPLACE VIEW {scenario}.{table_name} AS "
+                        f"SELECT * FROM baseline.{table_name}"
+                    )
+                    logger.debug(
+                        "Created view {}.{} -> baseline.{}", scenario, table_name, table_name
+                    )
 
 
 def _get_base_and_override_names(table_name: str) -> tuple[str, str]:
