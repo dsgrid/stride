@@ -12,6 +12,7 @@ from stride.api.utils import (
     TimeGroupAgg,
     WeatherVar,
 )
+from stride.ui.plotting.utils import get_error_annotation_style, get_neutral_color
 
 if TYPE_CHECKING:
     from stride.api import APIClient
@@ -105,7 +106,7 @@ def update_consumption_plot(
     breakdown : ConsumptionBreakdown
         Breakdown type ("None", "Sector", or "End Use")
     secondary_metric : SecondaryMetric
-        Secondary metric for right axis (not yet implemented)
+        Secondary metric for right axis
 
     Returns
     -------
@@ -127,10 +128,88 @@ def update_consumption_plot(
         if breakdown_value:
             stack_col = "metric" if breakdown_value == "End Use" else breakdown_value.lower()
             fig = plotter.grouped_stacked_bars(
-                df, stack_col=stack_col, value_col="value", group_col="scenario"
+                df,
+                stack_col=stack_col,
+                value_col="value",
+                group_col="scenario",
+                show_scenario_indicators=False,
             )
         else:
-            fig = plotter.grouped_single_bars(df, "year", use_color_manager=False)
+            # Use theme-aware neutral gray color for the bars
+            neutral_color = get_neutral_color(plotter.get_template())
+            fig = plotter.grouped_single_bars(df, "year", fixed_color=neutral_color)
+
+        # Add secondary metric if selected
+        if secondary_metric and secondary_metric != "None":
+            try:
+                secondary_df = data_handler.get_secondary_metric(
+                    scenario=scenario, metric=secondary_metric, years=None
+                )
+
+                if not secondary_df.empty:
+                    # Get scenario color from color manager
+                    scenario_color = plotter.color_manager.get_color(scenario)
+
+                    # Add secondary metric as a line trace on the right y-axis
+                    fig.add_trace(
+                        go.Scatter(
+                            x=secondary_df["year"],
+                            y=secondary_df["value"],
+                            name=secondary_metric,
+                            mode="lines+markers",
+                            yaxis="y2",
+                            line=dict(width=2, dash="dash", color=scenario_color),
+                            marker=dict(size=6, color=scenario_color),
+                            customdata=secondary_df["value"],
+                            hovertemplate=f"{secondary_metric}: %{{customdata:.2f}}<extra></extra>",
+                        )
+                    )
+
+                    # Update layout to add secondary y-axis
+                    fig.update_layout(
+                        yaxis2=dict(
+                            title=secondary_metric,
+                            overlaying="y",
+                            side="right",
+                        ),
+                        legend=dict(orientation="v", yanchor="top", y=1.0, xanchor="left", x=1.05),
+                    )
+            except NotImplementedError as e:
+                # Show error annotation on the plot for unsupported metrics
+                error_style = get_error_annotation_style(plotter.get_template())
+                fig.add_annotation(
+                    text=f"⚠️ {str(e)}",
+                    xref="paper",
+                    yref="paper",
+                    x=0.5,
+                    y=1.05,
+                    showarrow=False,
+                    font=dict(size=12, color=error_style["font_color"]),
+                    bgcolor=error_style["bgcolor"],
+                    bordercolor=error_style["bordercolor"],
+                    borderwidth=2,
+                )
+            except Exception as e:
+                # Show error annotation for other errors (table not found, etc.)
+                error_msg = str(e)
+                if "does not exist" in error_msg.lower() or "not found" in error_msg.lower():
+                    error_msg = f"Table not available for {secondary_metric}"
+
+                error_style = get_error_annotation_style(plotter.get_template())
+                fig.add_annotation(
+                    text=f"⚠️ {error_msg}",
+                    xref="paper",
+                    yref="paper",
+                    x=0.5,
+                    y=1.05,
+                    showarrow=False,
+                    font=dict(size=12, color=error_style["font_color"]),
+                    bgcolor=error_style["bgcolor"],
+                    bordercolor=error_style["bordercolor"],
+                    borderwidth=2,
+                )
+                logger.error(f"Secondary metric error: {e}")
+
         return fig
     except Exception as e:
         logger.error(f"Error in consumption plot: {e}")
@@ -158,16 +237,16 @@ def update_peak_plot(
     breakdown : ConsumptionBreakdown
         Breakdown type ("None", "Sector", or "End Use")
     secondary_metric : SecondaryMetric
-        Secondary metric for right axis (not yet implemented)
+        Secondary metric for right axis
 
     Returns
     -------
     go.Figure or dict
         Plotly figure object or error dictionary
     """
-
     if scenario not in data_handler.scenarios:
-        return {"data": [], "layout": {"title": f"Error: {str(scenario)} not found"}}
+        logger.error(f"Error: {scenario} does not exist.")
+        return {"data": [], "layout": {"title": f"Error: {scenario} does not exist."}}
     try:
         # Convert "None" to None
         breakdown_value = None if breakdown == "None" else breakdown
@@ -177,14 +256,91 @@ def update_peak_plot(
         if breakdown_value:
             stack_col = "metric" if breakdown_value == "End Use" else breakdown_value.lower()
             fig = plotter.grouped_stacked_bars(
-                df, stack_col=stack_col, value_col="value", group_col="scenario"
+                df,
+                stack_col=stack_col,
+                value_col="value",
+                group_col="scenario",
+                show_scenario_indicators=False,
             )
         else:
-            fig = plotter.grouped_single_bars(df, "year", use_color_manager=False)
-        return fig
+            # Use theme-aware neutral gray color for the bars
+            neutral_color = get_neutral_color(plotter.get_template())
+            fig = plotter.grouped_single_bars(df, "year", fixed_color=neutral_color)
 
+        # Add secondary metric if selected
+        if secondary_metric and secondary_metric != "None":
+            try:
+                secondary_df = data_handler.get_secondary_metric(
+                    scenario=scenario, metric=secondary_metric, years=None
+                )
+
+                if not secondary_df.empty:
+                    # Get scenario color from color manager
+                    scenario_color = plotter.color_manager.get_color(scenario)
+
+                    # Add secondary metric as a line trace on the right y-axis
+                    fig.add_trace(
+                        go.Scatter(
+                            x=secondary_df["year"],
+                            y=secondary_df["value"],
+                            name=secondary_metric,
+                            mode="lines+markers",
+                            yaxis="y2",
+                            line=dict(width=2, dash="dash", color=scenario_color),
+                            marker=dict(size=6, color=scenario_color),
+                            customdata=secondary_df["value"],
+                            hovertemplate=f"{secondary_metric}: %{{customdata:.2f}}<extra></extra>",
+                        )
+                    )
+
+                    # Update layout to add secondary y-axis
+                    fig.update_layout(
+                        yaxis2=dict(
+                            title=secondary_metric,
+                            overlaying="y",
+                            side="right",
+                        ),
+                        legend=dict(orientation="v", yanchor="top", y=1.0, xanchor="left", x=1.05),
+                    )
+            except NotImplementedError as e:
+                # Show error annotation on the plot for unsupported metrics
+                error_style = get_error_annotation_style(plotter.get_template())
+                fig.add_annotation(
+                    text=f"⚠️ {str(e)}",
+                    xref="paper",
+                    yref="paper",
+                    x=0.5,
+                    y=1.05,
+                    showarrow=False,
+                    font=dict(size=12, color=error_style["font_color"]),
+                    bgcolor=error_style["bgcolor"],
+                    bordercolor=error_style["bordercolor"],
+                    borderwidth=2,
+                )
+            except Exception as e:
+                # Show error annotation for other errors (table not found, etc.)
+                error_msg = str(e)
+                if "does not exist" in error_msg.lower() or "not found" in error_msg.lower():
+                    error_msg = f"Table not available for {secondary_metric}"
+
+                error_style = get_error_annotation_style(plotter.get_template())
+                fig.add_annotation(
+                    text=f"⚠️ {error_msg}",
+                    xref="paper",
+                    yref="paper",
+                    x=0.5,
+                    y=1.05,
+                    showarrow=False,
+                    font=dict(size=12, color=error_style["font_color"]),
+                    bgcolor=error_style["bgcolor"],
+                    bordercolor=error_style["bordercolor"],
+                    borderwidth=2,
+                )
+                logger.error(f"Secondary metric error: {e}")
+
+        return fig
     except Exception as e:
-        print(f"Error in peak plot: {e}")
+        logger.error(f"Error in peak demand plot: {e}")
         return {"data": [], "layout": {"title": f"Error: {str(e)}"}}
 
 
@@ -244,6 +400,79 @@ def update_timeseries_plot(
         stack_col = "metric" if breakdown_value == "End Use" else str(breakdown_value)
         # Use the new time_series function for better multi-year visualization
         fig = plotter.time_series(df, group_by=stack_col.lower() if breakdown_value else None)
+
+        # Add weather variable if selected
+        if weather_var and weather_var != "None":
+            try:
+                for year in selected_years_int:
+                    weather_df = data_handler.get_weather_metric(
+                        scenario=scenario,
+                        year=year,
+                        wvar=weather_var,
+                        resample=resample,
+                        timegroup=None,
+                    )
+
+                    if not weather_df.empty:
+                        # Add weather variable as a line trace on the right y-axis
+                        fig.add_trace(
+                            go.Scatter(
+                                x=weather_df["datetime"],
+                                y=weather_df["value"],
+                                name=f"{year} - {weather_var}",
+                                mode="lines",
+                                yaxis="y2",
+                                line=dict(width=1.5, dash="dot"),
+                                customdata=weather_df["value"],
+                                hovertemplate=f"{year} - {weather_var}: %{{customdata:.2f}}<extra></extra>",
+                            )
+                        )
+
+                # Update layout to add secondary y-axis for weather
+                fig.update_layout(
+                    yaxis2=dict(
+                        title=weather_var,
+                        overlaying="y",
+                        side="right",
+                    ),
+                    legend=dict(orientation="v", yanchor="top", y=1.0, xanchor="left", x=1.05),
+                )
+            except NotImplementedError as e:
+                # Show error annotation for unsupported weather variables
+                error_style = get_error_annotation_style(plotter.get_template())
+                fig.add_annotation(
+                    text=f"⚠️ {str(e)}",
+                    xref="paper",
+                    yref="paper",
+                    x=0.5,
+                    y=1.05,
+                    showarrow=False,
+                    font=dict(size=12, color=error_style["font_color"]),
+                    bgcolor=error_style["bgcolor"],
+                    bordercolor=error_style["bordercolor"],
+                    borderwidth=2,
+                )
+            except Exception as e:
+                # Show error annotation for other errors (table not found, etc.)
+                error_msg = str(e)
+                if "does not exist" in error_msg.lower() or "not found" in error_msg.lower():
+                    error_msg = f"Weather table not available for {weather_var}"
+
+                error_style = get_error_annotation_style(plotter.get_template())
+                fig.add_annotation(
+                    text=f"⚠️ {error_msg}",
+                    xref="paper",
+                    yref="paper",
+                    x=0.5,
+                    y=1.05,
+                    showarrow=False,
+                    font=dict(size=12, color=error_style["font_color"]),
+                    bgcolor=error_style["bgcolor"],
+                    bordercolor=error_style["bordercolor"],
+                    borderwidth=2,
+                )
+                logger.error(f"Weather variable error: {e}")
+
         return fig
     except Exception as e:
         print(f"Error in timeseries plot: {e}")
@@ -294,6 +523,7 @@ def update_yearly_plot(
         # Convert "None" to None
         breakdown_value = None if breakdown == "None" else breakdown
         # Get timeseries data for single year
+        year_int = int(selected_year[0])
         df = data_handler.get_time_series_comparison(
             scenario=scenario, years=selected_year, group_by=breakdown_value, resample=resample
         )
@@ -304,6 +534,78 @@ def update_yearly_plot(
         fig = plotter.time_series(
             df, group_by=stack_col.lower() if breakdown_value else None, chart_type="Area"
         )
+
+        # Add weather variable if selected
+        if weather_var and weather_var != "None":
+            try:
+                weather_df = data_handler.get_weather_metric(
+                    scenario=scenario,
+                    year=year_int,
+                    wvar=weather_var,
+                    resample=resample,
+                    timegroup=None,
+                )
+
+                if not weather_df.empty:
+                    # Add weather variable as a line trace on the right y-axis
+                    fig.add_trace(
+                        go.Scatter(
+                            x=weather_df["datetime"],
+                            y=weather_df["value"],
+                            name=weather_var,
+                            mode="lines",
+                            yaxis="y2",
+                            line=dict(width=1.5, dash="dot"),
+                            customdata=weather_df["value"],
+                            hovertemplate=f"{weather_var}: %{{customdata:.2f}}<extra></extra>",
+                        )
+                    )
+
+                    # Update layout to add secondary y-axis for weather
+                    fig.update_layout(
+                        yaxis2=dict(
+                            title=weather_var,
+                            overlaying="y",
+                            side="right",
+                        ),
+                        legend=dict(orientation="v", yanchor="top", y=1.0, xanchor="left", x=1.05),
+                    )
+            except NotImplementedError as e:
+                # Show error annotation for unsupported weather variables
+                error_style = get_error_annotation_style(plotter.get_template())
+                fig.add_annotation(
+                    text=f"⚠️ {str(e)}",
+                    xref="paper",
+                    yref="paper",
+                    x=0.5,
+                    y=1.05,
+                    showarrow=False,
+                    font=dict(size=12, color=error_style["font_color"]),
+                    bgcolor=error_style["bgcolor"],
+                    bordercolor=error_style["bordercolor"],
+                    borderwidth=2,
+                )
+            except Exception as e:
+                # Show error annotation for other errors (table not found, etc.)
+                error_msg = str(e)
+                if "does not exist" in error_msg.lower() or "not found" in error_msg.lower():
+                    error_msg = f"Weather table not available for {weather_var}"
+
+                error_style = get_error_annotation_style(plotter.get_template())
+                fig.add_annotation(
+                    text=f"⚠️ {error_msg}",
+                    xref="paper",
+                    yref="paper",
+                    x=0.5,
+                    y=1.05,
+                    showarrow=False,
+                    font=dict(size=12, color=error_style["font_color"]),
+                    bgcolor=error_style["bgcolor"],
+                    bordercolor=error_style["bordercolor"],
+                    borderwidth=2,
+                )
+                logger.error(f"Weather variable error: {e}")
+
         return fig
     except Exception as e:
         print(f"Error in yearly plot: {e}")
@@ -495,12 +797,14 @@ def _register_consumption_callbacks(data_handler: "APIClient", plotter: "StrideP
             Input("view-selector", "value"),
             Input("scenario-consumption-breakdown", "value"),
             Input("scenario-consumption-secondary", "value"),
+            Input("chart-refresh-trigger", "data"),
         ],
     )
     def _update_consumption_plot_callback(
         scenario: str,
         breakdown: ConsumptionBreakdown | Literal["None"],
         secondary_metric: SecondaryMetric | Literal["None"],
+        refresh_trigger: int,
     ) -> go.Figure | dict[str, Any]:
         return update_consumption_plot(
             data_handler, plotter, scenario, breakdown, secondary_metric
@@ -512,12 +816,14 @@ def _register_consumption_callbacks(data_handler: "APIClient", plotter: "StrideP
             Input("view-selector", "value"),
             Input("scenario-peak-breakdown", "value"),
             Input("scenario-peak-secondary", "value"),
+            Input("chart-refresh-trigger", "data"),
         ],
     )
     def _update_peak_plot_callback(
         scenario: str,
         breakdown: ConsumptionBreakdown | Literal["None"],
         secondary_metric: SecondaryMetric | Literal["None"],
+        refresh_trigger: int,
     ) -> go.Figure | dict[str, Any]:
         return update_peak_plot(data_handler, plotter, scenario, breakdown, secondary_metric)
 
@@ -533,17 +839,25 @@ def _register_timeseries_callbacks(data_handler: "APIClient", plotter: "StridePl
             Input("scenario-timeseries-resample", "value"),
             Input("scenario-timeseries-weather", "value"),
             Input("scenario-timeseries-years", "value"),
+            Input("chart-refresh-trigger", "data"),
         ],
     )
     def _update_timeseries_plot_callback(
         scenario: str,
         breakdown: ConsumptionBreakdown | Literal["None"],
-        resample: ResampleOptions,
-        weather_var: WeatherVar | Literal["None"] | None,
+        resample: str,
+        weather_var: str | None,
         selected_years: list[int] | int,
+        refresh_trigger: int,
     ) -> go.Figure | dict[str, Any]:
         return update_timeseries_plot(
-            data_handler, plotter, scenario, breakdown, resample, weather_var, selected_years
+            data_handler,
+            plotter,
+            scenario,
+            breakdown,
+            resample,  # type: ignore[arg-type]
+            weather_var,  # type: ignore[arg-type]
+            selected_years,
         )
 
     @callback(
@@ -554,17 +868,25 @@ def _register_timeseries_callbacks(data_handler: "APIClient", plotter: "StridePl
             Input("scenario-yearly-resample", "value"),
             Input("scenario-yearly-weather", "value"),
             Input("scenario-yearly-year", "value"),
+            Input("chart-refresh-trigger", "data"),
         ],
     )
     def _update_yearly_plot_callback(
         scenario: str,
         breakdown: ConsumptionBreakdown | Literal["None"],
-        resample: ResampleOptions,
-        weather_var: WeatherVar | Literal["None"] | None,
+        resample: str,
+        weather_var: str | None,
         selected_year: int,
+        refresh_trigger: int,
     ) -> go.Figure | dict[str, Any]:
         return update_yearly_plot(
-            data_handler, plotter, scenario, breakdown, resample, weather_var, selected_year
+            data_handler,
+            plotter,
+            scenario,
+            breakdown,
+            resample,  # type: ignore[arg-type]
+            weather_var,  # type: ignore[arg-type]
+            selected_year,
         )
 
 
@@ -578,16 +900,23 @@ def _register_seasonal_callbacks(data_handler: "APIClient", plotter: "StridePlot
             Input("scenario-seasonal-lines-timegroup", "value"),
             Input("scenario-seasonal-lines-agg", "value"),
             Input("scenario-seasonal-lines-weather", "value"),
+            Input("chart-refresh-trigger", "data"),
         ],
     )
     def _update_seasonal_lines_plot_callback(
         scenario: str,
-        timegroup: TimeGroup,
-        agg: TimeGroupAgg,
+        timegroup: str,
+        agg_func: str,
         weather_var: WeatherVar | Literal["None"] | None,
+        refresh_trigger: int,
     ) -> go.Figure | dict[str, Any]:
         return update_seasonal_lines_plot(
-            data_handler, plotter, scenario, timegroup, agg, weather_var
+            data_handler,
+            plotter,
+            scenario,
+            timegroup,  # type: ignore[arg-type]
+            agg_func,  # type: ignore[arg-type]
+            weather_var,
         )
 
     @callback(
@@ -599,6 +928,7 @@ def _register_seasonal_callbacks(data_handler: "APIClient", plotter: "StridePlot
             Input("scenario-seasonal-area-agg", "value"),
             Input("scenario-seasonal-area-timegroup", "value"),
             Input("scenario-seasonal-area-weather", "value"),
+            Input("chart-refresh-trigger", "data"),
         ],
     )
     def _update_seasonal_area_plot_callback(
@@ -608,6 +938,7 @@ def _register_seasonal_callbacks(data_handler: "APIClient", plotter: "StridePlot
         agg: TimeGroupAgg,
         timegroup: TimeGroup,
         weather_var: WeatherVar | Literal["None"] | None,
+        refresh_trigger: int,
     ) -> go.Figure | dict[str, Any]:
         return update_seasonal_area_plot(
             data_handler, plotter, scenario, breakdown, selected_year, timegroup, agg, weather_var
@@ -619,10 +950,14 @@ def _register_load_duration_callbacks(data_handler: "APIClient", plotter: "Strid
 
     @callback(
         Output("scenario-load-duration-plot", "figure"),
-        [Input("view-selector", "value"), Input("scenario-load-duration-years", "value")],
+        [
+            Input("view-selector", "value"),
+            Input("scenario-load-duration-years", "value"),
+            Input("chart-refresh-trigger", "data"),
+        ],
     )
     def _update_load_duration_plot_callback(
-        scenario: str, selected_years: list[int] | int
+        scenario: str, selected_years: list[int] | int, refresh_trigger: int
     ) -> go.Figure | dict[str, Any]:
         return update_load_duration_plot(data_handler, plotter, scenario, selected_years)
 

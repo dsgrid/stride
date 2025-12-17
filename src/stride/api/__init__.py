@@ -148,6 +148,42 @@ class APIClient:
         self._years = None
         self._scenarios = None
 
+    def get_unique_sectors(self) -> list[str]:
+        """
+        Get unique sectors from the energy projection table.
+
+        Returns
+        -------
+        list[str]
+            Sorted list of unique sectors from the database
+        """
+        sql = """
+        SELECT DISTINCT sector
+        FROM energy_projection
+        WHERE geography = ?
+        ORDER BY sector
+        """
+        result = self.db.execute(sql, [self.project_country]).fetchall()
+        return [row[0] for row in result]
+
+    def get_unique_end_uses(self) -> list[str]:
+        """
+        Get unique end uses (metrics) from the energy projection table.
+
+        Returns
+        -------
+        list[str]
+            Sorted list of unique end uses/metrics from the database
+        """
+        sql = """
+        SELECT DISTINCT metric
+        FROM energy_projection
+        WHERE geography = ?
+        ORDER BY metric
+        """
+        result = self.db.execute(sql, [self.project_country]).fetchall()
+        return [row[0] for row in result]
+
     def _fetch_years(self) -> list[int]:
         """
         Fetch years from database.
@@ -566,8 +602,77 @@ class APIClient:
         self._validate_scenarios([scenario])
         self._validate_years(years)
 
-        err = "get_secondary_metric is not implemented yet."
-        raise NotImplementedError(err)
+        # Map metric names to table names
+        metric_table_map = {
+            "GDP": "gdp_country",
+            "GDP Per Capita": "gdp_country",
+            "Human Development Index": "hdi_country",
+            "Population": "population_country",
+            # Additional metrics can be added here as they become available
+        }
+
+        if metric not in metric_table_map:
+            err = f"Metric '{metric}' is not yet supported."
+            raise NotImplementedError(err)
+
+        base_table = metric_table_map[metric]
+        override_table = f"{base_table}_override"
+
+        # Check if override table exists for this scenario
+        table_exists_sql = """
+        SELECT COUNT(*) as count
+        FROM information_schema.tables
+        WHERE table_schema = ?
+        AND table_name = ?
+        """
+        result = self.db.execute(table_exists_sql, [scenario, override_table]).fetchone()
+        has_override = result[0] > 0 if result else False
+
+        # Use override table if it exists, otherwise use base table
+        table_to_query = (
+            f"{scenario}.{override_table}" if has_override else f"{scenario}.{base_table}"
+        )
+
+        # Check if the table exists before querying
+        table_name_only = override_table if has_override else base_table
+        result = self.db.execute(table_exists_sql, [scenario, table_name_only]).fetchone()
+        table_exists = result[0] > 0 if result else False
+
+        if not table_exists:
+            err = f"Table not available for {metric} in scenario '{scenario}'"
+            raise ValueError(err)
+
+        logger.debug(f"Querying table: {table_to_query} (has_override={has_override})")
+
+        # Query the appropriate table
+        sql = """
+        SELECT model_year as year, value
+        FROM {table}
+        WHERE geography = ?
+        AND model_year = ANY(?)
+        ORDER BY model_year
+        """.format(table=table_to_query)
+
+        params = [self.project_country, years]
+
+        # Execute query and return DataFrame
+        logger.debug(f"SQL Query:\n{sql}")
+        try:
+            df = self.db.execute(sql, params).df()
+        except Exception as e:
+            err = f"Error querying {metric} table for scenario '{scenario}': {str(e)}"
+            raise ValueError(err) from e
+
+        # For GDP Per Capita, divide GDP by population
+        if metric == "GDP Per Capita":
+            pop_df = self.get_secondary_metric(scenario, "Population", years)
+            if not pop_df.empty and not df.empty:
+                df = df.merge(pop_df, on="year", suffixes=("_gdp", "_pop"))
+                df["value"] = df["value_gdp"] / df["value_pop"]
+                df = df[["year", "value"]]
+
+        logger.debug(f"Returning {len(df)} rows.")
+        return df
 
     def get_load_duration_curve(
         self,
@@ -789,9 +894,96 @@ class APIClient:
         self._validate_scenarios([scenario])
         self._validate_years([year])
 
-        # Placeholder implementation
-        err = "get_weather_metric is not implemented yet."
-        raise NotImplementedError(err)
+        # Map weather variable to column name
+        wvar_column_map = {
+            "Temperature": "temperature",
+            "Humidity": "humidity",
+        }
+
+        if wvar not in wvar_column_map:
+            err = f"Weather variable '{wvar}' is not supported."
+            raise ValueError(err)
+
+        column_name = wvar_column_map[wvar]
+
+        # Check for override table
+        base_table = "weather"
+        override_table = f"{base_table}_override"
+
+        table_exists_sql = """
+        SELECT COUNT(*) as count
+        FROM information_schema.tables
+        WHERE table_schema = ?
+        AND table_name = ?
+        """
+        result = self.db.execute(table_exists_sql, [scenario, override_table]).fetchone()
+        has_override = result[0] > 0 if result else False
+
+        # Use override table if it exists, otherwise use base table
+        table_to_query = (
+            f"{scenario}.{override_table}" if has_override else f"{scenario}.{base_table}"
+        )
+
+        # Check if the table exists before querying
+        table_name_only = override_table if has_override else base_table
+        result = self.db.execute(table_exists_sql, [scenario, table_name_only]).fetchone()
+        table_exists = result[0] > 0 if result else False
+
+        if not table_exists:
+            err = f"Weather table not available for scenario '{scenario}'"
+            raise ValueError(err)
+
+        logger.debug(f"Querying table: {table_to_query} (has_override={has_override})")
+
+        # Build the query based on resample option
+        if resample == "Hourly":
+            # Return hourly data
+            sql = """
+            SELECT timestamp as datetime, {column} as value
+            FROM {table}
+            WHERE geography = ?
+            AND EXTRACT(YEAR FROM timestamp) = ?
+            ORDER BY timestamp
+            """.format(table=table_to_query, column=column_name)
+        elif resample == "Daily Mean":
+            # Aggregate to daily mean
+            sql = """
+            SELECT
+                DATE_TRUNC('day', timestamp) as datetime,
+                AVG({column}) as value
+            FROM {table}
+            WHERE geography = ?
+            AND EXTRACT(YEAR FROM timestamp) = ?
+            GROUP BY DATE_TRUNC('day', timestamp)
+            ORDER BY datetime
+            """.format(table=table_to_query, column=column_name)
+        elif resample == "Weekly Mean":
+            # Aggregate to weekly mean
+            sql = """
+            SELECT
+                DATE_TRUNC('week', timestamp) as datetime,
+                AVG({column}) as value
+            FROM {table}
+            WHERE geography = ?
+            AND EXTRACT(YEAR FROM timestamp) = ?
+            GROUP BY DATE_TRUNC('week', timestamp)
+            ORDER BY datetime
+            """.format(table=table_to_query, column=column_name)
+        else:
+            err = f"Resample option '{resample}' is not supported."
+            raise ValueError(err)
+
+        params = [self.project_country, year]
+
+        # Execute query and return DataFrame
+        logger.debug(f"SQL Query:\n{sql}")
+        try:
+            df = self.db.execute(sql, params).df()
+        except Exception as e:
+            err = f"Error querying weather data for scenario '{scenario}': {str(e)}"
+            raise ValueError(err) from e
+        logger.debug(f"Returning {len(df)} rows.")
+        return df
 
     # NOTE we don't restrict the user to two model years here in case they use the api outside of the UI.
     # NOTE for weekly mean, depending on the year, the weekends will not be at the start or end of the week.

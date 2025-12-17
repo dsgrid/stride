@@ -24,6 +24,7 @@ from stride.models import (
     ProjectConfig,
     Scenario,
 )
+from stride.ui.palette import ColorPalette
 
 CONFIG_FILE = "project.json5"
 DATABASE_FILE = "data.duckdb"
@@ -43,6 +44,7 @@ class Project:
         self._config = config
         self._path = project_path
         self._con = self._connect(**connection_kwargs)
+        self._palette: ColorPalette | None = None
 
     def _connect(self, **connection_kwargs: Any) -> DuckDBPyConnection:
         return duckdb.connect(self._path / REGISTRY_DATA_DIR / DATABASE_FILE, **connection_kwargs)
@@ -99,6 +101,10 @@ class Project:
             config.calculated_table_overrides = []
             project.override_calculated_tables(overrides)
 
+        # Populate the color palette with all metrics from the database
+        project.populate_palette_metrics()
+        project.save_palette()
+
         return project
 
     @classmethod
@@ -147,6 +153,107 @@ class Project:
     def path(self) -> Path:
         """Return the project path."""
         return self._path
+
+    @property
+    def palette(self) -> ColorPalette:
+        """Get or create the color palette for this project.
+
+        The palette is automatically populated with:
+        - Scenarios from the project config
+        - Model years from start_year, end_year, step_year
+        - Metrics are populated during project creation
+
+        To refresh metrics after project updates, call:
+        >>> project.populate_palette_metrics()
+        >>> project.save_palette()
+        """
+        if self._palette is None:
+            self._palette = ColorPalette(self._config.color_palette)
+            self._auto_populate_palette()
+        return self._palette
+
+    def _auto_populate_palette(self) -> None:
+        """Auto-populate palette with scenarios and model_years from config if not already present."""
+        if self._palette is None:
+            return
+
+        # Auto-populate scenarios from config
+        scenario_names = [scenario.name for scenario in self._config.scenarios]
+        for name in scenario_names:
+            if name not in self._palette.scenarios:
+                self._palette.update(name, category="scenarios")
+
+        # Auto-populate model_years from config
+        model_years = self._config.list_model_years()
+        for year in model_years:
+            year_str = str(year)
+            if year_str not in self._palette.model_years:
+                self._palette.update(year_str, category="model_years")
+
+    def populate_palette_metrics(self) -> None:
+        """Populate the palette with all metrics (sectors and end uses) from the database.
+
+        This method queries the database for unique sectors and end uses and adds them
+        to the metrics category of the palette. It's called automatically during project
+        creation, but can be called manually to refresh the palette after updates.
+
+        Examples
+        --------
+        >>> project = Project.load("my_project")
+        >>> project.populate_palette_metrics()
+        >>> project.save_palette()
+        """
+        from stride.api import APIClient
+
+        if self._palette is None:
+            # Initialize palette first
+            _ = self.palette
+
+        api_client = APIClient(self)
+
+        # Get all unique sectors and end uses from the database
+        sectors = api_client.get_unique_sectors()
+        end_uses = api_client.get_unique_end_uses()
+
+        # Add sectors to metrics category
+        for sector in sectors:
+            if self._palette is not None and sector not in self._palette.metrics:
+                self._palette.update(sector, category="metrics")
+
+        # Add end uses to metrics category
+        for end_use in end_uses:
+            if self._palette is not None and end_use not in self._palette.metrics:
+                self._palette.update(end_use, category="metrics")
+
+    def refresh_palette_colors(self) -> None:
+        """Refresh all palette colors to use the correct themes for each category.
+
+        This is useful for fixing palettes that may have incorrect color assignments
+        (e.g., metrics using model year colors). It reassigns colors while preserving
+        the labels in each category.
+
+        Examples
+        --------
+        >>> project = Project.load("my_project")
+        >>> project.refresh_palette_colors()
+        >>> project.save_palette()
+        """
+        if self._palette is None:
+            # Initialize palette first
+            _ = self.palette
+
+        # Refresh colors for each category using the correct theme
+        if self._palette is not None:
+            self._palette.refresh_category_colors("scenarios")
+            self._palette.refresh_category_colors("model_years")
+            self._palette.refresh_category_colors("metrics")
+
+    def save_palette(self) -> None:
+        """Save the current palette state back to the project conig file."""
+        if self._palette is not None:
+            self._config.color_palette = self._palette.to_dict()
+            config_path = self._path / "project.json5"
+            config_path.write_text(self._config.model_dump_json(indent=2))
 
     def override_calculated_tables(self, overrides: list[CalculatedTableOverride]) -> None:
         """Override one or more calculated tables."""

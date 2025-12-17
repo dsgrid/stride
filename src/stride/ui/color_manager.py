@@ -1,7 +1,7 @@
-from typing import Dict, List, Self
-from itertools import cycle
-from plotly import colors
 import re
+from typing import Dict, List, Self
+
+from .palette import ColorPalette
 
 
 class ColorManager:
@@ -9,21 +9,24 @@ class ColorManager:
 
     _instance = None
 
-    def __new__(cls) -> Self:
+    def __new__(cls, palette: ColorPalette | None = None) -> Self:
         if cls._instance is None:
             cls._instance = super(ColorManager, cls).__new__(cls)
             cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self) -> None:
-        if self._initialized:
-            return
+    def __init__(self, palette: ColorPalette | None = None) -> None:
+        # If a new palette is provided, update even if already initialized
+        if not hasattr(self, "_scenario_colors"):
+            self._scenario_colors = {}  # type: Dict[str, Dict[str, str]]
 
-        self._color_palette = colors.qualitative.Prism  # type: ignore[attr-defined]
-        self._color_iterator = cycle(self._color_palette)
-        self._color_cache: Dict[str, str] = {}
-        self._scenario_colors: Dict[str, Dict[str, str]] = {}
-        self._initialized: bool = True
+        if palette is not None:
+            self._palette = palette
+            self._initialized = True
+        elif not self._initialized:
+            # First initialization without a palette
+            self._palette = ColorPalette()
+            self._initialized = True
 
     def initialize_colors(
         self,
@@ -47,16 +50,22 @@ class ColorManager:
 
     def get_color(self, key: str) -> str:
         """Get consistent RGBA color for a given key."""
-        if key not in self._color_cache:
-            color = next(self._color_iterator)
+        # Get color from palette (could be hex or rgb string)
+        color = self._palette.get(key)
 
-            # TODO might want to handle all cases with match statement.
-            if isinstance(color, str) and color.startswith("#"):
-                self._color_cache[key] = self._hex_to_rgba_str(color)
+        # Convert to RGBA for UI usage
+        if color.startswith("#"):
+            return self._hex_to_rgba_str(color)
+        elif color.startswith("rgb"):
+            # Already in rgb format, ensure it's rgba
+            if color.startswith("rgba"):
+                return color
             else:
-                # Assume it is already an rgb(a) string
-                self._color_cache[key] = color
-        return self._color_cache[key]
+                # Convert rgb to rgba
+                return color.replace("rgb(", "rgba(").replace(")", ", 1.0)")
+        else:
+            # Unknown format, return as is
+            return color
 
     def get_scenario_styling(self, scenario: str) -> Dict[str, str]:
         """Get background and border colors for scenario checkboxes."""
@@ -66,23 +75,47 @@ class ColorManager:
         """Get all scenario styling colors."""
         return self._scenario_colors.copy()
 
-    # FIXME This doesn't seem to override the default css for the checkbox as intended
-    def generate_scenario_css(self) -> str:
-        """Generate CSS string for scenario checkbox styling."""
-        css_rules = []
+    def generate_scenario_css(self, temp_edits: dict[str, str] | None = None) -> str:
+        """Generate CSS string for scenario checkbox styling.
 
-        for scenario, scolors in self._scenario_colors.items():
+        Parameters
+        ----------
+        temp_edits : dict[str, str] | None
+            Optional dictionary of temporary color edits (label -> color)
+        """
+        css_rules = []
+        temp_edits = temp_edits or {}
+
+        for scenario in self._scenario_colors.keys():
+            # Check if there's a temporary edit for this scenario
+            if scenario in temp_edits:
+                base_color = temp_edits[scenario]
+                # Temp edits are stored as hex, convert to rgba if needed
+                if base_color.startswith("#"):
+                    base_color = self._hex_to_rgba_str(base_color)
+                r, g, b, _ = self._str_to_rgba(base_color)
+                bg_color = self._rgba_to_str(r, g, b, 0.2)
+                border_color = self._rgba_to_str(r, g, b, 0.8)
+            else:
+                # Use the stored scenario colors
+                bg_color = self._scenario_colors[scenario]["bg"]
+                border_color = self._scenario_colors[scenario]["border"]
+
             # Escape scenario name for CSS selector
             escaped_scenario = scenario.replace(" ", "\\ ").replace("(", "\\(").replace(")", "\\)")
 
             css_rule = f"""
             .scenario-checklist .form-check-input[value='{escaped_scenario}']:checked + .form-check-label {{
-                background-color: {scolors["bg"]} !important;
-                border-color: {scolors["border"]} !important;
+                background-color: {bg_color} !important;
+                border-color: {border_color} !important;
             }}"""
             css_rules.append(css_rule)
 
         return "\n".join(css_rules)
+
+    def get_palette(self) -> ColorPalette:
+        """Get the underlying ColorPalette instance."""
+        return self._palette
 
     def _generate_scenario_colors(self, scenarios: List[str]) -> None:
         """Generate background and border colors for scenarios."""
@@ -96,7 +129,18 @@ class ColorManager:
             }
 
     def _hex_to_rgba_str(self, hex_color: str) -> str:
-        """Convert hex color to RGBA string."""
+        """Convert hex color to RGBA string.
+
+        Parameters
+        ----------
+        hex_color : str
+            Hex color string starting with #
+
+        Returns
+        -------
+        str
+            RGBA color string
+        """
         hex_color = hex_color.lstrip("#")
         r, g, b = tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
         return self._rgba_to_str(r, g, b, 1.0)
@@ -107,7 +151,8 @@ class ColorManager:
 
     def _str_to_rgba(self, rgba_str: str) -> tuple[int, int, int, float]:
         """Parse RGBA string to tuple."""
-        rgba = re.search(r"rgba\((\d+), (\d+), (\d+), ([\d\.]+)\)", rgba_str)
+        # Allow optional spaces after commas
+        rgba = re.search(r"rgba\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d\.]+)\)", rgba_str)
         if rgba is not None:
             return (
                 int(rgba.groups()[0]),
@@ -116,7 +161,7 @@ class ColorManager:
                 float(rgba.groups()[3]),
             )
 
-        rgb = re.search(r"rgb\((\d+), (\d+), (\d+)\)", rgba_str)
+        rgb = re.search(r"rgb\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)\)", rgba_str)
         if rgb is not None:
             return (int(rgb.groups()[0]), int(rgb.groups()[1]), int(rgb.groups()[2]), 1.0)
 
@@ -125,6 +170,12 @@ class ColorManager:
 
 
 # Convenience function to get the singleton instance
-def get_color_manager() -> ColorManager:
-    """Get the ColorManager singleton instance."""
-    return ColorManager()
+def get_color_manager(palette: ColorPalette | None = None) -> ColorManager:
+    """Get the ColorManager singleton instance.
+
+    Parameters
+    ----------
+    palette : ColorPalette | None
+        Optional ColorPalette to use. Only used on first initialization.
+    """
+    return ColorManager(palette)

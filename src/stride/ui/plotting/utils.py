@@ -1,13 +1,161 @@
+from typing import TYPE_CHECKING, Any
+
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from stride.ui.color_manager import ColorManager
 
 TRANSPARENT = "rgba(0, 0, 0, 0)"
 DEFAULT_BAR_COLOR = "rgba(0,0,200,0.8)"
+# Theme-aware neutral gray colors
+LIGHT_THEME_GRAY = "rgba(100, 100, 100, 0.8)"  # Darker gray for light backgrounds
+DARK_THEME_GRAY = "rgba(180, 180, 180, 0.8)"  # Lighter gray for dark backgrounds
+# Theme-aware background colors (matching CSS theme --bg-primary)
+DARK_THEME_BG = "rgb(26, 26, 26)"  # Dark background matching CSS #1a1a1a
+LIGHT_THEME_BG = "rgb(255, 255, 255)"  # White background matching CSS #ffffff
+
+
+def get_error_annotation_style(template: str) -> dict[str, Any]:
+    """
+    Get theme-aware styling for error annotations.
+
+    Parameters
+    ----------
+    template : str
+        Plotly template name (e.g., 'plotly_white', 'plotly_dark')
+
+    Returns
+    -------
+    dict
+        Dictionary with 'bgcolor', 'font_color', and 'bordercolor' for error annotations
+    """
+    if "dark" in template.lower():
+        return {
+            "bgcolor": "rgba(60, 60, 60, 0.9)",  # Dark background
+            "font_color": "#ff6b6b",  # Light red text
+            "bordercolor": "#ff4444",  # Red border
+        }
+    else:
+        return {
+            "bgcolor": "rgba(255, 255, 255, 0.9)",  # Light background
+            "font_color": "#d32f2f",  # Dark red text
+            "bordercolor": "#d32f2f",  # Red border
+        }
+
+
+def get_warning_annotation_style(template: str) -> dict[str, Any]:
+    """
+    Get theme-aware styling for warning annotations.
+
+    Parameters
+    ----------
+    template : str
+        Plotly template name (e.g., 'plotly_white', 'plotly_dark')
+
+    Returns
+    -------
+    dict
+        Dictionary with 'bgcolor', 'font_color', and 'bordercolor' for warning annotations
+    """
+    if "dark" in template.lower():
+        return {
+            "bgcolor": "rgba(60, 60, 60, 0.9)",  # Dark background
+            "font_color": "#ffa726",  # Light orange text
+            "bordercolor": "#ff9800",  # Orange border
+        }
+    else:
+        return {
+            "bgcolor": "rgba(255, 255, 255, 0.9)",  # Light background
+            "font_color": "#f57c00",  # Dark orange text
+            "bordercolor": "#f57c00",  # Orange border
+        }
+
+
+def get_neutral_color(template: str) -> str:
+    """
+    Get a neutral gray color appropriate for the given template.
+
+    Parameters
+    ----------
+    template : str
+        Plotly template name (e.g., 'plotly_white', 'plotly_dark')
+
+    Returns
+    -------
+    str
+        RGBA color string for neutral gray
+    """
+    if "dark" in template.lower():
+        return DARK_THEME_GRAY
+    else:
+        return LIGHT_THEME_GRAY
+
+
+def get_background_color(template: str) -> str:
+    """
+    Get the plot background color appropriate for the given template.
+
+    Parameters
+    ----------
+    template : str
+        Plotly template name (e.g., 'plotly_white', 'plotly_dark')
+
+    Returns
+    -------
+    str
+        RGBA color string for plot background
+    """
+    if "dark" in template.lower():
+        return DARK_THEME_BG
+    else:
+        return LIGHT_THEME_BG
+
+
+def get_plotly_template() -> str:
+    """
+    Get the Plotly template for charts.
+
+    Returns
+    -------
+    str
+        Plotly template name (defaults to 'plotly_dark' to match app's default theme)
+    """
+    # Default to dark theme to match the app's default
+    return "plotly_dark"
+
+
+def get_hoverlabel_style(template: str) -> dict[str, Any]:
+    """
+    Get hover label styling based on the current template/theme.
+
+    Parameters
+    ----------
+    template : str
+        Plotly template name (e.g., 'plotly_white', 'plotly_dark')
+
+    Returns
+    -------
+    dict
+        Dictionary with bgcolor and font settings for hover labels
+    """
+    if "dark" in template.lower():
+        # Dark theme: use card header background color (#2d2d2d) and text color (#e0e0e0)
+        return {
+            "bgcolor": "#2d2d2d",
+            "font_size": 13,
+            "font_family": "Arial, sans-serif",
+            "font_color": "#e0e0e0",
+        }
+    else:
+        # Light theme: use card header background color (#f8f9fa) and text color (#212529)
+        return {
+            "bgcolor": "#f8f9fa",
+            "font_size": 13,
+            "font_family": "Arial, sans-serif",
+            "font_color": "#212529",
+        }
 
 
 def determine_facet_layout(df: pd.DataFrame) -> dict[str, Any]:
@@ -28,7 +176,7 @@ def determine_facet_layout(df: pd.DataFrame) -> dict[str, Any]:
             f"{season} - {day_type}" for day_type in day_order for season in season_order
         ]
         facet_col = "season_day_type"
-        df[facet_col] = df["season"] + " - " + df["day_type"]  # type: ignore
+        df[facet_col] = df["season"].astype(str) + " - " + df["day_type"].astype(str)
         df[facet_col] = pd.Categorical(df[facet_col], categories=facet_categories, ordered=True)
         return {
             "facet_col": facet_col,
@@ -170,10 +318,14 @@ def create_seasonal_annotations(layout_config: dict[str, Any]) -> list[dict[str,
 
 
 def numbers_under_each_bar(
-    fig: go.Figure, n_groups: int, n_bars: int, sep_width: float = 0.2
+    fig: go.Figure,
+    n_groups: int,
+    n_bars: int,
+    labels: list[str] | None = None,
+    sep_width: float = 0.2,
 ) -> go.Figure:
     """
-    Add numbered annotations under each bar group in a grouped bar chart.
+    Add annotations above the middle bar group in a grouped bar chart.
 
     Parameters
     ----------
@@ -183,26 +335,38 @@ def numbers_under_each_bar(
         Number of bar groups (x-axis positions)
     n_bars : int
         Number of bars per group
+    labels : list[str], optional
+        Labels to display above each bar. If None, uses numbers (1, 2, 3...), by default None
     sep_width : float, optional
         Separation width between bar groups, by default 0.2
 
     Returns
     -------
     go.Figure
-        Modified figure with numbered annotations under each bar group
+        Modified figure with annotations above the middle bar group
     """
-    for bar_group_num in range(1, n_groups + 1):
-        bar_nums = np.arange(n_bars) + 1
-        x = (np.arange(n_bars) - ((n_bars - 1) / 2)) * ((1 - sep_width) / n_bars)
-        x = x + bar_group_num - 1
-        for bar_num, xi in zip(bar_nums, x):
-            fig.add_annotation(
-                text=f"<b>{bar_num}</b>",
-                y=0,
-                x=xi,
-                showarrow=False,
-                yshift=-10,
-            )
+    # Position labels above the middle bar group
+    middle_group = (n_groups + 1) // 2
+
+    if labels is not None:
+        bar_labels = labels
+    else:
+        bar_labels = [str(i) for i in range(1, n_bars + 1)]
+
+    x = (np.arange(n_bars) - ((n_bars - 1) / 2)) * ((1 - sep_width) / n_bars)
+    x = x + middle_group - 1
+
+    for label, xi in zip(bar_labels, x):
+        fig.add_annotation(
+            text=f"<b>{label}</b>",
+            y=1,
+            x=xi,
+            showarrow=False,
+            yref="paper",
+            yanchor="bottom",
+            textangle=-45,
+            xanchor="left",
+        )
     return fig
 
 
