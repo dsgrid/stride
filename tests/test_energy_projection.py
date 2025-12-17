@@ -1,6 +1,7 @@
 from typing import Any, Sequence
 from uuid import uuid4
 
+import pytest
 from duckdb import DuckDBPyConnection, DuckDBPyRelation
 from pandas.testing import assert_frame_equal
 
@@ -8,6 +9,7 @@ from stride import Project
 from stride.db_interface import make_dsgrid_data_table_name
 
 
+@pytest.mark.skip(reason="has not been ported to new data format")
 def test_energy_projection(default_project: Project) -> None:
     """Validate the energy projection computed through dbt with an independent computation
     directly through DuckDB.

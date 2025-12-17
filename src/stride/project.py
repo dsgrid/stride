@@ -662,17 +662,29 @@ class Project:
 
     @staticmethod
     def _get_dtypes(filename: Path) -> dict[str, Any] | None:
-        """Should only be used when we know it's safe."""
+        """Detect timestamp column types for CSV files.
+
+        Only adds TIMESTAMP WITH TIME ZONE hint if the CSV data actually
+        contains timezone info (e.g., +00:00 or Z suffix).
+        """
         dtypes: dict[str, str] | None = None
         if filename.suffix == ".csv":
-            has_timestamp = False
             with open(filename, "r", encoding="utf-8") as f_in:
-                for line in f_in:
-                    if "timestamp" in line:
-                        has_timestamp = True
-                    break
-            if has_timestamp:
-                dtypes = {"timestamp": "timestamp with time zone"}
+                header = f_in.readline()
+                if "timestamp" not in header:
+                    return None
+                # Check if data row has timezone info
+                data_line = f_in.readline()
+                if data_line:
+                    # Look for timezone indicators like +00:00, -05:00, or Z
+                    timestamp_value = data_line.split(",")[0]
+                    has_timezone = (
+                        "+" in timestamp_value
+                        or timestamp_value.rstrip().endswith("Z")
+                        or "-" in timestamp_value[10:]  # After date part
+                    )
+                    if has_timezone:
+                        dtypes = {"timestamp": "timestamp with time zone"}
         return dtypes
 
     def _get_table_schema_types(self, table_name: str) -> list[dict[str, str]]:
