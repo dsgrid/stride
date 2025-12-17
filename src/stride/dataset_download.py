@@ -252,7 +252,16 @@ def _download_archive_with_gh(repo: str, version: str, archive_path: Path) -> No
         check=False,
     )
     if result.returncode != 0:
-        msg = f"Failed to download archive: {result.stderr}"
+        # Check if the error is due to an outdated gh CLI version
+        if "unknown flag: --output" in result.stderr:
+            msg = (
+                "Your GitHub CLI version does not support the '--output' flag. "
+                "Please update GitHub CLI to the latest version. "
+                "Visit https://github.com/cli/cli/releases for installation instructions, "
+                "or run 'gh upgrade' if supported by your installation method."
+            )
+        else:
+            msg = f"GitHub CLI download failed: {result.stderr.strip()}"
         raise DatasetDownloadError(msg)
 
 
@@ -286,7 +295,7 @@ def _download_archive_with_urllib(archive_url: str, archive_path: Path, token: s
 
 
 def _download_archive(repo: str, version: str, archive_path: Path, token: str | None) -> None:
-    """Download release archive, trying gh CLI first then urllib fallback.
+    """Download release archive using GitHub CLI.
 
     Parameters
     ----------
@@ -297,7 +306,7 @@ def _download_archive(repo: str, version: str, archive_path: Path, token: str | 
     archive_path : Path
         Path where the archive will be saved
     token : str | None
-        GitHub token for authentication (used for urllib fallback)
+        GitHub token for authentication (not used, kept for compatibility)
 
     Raises
     ------
@@ -309,9 +318,13 @@ def _download_archive(repo: str, version: str, archive_path: Path, token: str | 
 
     try:
         _download_archive_with_gh(repo, version, archive_path)
-    except FileNotFoundError:
-        # gh CLI not available, fall back to direct download
-        _download_archive_with_urllib(archive_url, archive_path, token)
+    except FileNotFoundError as e:
+        msg = (
+            "GitHub CLI (gh) is not installed or not found in PATH. "
+            "Please install it from https://cli.github.com/ and ensure it's in your PATH. "
+            "After installation, authenticate with 'gh auth login'."
+        )
+        raise DatasetDownloadError(msg) from e
 
     logger.info("Downloaded archive to {}", archive_path)
 
