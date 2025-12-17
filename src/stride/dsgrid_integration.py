@@ -3,6 +3,9 @@ import tempfile
 from getpass import getuser
 from pathlib import Path
 
+from chronify.exceptions import InvalidParameter
+from dsgrid.config.mapping_tables import MappingTableModel
+from dsgrid.config.registration_models import DimensionType
 from dsgrid.query.models import DimensionReferenceModel, make_dataset_query
 from dsgrid.utils.files import load_json_file
 import duckdb
@@ -51,6 +54,7 @@ def create_dsgrid_registry(registry_path: Path) -> RegistryManager:
 
 def make_mapped_datasets(
     con: duckdb.DuckDBPyConnection,
+    dataset_dir: Path,
     base_path: Path,
     project_id: str,
     scenario: str,
@@ -60,37 +64,243 @@ def make_mapped_datasets(
     mgr = RegistryManager.load(DatabaseConnection(url=url), use_remote_data=False)
     scratch_dir = Path(tempfile.gettempdir())
     project = mgr.project_manager.load_project(project_id)
-    time_dimension = project.config.get_base_time_dimension()
+    dimension_mappings_file = dataset_dir / "dimension_mappings.json5"
+    if not dimension_mappings_file.exists():
+        return
+    mappings = load_json_file(dimension_mappings_file).get("dimension_mappings")
+    if not mappings:
+        return
+
+    output_dir = base_path / "dsgrid_query_output"
+    query_submitter = DatasetQuerySubmitter(output_dir)
+    mappings_dir = dimension_mappings_file.parent
+
+    for mapping in mappings:
+        _process_dataset_mapping(
+            con=con,
+            mapping=mapping,
+            mappings_dir=mappings_dir,
+            mgr=mgr,
+            project=project,
+            scenario=scenario,
+            query_submitter=query_submitter,
+            scratch_dir=scratch_dir,
+        )
+
+
+def _process_dataset_mapping(
+    con: duckdb.DuckDBPyConnection,
+    mapping: dict,
+    mappings_dir: Path,
+    mgr: RegistryManager,
+    project: str,
+    scenario: str,
+    query_submitter: DatasetQuerySubmitter,
+    scratch_dir: Path,
+) -> None:
+    """Process dimension mappings for a single dataset.
+
+    Registers the mappings, queries the dataset with those mappings,
+    and creates a table in DuckDB with the results.
+    """
+    mapping_file = mapping.get("dimension_mapping_file")
+    if not mapping_file:
+        return
+
+    mapping_path = Path(mapping_file)
+    if not mapping_path.is_absolute():
+        mapping_path = (mappings_dir / mapping_path).resolve()
+
+    mapping_config = load_json_file(mapping_path)
+    mapping_config_dir = mapping_path.parent
+
+    dataset_id = mapping["dataset_id"]
+    dataset_config = mgr.dataset_manager.get_by_id(dataset_id)
+
+    # Build mapping models for this dataset
+    mapping_models = _build_mapping_models(
+        mapping_config=mapping_config,
+        mapping_config_dir=mapping_config_dir,
+        dataset_config=dataset_config,
+        project=project,
+    )
+
+    if not mapping_models:
+        return
+
+    # Register mappings and get registered mapping objects
+    mapping_mgr = project.dimension_mapping_manager
+    registered_mappings = _register_dimension_mappings(
+        mapping_models=mapping_models,
+        mapping_mgr=mapping_mgr,
+        dataset_id=dataset_id,
+    )
+
+    # Query the dataset and create table
+    _query_and_create_table(
+        con=con,
+        scenario=scenario,
+        dataset_id=dataset_id,
+        registered_mappings=registered_mappings,
+        query_submitter=query_submitter,
+        mgr=mgr,
+        scratch_dir=scratch_dir,
+    )
+
+
+def _build_mapping_models(
+    mapping_config: dict,
+    mapping_config_dir: Path,
+    dataset_config,
+    project,
+) -> list[MappingTableModel]:
+    """Build MappingTableModel instances for a dataset's dimension mappings."""
+    mapping_models = []
+
+    for mapping_entry in mapping_config.get("mappings", []):
+        dimension_type = DimensionType(mapping_entry["dimension_type"])
+        mapping_type = mapping_entry.get("mapping_type", "many_to_one_aggregation")
+        description = mapping_entry.get("description")
+
+        csv_file = mapping_entry.get("file")
+        if not csv_file:
+            continue
+        csv_path = Path(csv_file)
+        if not csv_path.is_absolute():
+            csv_path = (mapping_config_dir / csv_path).resolve()
+
+        # Find matching project and dataset dimensions
+        dims = _find_matching_dimensions(
+            dimension_type=dimension_type,
+            dataset_config=dataset_config,
+            project=project,
+        )
+        if dims is None:
+            msg = f"No matching dimensions found for dimension type {dimension_type}"
+            raise InvalidParameter(msg)
+        dataset_dim, project_dim = dims
+
+        mapping_model = MappingTableModel(
+            from_dimension=DimensionReferenceModel(
+                dimension_id=dataset_dim.model.dimension_id,
+                type=dataset_dim.model.dimension_type,
+                version=dataset_dim.model.version,
+            ),
+            to_dimension=DimensionReferenceModel(
+                dimension_id=project_dim.model.dimension_id,
+                type=project_dim.model.dimension_type,
+                version=project_dim.model.version,
+            ),
+            mapping_type=mapping_type,
+            description=description,
+            file=str(csv_path),
+        )
+        mapping_models.append(mapping_model)
+        logger.debug("Prepared dimension mapping for {} from {}", dimension_type, csv_path)
+
+    return mapping_models
+
+
+def _find_matching_dimensions(
+    dimension_type: DimensionType,
+    dataset_config,
+    project,
+) -> tuple | None:
+    """Find matching dataset and project dimensions for a dimension type.
+
+    Returns
+    -------
+    tuple | None
+        (dataset_dim, project_dim) if found, None otherwise
+    """
+    if dimension_type == DimensionType.METRIC:
+        dataset_dim = dataset_config.get_dimension(dimension_type)
+        project_dims = project.config.list_base_dimensions(dimension_type)
+        project_dim = None
+        for pdim in project_dims:
+            if pdim.model.class_name == dataset_dim.model.class_name:
+                project_dim = pdim
+                break
+        if project_dim is None:
+            logger.warning(
+                "No matching project dimension found for metric class_name={}",
+                dataset_dim.model.class_name,
+            )
+            return None
+    else:
+        project_dims = project.config.list_base_dimensions(dimension_type)
+        if not project_dims:
+            logger.warning("No project dimension found for type {}", dimension_type)
+            return None
+        assert len(project_dims) == 1, f"Multiple project dimensions found: {project_dims}"
+        project_dim = project_dims[0]
+        dataset_dim = dataset_config.get_dimension(dimension_type)
+
+    return dataset_dim, project_dim
+
+
+def _register_dimension_mappings(
+    mapping_models: list[MappingTableModel],
+    mapping_mgr,
+    dataset_id: str,
+) -> list:
+    """Register dimension mappings and return registered mapping objects."""
+    mappings_data = {
+        "mappings": [m.model_dump(mode="json", by_alias=True) for m in mapping_models]
+    }
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp_file:
+        json.dump(mappings_data, tmp_file)
+        tmp_path = Path(tmp_file.name)
+
+    try:
+        mapping_ids = mapping_mgr.register(
+            tmp_path,
+            submitter=getuser(),
+            log_message=f"Registered dimension mappings for {dataset_id}",
+        )
+        registered_mappings = [mapping_mgr.get_by_id(x) for x in mapping_ids]
+        logger.info("Registered {} dimension mappings for {}", len(mapping_models), dataset_id)
+        return registered_mappings
+    finally:
+        tmp_path.unlink()
+
+
+def _query_and_create_table(
+    con: duckdb.DuckDBPyConnection,
+    scenario: str,
+    dataset_id: str,
+    registered_mappings: list,
+    query_submitter: DatasetQuerySubmitter,
+    mgr: RegistryManager,
+    scratch_dir: Path,
+) -> None:
+    """Query a dataset with mappings and create a DuckDB table."""
     to_dimension_references = [
         DimensionReferenceModel(
-            dimension_id=time_dimension.model.dimension_id,
-            type=time_dimension.model.dimension_type,
-            version=time_dimension.model.version,
-        ),
-    ]
-    dataset_ids = [f"{scenario}__load_shapes"]
-    output_dir = base_path / "dsgrid_query_output"
-    submitter = DatasetQuerySubmitter(output_dir)
-    for dataset_id in dataset_ids:
-        query = make_dataset_query(
-            name=dataset_id,
-            dataset_id=dataset_id,
-            to_dimension_references=to_dimension_references,
+            dimension_id=m.model.to_dimension.dimension_id,
+            type=m.model.to_dimension.dimension_type,
+            version=m.model.to_dimension.version,
         )
-        # This calls toPandas() because the duckdb connection inside dsgrid is
-        # different than this one. We need to extract it and then add it through this connection.
-        df = submitter.submit(  # noqa F841
-            query,
-            mgr,
-            scratch_dir=scratch_dir,
-            overwrite=True,
-        ).toPandas()
-        # TODO: this should go into the stride schema.
-        # ... challenges with sources.yml
-        # table_name = f"stride.{dataset_id}"
-        table_name = f"dsgrid_data.{dataset_id}"
-        con.sql(f"CREATE TABLE {table_name} AS SELECT * FROM df")
-        logger.info("Created table {} from mapped dataset.", table_name)
+        for m in registered_mappings
+    ]
+
+    query = make_dataset_query(
+        name=dataset_id,
+        dataset_id=dataset_id,
+        to_dimension_references=to_dimension_references,
+    )
+    # This calls toPandas() because the duckdb connection inside dsgrid is
+    # different than this one. We need to extract it and then add it through this connection.
+    df = query_submitter.submit(  # noqa: F841
+        query,
+        mgr,
+        scratch_dir=scratch_dir,
+        overwrite=True,
+    ).toPandas()
+    base_id = dataset_id.split("__")[1]
+    table_name = f"dsgrid_data.{scenario}__{base_id}"
+    con.sql(f"CREATE TABLE {table_name} AS SELECT * FROM df")
+    logger.info("Created table {} from mapped dataset.", table_name)
 
 
 def register_scenario_datasets(
@@ -152,7 +362,6 @@ def register_scenario_datasets(
                 if not file_path.is_absolute():
                     dimension["file"] = str((config_dir / file_path).resolve())
 
-        # Convert data_layout.data_file.path
         data_file_path = dataset_config.get("data_layout", {}).get("data_file", {}).get("path")
         if data_file_path is not None:
             path = Path(data_file_path)

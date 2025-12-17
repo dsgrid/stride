@@ -17,7 +17,11 @@ from loguru import logger
 
 from stride.dataset_download import get_default_data_directory
 from stride.db_interface import make_dsgrid_data_table_name
-from stride.dsgrid_integration import deploy_to_dsgrid_registry, register_scenario_datasets
+from stride.dsgrid_integration import (
+    deploy_to_dsgrid_registry,
+    make_mapped_datasets,
+    register_scenario_datasets,
+)
 from stride.io import create_table_from_file, export_table
 from stride.models import (
     CalculatedTableOverride,
@@ -86,6 +90,32 @@ class Project:
         check_overwrite(project_path, overwrite)
         project_path.mkdir()
 
+        dataset_dir = cls._get_dataset_dir(use_test_data)
+        deploy_to_dsgrid_registry(project_path, dataset_dir)
+
+        unchanged_tables_by_scenario = cls._register_scenario_datasets(
+            config, project_path, dataset_dir
+        )
+
+        project = cls(config, project_path)
+        project.con.sql("CREATE SCHEMA stride")
+        project._clear_scenario_dataset_paths()
+        for scenario in config.scenarios:
+            make_mapped_datasets(
+                project.con, dataset_dir, project.path, project.config.project_id, scenario.name
+            )
+
+        project.persist()
+        project.copy_dbt_template()
+        project._create_views_for_unchanged_tables(unchanged_tables_by_scenario)
+        project.compute_energy_projection(use_table_overrides=False)
+        project._apply_calculated_table_overrides()
+
+        return project
+
+    @classmethod
+    def _get_dataset_dir(cls, use_test_data: bool) -> Path:
+        """Get and validate the dataset directory."""
         dataset_name = "global-test" if use_test_data else "global"
         dataset_dir = get_default_data_directory() / dataset_name
         if not dataset_dir.exists():
@@ -94,10 +124,19 @@ class Project:
                 f"Please download it first using: stride datasets download {dataset_name}"
             )
             raise InvalidParameter(msg)
+        return dataset_dir
 
-        deploy_to_dsgrid_registry(project_path, dataset_dir)
+    @classmethod
+    def _register_scenario_datasets(
+        cls,
+        config: ProjectConfig,
+        project_path: Path,
+        dataset_dir: Path,
+    ) -> dict[str, list[str]]:
+        """Register alias datasets with dsgrid for non-baseline scenarios.
 
-        # Register alias datasets with dsgrid for non-baseline scenarios
+        Returns a mapping of scenario name to list of unchanged table names.
+        """
         datasets = cls.list_datasets()
         unchanged_tables_by_scenario: dict[str, list[str]] = {}
         for scenario in config.scenarios:
@@ -110,30 +149,30 @@ class Project:
                     register_scenario_datasets(
                         project_path, dataset_dir, scenario.name, new_tables
                     )
+        return unchanged_tables_by_scenario
 
-        project = cls(config, project_path)
-        project.con.sql("CREATE SCHEMA stride")
-        for scenario in config.scenarios:
-            for dataset in project.list_datasets():
-                # There is no reason to keep the user's dataset paths.
+    def _clear_scenario_dataset_paths(self) -> None:
+        """Clear dataset paths from scenario configs (no longer needed after loading)."""
+        for scenario in self._config.scenarios:
+            for dataset in self.list_datasets():
                 setattr(scenario, dataset, None)
-        project.persist()
-        project.copy_dbt_template()
 
-        # Create views for unchanged tables in non-baseline scenarios
+    def _create_views_for_unchanged_tables(
+        self, unchanged_tables_by_scenario: dict[str, list[str]]
+    ) -> None:
+        """Create views for unchanged tables in non-baseline scenarios."""
         for scenario_name, unchanged_tables in unchanged_tables_by_scenario.items():
             if unchanged_tables:
-                project._create_baseline_views(scenario_name, unchanged_tables)
+                self._create_baseline_views(scenario_name, unchanged_tables)
 
-        project.compute_energy_projection(use_table_overrides=False)
-        if config.calculated_table_overrides:
-            overrides = config.calculated_table_overrides
+    def _apply_calculated_table_overrides(self) -> None:
+        """Apply any calculated table overrides from the config."""
+        if self._config.calculated_table_overrides:
+            overrides = self._config.calculated_table_overrides
             # The override method will append to this list after a successful operation,
             # so we need to reassign it first.
-            config.calculated_table_overrides = []
-            project.override_calculated_tables(overrides)
-
-        return project
+            self._config.calculated_table_overrides = []
+            self.override_calculated_tables(overrides)
 
     @classmethod
     def load(cls, project_path: Path | str, **connection_kwargs: Any) -> Self:
