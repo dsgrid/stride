@@ -235,6 +235,11 @@ def create_seasonal_annotations(layout_config: dict[str, Any]) -> list[dict[str,
     list
         List of annotation dictionaries for the plot
     """
+    # Adjust positions based on layout (1 row vs 2 rows)
+    # TODO: Figure out why we can't see the annotations for "Seasonal and Weekday/Weekend" layout
+    x_axis_y_pos = -0.08 if layout_config["rows"] == 1 else 0.0
+    y_axis_x_pos = -0.025 if layout_config["rows"] == 1 else 0.0
+
     annotations_list = [
         # Shared x-axis title
         dict(
@@ -242,7 +247,7 @@ def create_seasonal_annotations(layout_config: dict[str, Any]) -> list[dict[str,
             xref="paper",
             yref="paper",
             x=0.5,
-            y=-0.08,
+            y=x_axis_y_pos,
             xanchor="center",
             yanchor="top",
             font=dict(size=14),
@@ -250,10 +255,10 @@ def create_seasonal_annotations(layout_config: dict[str, Any]) -> list[dict[str,
         ),
         # Shared y-axis title
         dict(
-            text="Load (MW)",
+            text="Average Power Demand (MW)",
             xref="paper",
             yref="paper",
-            x=-0.08,
+            x=y_axis_x_pos,
             y=0.5,
             xanchor="center",
             yanchor="middle",

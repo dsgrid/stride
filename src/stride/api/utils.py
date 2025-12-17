@@ -11,10 +11,10 @@ SecondaryMetric = Literal[
     "Human Development Index",
     "Population",
 ]
-WeatherVar = Literal["BAIT"]
+WeatherVar = Literal["BAIT", "HDD", "CDD"]
 Sectors = Literal["Commercial", "Industrial", "Residential", "Transportation", "Other"]
 ChartType = Literal["Area", "Line"]
-ResampleOptions = Literal["Daily Mean", "Weekly Mean", "Hourly"]
+ResampleOptions = Literal["Hourly", "Daily Mean", "Weekly Mean"]
 Season = Literal["Spring", "Summer", "Fall", "Winter"]
 
 

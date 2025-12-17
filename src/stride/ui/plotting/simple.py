@@ -414,7 +414,7 @@ def time_series(
         paper_bgcolor=TRANSPARENT,
         margin=dict(l=20, r=20, t=20, b=40),
         xaxis_title="Time Period",
-        yaxis_title="Energy Consumption (MWh)",
+        yaxis_title="Average Power Demand (MW)",
         legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02),
         hoverlabel=hoverlabel_style,
         hovermode="x unified",

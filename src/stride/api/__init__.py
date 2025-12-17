@@ -910,16 +910,19 @@ class APIClient:
         # Map weather variable to column name
         wvar_column_map = {
             "BAIT": "bait",
+            "HDD": "hdd",
+            "CDD": "cdd",
         }
 
         if wvar not in wvar_column_map:
-            err = f"Weather variable '{wvar}' is not supported. Only 'BAIT' is available."
+            err = f"Weather variable '{wvar}' is not supported. Available options: {list(wvar_column_map.keys())}"
             raise ValueError(err)
 
         column_name = wvar_column_map[wvar]
 
-        # Check for override table
-        base_table = "weather_bait_daily"
+        # Use weather_degree_days which includes bait, hdd, and cdd
+        # This is a dbt model that's created per scenario
+        base_table = "weather_degree_days"
         override_table = f"{base_table}_override"
 
         table_exists_sql = """
@@ -928,6 +931,8 @@ class APIClient:
         WHERE table_schema = ?
         AND table_name = ?
         """
+
+        # Check for override table in scenario schema
         result = self.db.execute(table_exists_sql, [scenario, override_table]).fetchone()
         has_override = result[0] > 0 if result else False
 
@@ -942,7 +947,7 @@ class APIClient:
         table_exists = result[0] > 0 if result else False
 
         if not table_exists:
-            err = f"Weather table not available for scenario '{scenario}'"
+            err = f"Weather table '{table_name_only}' not available in schema '{scenario}'"
             raise ValueError(err)
 
         logger.debug(f"Querying table: {table_to_query} (has_override={has_override})")
@@ -950,22 +955,22 @@ class APIClient:
         # Build the query based on resample option
         if resample == "Hourly":
             # Return hourly data
+            # Note: Weather data uses weather_year column, not EXTRACT(YEAR FROM timestamp)
             sql = """
             SELECT timestamp as datetime, {column} as value
             FROM {table}
             WHERE geography = ?
-            AND EXTRACT(YEAR FROM timestamp) = ?
             ORDER BY timestamp
             """.format(table=table_to_query, column=column_name)
         elif resample == "Daily Mean":
             # Aggregate to daily mean
+            # Note: Weather data uses weather_year column, not EXTRACT(YEAR FROM timestamp)
             sql = """
             SELECT
                 DATE_TRUNC('day', timestamp) as datetime,
                 AVG({column}) as value
             FROM {table}
             WHERE geography = ?
-            AND EXTRACT(YEAR FROM timestamp) = ?
             GROUP BY DATE_TRUNC('day', timestamp)
             ORDER BY datetime
             """.format(table=table_to_query, column=column_name)
@@ -974,14 +979,15 @@ class APIClient:
             # Week calculation: FLOOR((DOY - 1) / 7) groups days 1-7 as week 0, 8-14 as week 1, etc.
             # This matches the calculation in get_time_series_comparison() but without the +1
             # since we only use this for grouping and then take MIN(timestamp) for the x-axis
-            # Rescale by (7 / days_in_week) to normalize partial weeks (especially the last week)
+            # Note: Weather data is intensive (temperature), not extensive (energy), so we don't
+            # rescale partial weeks. Temperature average is the same regardless of week length.
+            # Note: Weather data uses weather_year column, not EXTRACT(YEAR FROM timestamp)
             sql = """
             SELECT
                 MIN(timestamp) as datetime,
-                AVG({column}) * (7.0 / COUNT(*)) as value
+                AVG({column}) as value
             FROM {table}
             WHERE geography = ?
-            AND EXTRACT(YEAR FROM timestamp) = ?
             GROUP BY FLOOR((EXTRACT(DOY FROM timestamp) - 1) / 7)
             ORDER BY datetime
             """.format(table=table_to_query, column=column_name)
@@ -989,16 +995,19 @@ class APIClient:
             err = f"Resample option '{resample}' is not supported."
             raise ValueError(err)
 
-        params = [self.project_country, year]
+        # Weather data is filtered by geography only (not by year, since weather_year is fixed)
+        params = [self.project_country]
 
         # Execute query and return DataFrame
         logger.debug(f"SQL Query:\n{sql}")
+        logger.debug(f"Query params: geography={self.project_country}")
+        logger.debug(f"Querying table: {table_to_query}")
         try:
             df = self.db.execute(sql, params).df()
+            logger.debug(f"Query returned {len(df)} rows.")
         except Exception as e:
             err = f"Error querying weather data for scenario '{scenario}': {str(e)}"
             raise ValueError(err) from e
-        logger.debug(f"Returning {len(df)} rows.")
         return df
 
     # NOTE we don't restrict the user to two model years here in case they use the api outside of the UI.
@@ -1157,11 +1166,9 @@ class APIClient:
                 err = f"Invalid resample option: {resample}"
                 raise ValueError(err)
 
-            # For Weekly Mean, apply rescaling factor to normalize partial weeks
-            if resample == "Weekly Mean":
-                rescale_factor = "(7.0 / COUNT(*))"
-            else:
-                rescale_factor = "1"
+            # Note: We use AVG for both Daily Mean and Weekly Mean, so no rescaling needed.
+            # Averaging is an intensive operation (value per unit time), not extensive (total),
+            # so partial weeks have the same average as full weeks.
 
             if group_by:
                 if group_by == "End Use":
@@ -1174,7 +1181,7 @@ class APIClient:
                     model_year as year,
                     {time_period_calc} as time_period,
                     {group_col},
-                    AVG(value) * {rescale_factor} as value
+                    AVG(value) as value
                 FROM energy_projection
                 WHERE geography = ?
                     AND scenario = ?
@@ -1189,7 +1196,7 @@ class APIClient:
                     scenario,
                     model_year as year,
                     {time_period_calc} as time_period,
-                    SUM(value) * {rescale_factor} as value
+                    AVG(value) as value
                 FROM energy_projection
                 WHERE geography = ?
                     AND scenario = ?

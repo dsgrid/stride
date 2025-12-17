@@ -97,11 +97,15 @@ def seasonal_load_lines(
     if layout_config["facet_col"]:
         annotations_list = create_seasonal_annotations(layout_config)
 
+        # Adjust margins based on number of rows
+        bottom_margin = 80 if layout_config["rows"] == 1 else 100
+        left_margin = 80 if layout_config["rows"] == 1 else 100
+
         fig.update_layout(
             template=get_plotly_template(),
             plot_bgcolor=TRANSPARENT,
             paper_bgcolor=TRANSPARENT,
-            margin=dict(l=60, r=20, t=80, b=80),
+            margin=dict(l=left_margin, r=20, t=80, b=bottom_margin),
             showlegend=True,
             legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02),
             height=400 if layout_config["rows"] == 1 else 600,
@@ -150,7 +154,7 @@ def seasonal_load_lines(
             paper_bgcolor=TRANSPARENT,
             margin=dict(l=20, r=20, t=20, b=40),
             xaxis_title="Hour of Day",
-            yaxis_title="Load (MW)",
+            yaxis_title="Average Power Demand (MW)",
             xaxis=dict(
                 range=[0, 23],
                 showgrid=True,
@@ -306,11 +310,15 @@ def seasonal_load_area(
     if layout_config["facet_col"]:
         annotations_list = create_seasonal_annotations(layout_config)
 
+        # Adjust margins based on number of rows
+        bottom_margin = 80 if layout_config["rows"] == 1 else 100
+        left_margin = 80 if layout_config["rows"] == 1 else 100
+
         fig.update_layout(
             template=get_plotly_template(),
             plot_bgcolor=TRANSPARENT,
             paper_bgcolor=TRANSPARENT,
-            margin=dict(l=60, r=20, t=80, b=80),
+            margin=dict(l=left_margin, r=20, t=80, b=bottom_margin),
             showlegend=has_breakdown,
             legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02)
             if has_breakdown
@@ -342,7 +350,7 @@ def seasonal_load_area(
             paper_bgcolor=TRANSPARENT,
             margin=dict(l=20, r=20, t=20, b=40),
             xaxis_title="Hour of Day",
-            yaxis_title="Load (MW)",
+            yaxis_title="Average Power Demand (MW)",
             xaxis=dict(
                 range=[0, 23],
                 showgrid=True,

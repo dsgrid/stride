@@ -28,6 +28,132 @@ def get_secondary_metric_label(metric: str) -> str:
     return metric_labels.get(metric, metric)
 
 
+def get_weather_label(weather_var: str) -> str:
+    """Get a formatted label with units for a weather variable."""
+    weather_labels = {
+        "BAIT": "BAIT (deg C)",
+        "HDD": "HDD (deg C)",
+        "CDD": "CDD (deg C)",
+    }
+    return weather_labels.get(weather_var, weather_var)
+
+
+def _add_weather_to_timeseries(
+    fig: go.Figure,
+    data_handler: "APIClient",
+    plotter: "StridePlots",
+    scenario: str,
+    weather_var: WeatherVar,
+    selected_years_int: list[int],
+    resample: ResampleOptions,
+) -> None:
+    """
+    Add weather variable traces to a timeseries plot.
+
+    Parameters
+    ----------
+    fig : go.Figure
+        Plotly figure to add weather traces to
+    data_handler : APIClient
+        API client for data access
+    plotter : StridePlots
+        Plotting utilities for creating charts
+    scenario : str
+        Selected scenario name
+    weather_var : WeatherVar
+        Weather variable to add
+    selected_years_int : list[int]
+        List of selected years
+    resample : ResampleOptions
+        Resampling option
+    """
+    try:
+        for year in selected_years_int:
+            # For hourly energy data, we need hourly weather data
+            # But weather data is daily, so we need to repeat each value 24 times
+            weather_resample = resample if resample != "Hourly" else "Daily Mean"
+
+            weather_df = data_handler.get_weather_metric(
+                scenario=scenario,
+                year=year,
+                wvar=weather_var,
+                resample=weather_resample,
+                timegroup=None,
+            )
+
+            if not weather_df.empty:
+                weather_df = weather_df.copy()
+
+                # If energy data is hourly, repeat each daily weather value 24 times
+                if resample == "Hourly":
+                    # Repeat each row 24 times
+                    weather_df = weather_df.loc[weather_df.index.repeat(24)].reset_index(drop=True)
+
+                # Convert to time_period indexing to match energy data
+                # Time period is 1-indexed (1, 2, 3, ...)
+                weather_df["time_period"] = range(1, len(weather_df) + 1)
+
+                # Add weather variable as a line trace on the right y-axis
+                fig.add_trace(
+                    go.Scatter(
+                        x=weather_df["time_period"],
+                        y=weather_df["value"],
+                        name=f"{year} - {weather_var}",
+                        mode="lines",
+                        yaxis="y2",
+                        line=dict(width=1.5, dash="dot"),
+                        customdata=weather_df["value"],
+                        hovertemplate=f"{year} - {weather_var}: %{{customdata:.2f}}<extra></extra>",
+                    )
+                )
+
+        # Update layout to add secondary y-axis for weather
+        fig.update_layout(
+            yaxis=dict(rangemode="tozero"),
+            yaxis2=dict(
+                title=get_weather_label(weather_var),
+                overlaying="y",
+                side="right",
+            ),
+            legend=dict(orientation="v", yanchor="top", y=1.0, xanchor="left", x=1.05),
+        )
+    except NotImplementedError as e:
+        # Show error annotation for unsupported weather variables
+        error_style = get_error_annotation_style(plotter.get_template())
+        fig.add_annotation(
+            text=f"⚠️ {str(e)}",
+            xref="paper",
+            yref="paper",
+            x=0.5,
+            y=1.05,
+            showarrow=False,
+            font=dict(size=12, color=error_style["font_color"]),
+            bgcolor=error_style["bgcolor"],
+            bordercolor=error_style["bordercolor"],
+            borderwidth=2,
+        )
+    except Exception as e:
+        # Show error annotation for other errors (table not found, etc.)
+        error_msg = str(e)
+        if "does not exist" in error_msg.lower() or "not found" in error_msg.lower():
+            error_msg = f"Weather table not available for {weather_var}"
+
+        error_style = get_error_annotation_style(plotter.get_template())
+        fig.add_annotation(
+            text=f"⚠️ {error_msg}",
+            xref="paper",
+            yref="paper",
+            x=0.5,
+            y=1.05,
+            showarrow=False,
+            font=dict(size=12, color=error_style["font_color"]),
+            bgcolor=error_style["bgcolor"],
+            bordercolor=error_style["bordercolor"],
+            borderwidth=2,
+        )
+        logger.error(f"Weather variable error: {e}")
+
+
 def update_summary_stats(
     data_handler: "APIClient", scenario: str, selected_year: int, start_year: int | None = None
 ) -> tuple[str, str, str, str]:
@@ -439,76 +565,9 @@ def update_timeseries_plot(
 
         # Add weather variable if selected
         if weather_var and weather_var != "None":
-            try:
-                for year in selected_years_int:
-                    weather_df = data_handler.get_weather_metric(
-                        scenario=scenario,
-                        year=year,
-                        wvar=weather_var,
-                        resample=resample,
-                        timegroup=None,
-                    )
-
-                    if not weather_df.empty:
-                        # Add weather variable as a line trace on the right y-axis
-                        fig.add_trace(
-                            go.Scatter(
-                                x=weather_df["datetime"],
-                                y=weather_df["value"],
-                                name=f"{year} - {weather_var}",
-                                mode="lines",
-                                yaxis="y2",
-                                line=dict(width=1.5, dash="dot"),
-                                customdata=weather_df["value"],
-                                hovertemplate=f"{year} - {weather_var}: %{{customdata:.2f}}<extra></extra>",
-                            )
-                        )
-
-                # Update layout to add secondary y-axis for weather
-                fig.update_layout(
-                    yaxis=dict(rangemode="tozero"),
-                    yaxis2=dict(
-                        title=weather_var,
-                        overlaying="y",
-                        side="right",
-                    ),
-                    legend=dict(orientation="v", yanchor="top", y=1.0, xanchor="left", x=1.05),
-                )
-            except NotImplementedError as e:
-                # Show error annotation for unsupported weather variables
-                error_style = get_error_annotation_style(plotter.get_template())
-                fig.add_annotation(
-                    text=f"⚠️ {str(e)}",
-                    xref="paper",
-                    yref="paper",
-                    x=0.5,
-                    y=1.05,
-                    showarrow=False,
-                    font=dict(size=12, color=error_style["font_color"]),
-                    bgcolor=error_style["bgcolor"],
-                    bordercolor=error_style["bordercolor"],
-                    borderwidth=2,
-                )
-            except Exception as e:
-                # Show error annotation for other errors (table not found, etc.)
-                error_msg = str(e)
-                if "does not exist" in error_msg.lower() or "not found" in error_msg.lower():
-                    error_msg = f"Weather table not available for {weather_var}"
-
-                error_style = get_error_annotation_style(plotter.get_template())
-                fig.add_annotation(
-                    text=f"⚠️ {error_msg}",
-                    xref="paper",
-                    yref="paper",
-                    x=0.5,
-                    y=1.05,
-                    showarrow=False,
-                    font=dict(size=12, color=error_style["font_color"]),
-                    bgcolor=error_style["bgcolor"],
-                    bordercolor=error_style["bordercolor"],
-                    borderwidth=2,
-                )
-                logger.error(f"Weather variable error: {e}")
+            _add_weather_to_timeseries(
+                fig, data_handler, plotter, scenario, weather_var, selected_years_int, resample
+            )
         else:
             # No weather variable - just ensure y-axis starts at zero
             fig.update_yaxes(rangemode="tozero")
@@ -575,22 +634,42 @@ def update_yearly_plot(
             df, group_by=stack_col.lower() if breakdown_value else None, chart_type="Area"
         )
 
+        # Ensure y-axis starts at zero
+        fig.update_layout(yaxis=dict(rangemode="tozero"))
+
         # Add weather variable if selected
         if weather_var and weather_var != "None":
             try:
+                # For hourly energy data, we need hourly weather data
+                # But weather data is daily, so we need to repeat each value 24 times
+                weather_resample = resample if resample != "Hourly" else "Daily Mean"
+
                 weather_df = data_handler.get_weather_metric(
                     scenario=scenario,
                     year=year_int,
                     wvar=weather_var,
-                    resample=resample,
+                    resample=weather_resample,
                     timegroup=None,
                 )
 
                 if not weather_df.empty:
+                    weather_df = weather_df.copy()
+
+                    # If energy data is hourly, repeat each daily weather value 24 times
+                    if resample == "Hourly":
+                        # Repeat each row 24 times
+                        weather_df = weather_df.loc[weather_df.index.repeat(24)].reset_index(
+                            drop=True
+                        )
+
+                    # Convert to time_period indexing to match energy data
+                    # Time period is 1-indexed (1, 2, 3, ...)
+                    weather_df["time_period"] = range(1, len(weather_df) + 1)
+
                     # Add weather variable as a line trace on the right y-axis
                     fig.add_trace(
                         go.Scatter(
-                            x=weather_df["datetime"],
+                            x=weather_df["time_period"],
                             y=weather_df["value"],
                             name=weather_var,
                             mode="lines",
@@ -604,7 +683,7 @@ def update_yearly_plot(
                     # Update layout to add secondary y-axis for weather
                     fig.update_layout(
                         yaxis2=dict(
-                            title=weather_var,
+                            title=get_weather_label(weather_var),
                             overlaying="y",
                             side="right",
                         ),
@@ -678,7 +757,7 @@ def update_seasonal_lines_plot(
     agg : TimeGroupAgg
         Aggregation method ("Average Day", "Peak Day", "Minimum Day", or "Median Day")
     weather_var : WeatherVar
-        Weather variable for secondary axis (not yet implemented)
+        Weather variable for secondary axis (not currently supported for seasonal plots)
 
     Returns
     -------
