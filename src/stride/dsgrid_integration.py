@@ -3,6 +3,7 @@ import tempfile
 from pathlib import Path
 
 from dsgrid.query.models import DimensionReferenceModel, make_dataset_query
+from dsgrid.utils.files import load_json_file
 import duckdb
 from dsgrid.query.query_submitter import (
     DatasetQuerySubmitter,
@@ -93,63 +94,63 @@ def make_mapped_datasets(
 
 def register_scenario_datasets(
     registry_path: Path,
+    dataset_dir: Path,
     scenario: str,
     table_names: list[str],
 ) -> None:
     """Register datasets for a non-baseline scenario.
 
     For tables that are not overridden in a scenario, create dsgrid dataset
-    registrations that reference the baseline dataset configuration.
+    registrations that reference the baseline dataset configuration files.
 
     Parameters
     ----------
     registry_path : Path
         Path to the project/registry
+    dataset_dir : Path
+        Path to the data directory (e.g., ~/.stride/data/global-test)
     scenario : str
-        Name of the scenario to create aliases for
+        Name of the scenario to create datasets for
     table_names : list[str]
-        Names of tables to create aliases for
+        Names of tables to create datasets for
     """
     url = _registry_url(registry_path)
     mgr = RegistryManager.load(DatabaseConnection(url=url), use_remote_data=False)
 
+    # Load the registration file to find dataset config files
+    registration_file = dataset_dir / "registration.json5"
+    registration_data = load_json_file(registration_file)
+
+    # Build a mapping of dataset_id -> config_file path
+    dataset_config_files: dict[str, Path] = {}
+    for dataset_entry in registration_data.get("datasets", []):
+        dataset_id = dataset_entry.get("dataset_id")
+        config_file = dataset_entry.get("config_file")
+        if dataset_id and config_file:
+            dataset_config_files[dataset_id] = dataset_dir / config_file
+
     for table_name in table_names:
         baseline_dataset_id = f"baseline__{table_name}"
-        baseline_dataset = mgr.dataset_manager.get_by_id(baseline_dataset_id)
-        baseline_config = baseline_dataset.model.model_dump(mode="json")
-        new_dataset_id = baseline_dataset_id.replace("baseline", scenario)
-        baseline_config["dataset_id"] = new_dataset_id
+        config_file_path = dataset_config_files.get(baseline_dataset_id)
+        if config_file_path is None or not config_file_path.exists():
+            logger.debug(
+                "Config file for {} not found, skipping alias creation",
+                baseline_dataset_id,
+            )
+            continue
 
-        # TODO: This is not correct
-        _make_paths_absolute(baseline_config["data_layout"], registry_path)
+        # Load the original config file
+        dataset_config = load_json_file(config_file_path)
+
+        # Update the dataset_id for the new scenario
+        new_dataset_id = f"{scenario}__{table_name}"
+        dataset_config["dataset_id"] = new_dataset_id
+
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json") as tmp_file:
-            json.dump(baseline_config, tmp_file, indent=2)
+            json.dump(dataset_config, tmp_file, indent=2)
             tmp_path = Path(tmp_file.name)
             mgr.dataset_manager.register(tmp_path)
-            logger.info("Registered alias dataset {}", new_dataset_id)
-
-
-def _make_paths_absolute(config: dict, base_path: Path) -> None:
-    """Recursively make all 'path' fields in a config dict absolute.
-
-    Parameters
-    ----------
-    config : dict
-        Configuration dictionary to modify in place
-    base_path : Path
-        Base path to resolve relative paths against
-    """
-    for key, value in config.items():
-        if key == "path" and isinstance(value, str):
-            path = Path(value)
-            if not path.is_absolute():
-                config[key] = str((base_path / path).resolve())
-        elif isinstance(value, dict):
-            _make_paths_absolute(value, base_path)
-        elif isinstance(value, list):
-            for item in value:
-                if isinstance(item, dict):
-                    _make_paths_absolute(item, base_path)
+            logger.info("Registered scenario dataset {}", new_dataset_id)
 
 
 def _registry_url(registry_path: Path) -> str:

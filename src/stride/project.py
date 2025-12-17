@@ -104,7 +104,9 @@ class Project:
             if scenario.name != "baseline":
                 unchanged_tables = [d for d in datasets if getattr(scenario, d) is None]
                 if unchanged_tables:
-                    register_scenario_datasets(project_path, scenario.name, unchanged_tables)
+                    register_scenario_datasets(
+                        project_path, dataset_dir, scenario.name, unchanged_tables
+                    )
 
         project = cls(config, project_path)
         project.con.sql("CREATE SCHEMA stride")
