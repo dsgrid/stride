@@ -98,14 +98,17 @@ class Project:
         deploy_to_dsgrid_registry(project_path, dataset_dir)
 
         # Register alias datasets with dsgrid for non-baseline scenarios
-        # TODO: Custom scenarios are untested
         datasets = cls.list_datasets()
+        unchanged_tables_by_scenario: dict[str, list[str]] = {}
         for scenario in config.scenarios:
             if scenario.name != "baseline":
-                unchanged_tables = [d for d in datasets if getattr(scenario, d) is None]
-                if unchanged_tables:
+                unchanged_tables_by_scenario[scenario.name] = [
+                    d for d in datasets if getattr(scenario, d) is None
+                ]
+                new_tables = [d for d in datasets if getattr(scenario, d) is not None]
+                if new_tables:
                     register_scenario_datasets(
-                        project_path, dataset_dir, scenario.name, unchanged_tables
+                        project_path, dataset_dir, scenario.name, new_tables
                     )
 
         project = cls(config, project_path)
@@ -118,10 +121,9 @@ class Project:
         project.copy_dbt_template()
 
         # Create views for unchanged tables in non-baseline scenarios
-        # This must happen before compute_energy_projection so dbt can reference them
-        for scenario in config.scenarios:
-            if scenario.name != "baseline":
-                project._create_baseline_views(scenario.name, datasets)
+        for scenario_name, unchanged_tables in unchanged_tables_by_scenario.items():
+            if unchanged_tables:
+                project._create_baseline_views(scenario_name, unchanged_tables)
 
         project.compute_energy_projection(use_table_overrides=False)
         if config.calculated_table_overrides:
@@ -531,15 +533,12 @@ class Project:
     def _create_baseline_views(self, scenario: str, table_names: list[str]) -> None:
         """Create views in a scenario schema that point to baseline tables.
 
-        For tables that are not overridden in a non-baseline scenario, create
-        database views that reference the baseline tables instead of duplicating data.
-
         Parameters
         ----------
         scenario : str
             Name of the scenario
         table_names : list[str]
-            Names of tables to potentially create views for
+            Names of tables to create views for
         """
         scenario_config = next((s for s in self._config.scenarios if s.name == scenario), None)
         if scenario_config is None:
@@ -548,18 +547,20 @@ class Project:
         self._con.sql(f"CREATE SCHEMA IF NOT EXISTS {scenario}")
 
         for table_name in table_names:
-            # Only create view if the table is not overridden (value is None)
-            if getattr(scenario_config, table_name, None) is None:
-                # Check if baseline table exists before creating view
-                baseline_tables = self.list_tables(schema="baseline")
-                if table_name in baseline_tables:
-                    self._con.sql(
-                        f"CREATE OR REPLACE VIEW {scenario}.{table_name} AS "
-                        f"SELECT * FROM baseline.{table_name}"
-                    )
-                    logger.debug(
-                        "Created view {}.{} -> baseline.{}", scenario, table_name, table_name
-                    )
+            baseline_tables = self.list_tables(schema="dsgrid_data")
+            existing_table_name = f"baseline__{table_name}__1_0_0"
+            if existing_table_name not in baseline_tables:
+                msg = f"Baseline table '{existing_table_name}' does not exist."
+                raise InvalidParameter(msg)
+            new_table_name = f"dsgrid_data.{scenario}__{table_name}__1_0_0"
+            query = (
+                f"CREATE OR REPLACE VIEW {new_table_name} AS "
+                f"SELECT * FROM dsgrid_data.{existing_table_name}"
+            )
+            self._con.sql(query)
+            logger.debug(
+                "Created view {}.{} -> baseline.{}", scenario, new_table_name, existing_table_name
+            )
 
 
 def _get_base_and_override_names(table_name: str) -> tuple[str, str]:

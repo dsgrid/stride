@@ -1,5 +1,6 @@
 import json
 import tempfile
+from getpass import getuser
 from pathlib import Path
 
 from dsgrid.query.models import DimensionReferenceModel, make_dataset_query
@@ -139,18 +140,39 @@ def register_scenario_datasets(
             )
             continue
 
-        # Load the original config file
         dataset_config = load_json_file(config_file_path)
-
-        # Update the dataset_id for the new scenario
         new_dataset_id = f"{scenario}__{table_name}"
         dataset_config["dataset_id"] = new_dataset_id
+        config_dir = config_file_path.parent
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json") as tmp_file:
-            json.dump(dataset_config, tmp_file, indent=2)
+        # Convert dimension file paths
+        for dimension in dataset_config.get("dimensions", []):
+            if "file" in dimension:
+                file_path = Path(dimension["file"])
+                if not file_path.is_absolute():
+                    dimension["file"] = str((config_dir / file_path).resolve())
+
+        # Convert data_layout.data_file.path
+        data_file_path = dataset_config.get("data_layout", {}).get("data_file", {}).get("path")
+        if data_file_path is not None:
+            path = Path(data_file_path)
+            if not path.is_absolute():
+                dataset_config["data_layout"]["data_file"]["path"] = str(
+                    (config_dir / path).resolve()
+                )
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp_file:
+            json.dump(dataset_config, tmp_file)
             tmp_path = Path(tmp_file.name)
-            mgr.dataset_manager.register(tmp_path)
+        try:
+            mgr.dataset_manager.register(
+                tmp_path,
+                submitter=getuser(),
+                log_message=f"Registered scenario dataset {new_dataset_id}",
+            )
             logger.info("Registered scenario dataset {}", new_dataset_id)
+        finally:
+            tmp_path.unlink()
 
 
 def _registry_url(registry_path: Path) -> str:
