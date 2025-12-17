@@ -56,14 +56,12 @@ def make_mapped_datasets(
     con: duckdb.DuckDBPyConnection,
     dataset_dir: Path,
     base_path: Path,
-    project_id: str,
     scenario: str,
 ) -> None:
     """Create mapped datasets from the dsgrid registry and data files."""
     url = _registry_url(base_path)
     mgr = RegistryManager.load(DatabaseConnection(url=url), use_remote_data=False)
     scratch_dir = Path(tempfile.gettempdir())
-    project = mgr.project_manager.load_project(project_id)
     dimension_mappings_file = dataset_dir / "dimension_mappings.json5"
     if not dimension_mappings_file.exists():
         return
@@ -81,7 +79,6 @@ def make_mapped_datasets(
             mapping=mapping,
             mappings_dir=mappings_dir,
             mgr=mgr,
-            project=project,
             scenario=scenario,
             query_submitter=query_submitter,
             scratch_dir=scratch_dir,
@@ -93,7 +90,6 @@ def _process_dataset_mapping(
     mapping: dict,
     mappings_dir: Path,
     mgr: RegistryManager,
-    project: str,
     scenario: str,
     query_submitter: DatasetQuerySubmitter,
     scratch_dir: Path,
@@ -114,7 +110,9 @@ def _process_dataset_mapping(
     mapping_config = load_json_file(mapping_path)
     mapping_config_dir = mapping_path.parent
 
+    project_id = mapping["project_id"]
     dataset_id = mapping["dataset_id"]
+    project = mgr.project_manager.load_project(project_id)
     dataset_config = mgr.dataset_manager.get_by_id(dataset_id)
 
     # Build mapping models for this dataset
@@ -298,8 +296,9 @@ def _query_and_create_table(
         overwrite=True,
     ).toPandas()
     base_id = dataset_id.split("__")[1]
-    table_name = f"dsgrid_data.{scenario}__{base_id}"
-    con.sql(f"CREATE TABLE {table_name} AS SELECT * FROM df")
+    table_name = f"dsgrid_data.{scenario}__{base_id}__1_0_0"
+    # Note: This overwrites the original table with the mapped table.
+    con.sql(f"CREATE OR REPLACE TABLE {table_name} AS SELECT * FROM df")
     logger.info("Created table {} from mapped dataset.", table_name)
 
 

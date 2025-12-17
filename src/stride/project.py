@@ -103,9 +103,7 @@ class Project:
         project.con.sql("CREATE SCHEMA stride")
         project._clear_scenario_dataset_paths()
         for scenario in config.scenarios:
-            make_mapped_datasets(
-                project.con, dataset_dir, project.path, project.config.project_id, scenario.name
-            )
+            make_mapped_datasets(project.con, dataset_dir, project.path, scenario.name)
 
         project.persist()
         project.copy_dbt_template()
@@ -348,7 +346,7 @@ class Project:
             existing_full_name = f"{table.scenario}.{table.table_name}"
             override_name = f"{table.table_name}_override_table"
             override_full_name = f"{table.scenario}.{override_name}"
-            dtypes = self._get_dtypes(Path(table.filename))
+            dtypes = self._get_dtypes_from_table(Path(table.filename), existing_full_name)
             create_table_from_file(
                 self._con, override_full_name, table.filename, replace=True, dtypes=dtypes
             )  # noqa: F841
@@ -660,32 +658,18 @@ class Project:
             msg = f"{table_name=} is not a calculated table in scenario={scenario_name}"
             raise InvalidParameter(msg)
 
-    @staticmethod
-    def _get_dtypes(filename: Path) -> dict[str, Any] | None:
-        """Detect timestamp column types for CSV files.
+    def _get_dtypes_from_table(self, filename: Path, existing_table: str) -> dict[str, Any] | None:
+        """Get dtypes for CSV files based on the existing table's schema.
 
-        Only adds TIMESTAMP WITH TIME ZONE hint if the CSV data actually
-        contains timezone info (e.g., +00:00 or Z suffix).
+        For CSV files, DuckDB's type inference may not match the existing table.
+        This method extracts the schema from the existing table and returns
+        appropriate dtype hints for CSV reading.
         """
-        dtypes: dict[str, str] | None = None
-        if filename.suffix == ".csv":
-            with open(filename, "r", encoding="utf-8") as f_in:
-                header = f_in.readline()
-                if "timestamp" not in header:
-                    return None
-                # Check if data row has timezone info
-                data_line = f_in.readline()
-                if data_line:
-                    # Look for timezone indicators like +00:00, -05:00, or Z
-                    timestamp_value = data_line.split(",")[0]
-                    has_timezone = (
-                        "+" in timestamp_value
-                        or timestamp_value.rstrip().endswith("Z")
-                        or "-" in timestamp_value[10:]  # After date part
-                    )
-                    if has_timezone:
-                        dtypes = {"timestamp": "timestamp with time zone"}
-        return dtypes
+        if filename.suffix != ".csv":
+            return None
+
+        schema = self._get_table_schema_types(existing_table)
+        return {col["column_name"]: col["column_type"] for col in schema}
 
     def _get_table_schema_types(self, table_name: str) -> list[dict[str, str]]:
         """Return the types of each column in the table."""
@@ -711,20 +695,37 @@ class Project:
         self._con.sql(f"CREATE SCHEMA IF NOT EXISTS {scenario}")
 
         for table_name in table_names:
-            baseline_tables = self.list_tables(schema="dsgrid_data")
             existing_table_name = f"baseline__{table_name}__1_0_0"
-            if existing_table_name not in baseline_tables:
-                msg = f"Baseline table '{existing_table_name}' does not exist."
+            if not self._relation_exists("dsgrid_data", existing_table_name):
+                msg = f"Baseline table or view '{existing_table_name}' does not exist."
                 raise InvalidParameter(msg)
-            new_table_name = f"dsgrid_data.{scenario}__{table_name}__1_0_0"
+            new_table_name = f"{scenario}__{table_name}__1_0_0"
+            # Skip if the target already exists (e.g., created by make_mapped_datasets)
+            if self._relation_exists("dsgrid_data", new_table_name):
+                logger.debug("Skipping view creation for {} - already exists", new_table_name)
+                continue
             query = (
-                f"CREATE OR REPLACE VIEW {new_table_name} AS "
+                f"CREATE OR REPLACE VIEW dsgrid_data.{new_table_name} AS "
                 f"SELECT * FROM dsgrid_data.{existing_table_name}"
             )
             self._con.sql(query)
             logger.debug(
-                "Created view {}.{} -> baseline.{}", scenario, new_table_name, existing_table_name
+                "Created view dsgrid_data.{} -> dsgrid_data.{}",
+                new_table_name,
+                existing_table_name,
             )
+
+    def _relation_exists(self, schema: str, name: str) -> bool:
+        """Check if a table or view exists in the specified schema."""
+        result = self._con.execute(
+            """
+            SELECT COUNT(*)
+            FROM information_schema.tables
+            WHERE table_schema = ? AND table_name = ?
+            """,
+            [schema, name],
+        ).fetchone()
+        return result[0] > 0
 
 
 def _get_base_and_override_names(table_name: str) -> tuple[str, str]:
