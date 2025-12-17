@@ -5,7 +5,7 @@
     country: "country_1",
     start_year: 2025,
     step_year: 5,
-    end_year: 2055,
+    end_year: 2050,
     weather_year: 2018,
     scenarios: [
         {

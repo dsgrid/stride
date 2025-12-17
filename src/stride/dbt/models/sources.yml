@@ -13,3 +13,5 @@ sources:
         identifier: "{{ var('scenario', 'active_scenario') }}__load_shapes__1_0_0"
       - name: population
         identifier: "{{ var('scenario', 'active_scenario') }}__population__1_0_0"
+      - name: weather_bait
+        identifier: "{{ var('scenario', 'active_scenario') }}__weather_bait__1_0_0"

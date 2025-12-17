@@ -100,6 +100,21 @@ class CalculatedTableOverride(DSGBaseModel):  # type: ignore
     )
 
 
+class ModelParameters(DSGBaseModel):  # type: ignore
+    """Advanced model parameters for energy projections."""
+
+    heating_threshold: float = Field(
+        default=18.0,
+        description="Temperature threshold (°C) below which heating degree days are calculated. "
+        "Used for temperature adjustment of heating end uses in load shapes.",
+    )
+    cooling_threshold: float = Field(
+        default=18.0,
+        description="Temperature threshold (°C) above which cooling degree days are calculated. "
+        "Used for temperature adjustment of cooling end uses in load shapes.",
+    )
+
+
 class ProjectConfig(DSGBaseModel):  # type: ignore
     """Defines a Stride project."""
 
@@ -111,6 +126,10 @@ class ProjectConfig(DSGBaseModel):  # type: ignore
     end_year: int = Field(description="End year for the forecasted data")
     step_year: int = Field(default=1, description="End year for the forecasted data")
     weather_year: int = Field(description="Weather year upon which the data is based")
+    model_parameters: ModelParameters = Field(
+        default_factory=ModelParameters,
+        description="Advanced model parameters for temperature adjustments and other calculations",
+    )
     scenarios: list[Scenario] = Field(
         default=[Scenario(name="baseline")],
         description="Scenarios for the project. Users may add custom scenarios.",

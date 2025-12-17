@@ -366,7 +366,10 @@ class Project:
             vars_string = (
                 f'{{"scenario": "{scenario.name}", '
                 f'"country": "{self._config.country}", '
-                f'"model_years": "({model_years})"'
+                f'"model_years": "({model_years})", '
+                f'"weather_year": {self._config.weather_year}, '
+                f'"heating_threshold": {self._config.model_parameters.heating_threshold}, '
+                f'"cooling_threshold": {self._config.model_parameters.cooling_threshold}'
                 f"{override_str}}}"
             )
             # TODO: May want to run `build` instead of `run` if we add dbt tests.
