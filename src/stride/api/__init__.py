@@ -212,7 +212,8 @@ class APIClient:
         ORDER BY model_year
         """
         result = self.db.execute(sql, [self.project_country]).fetchall()
-        return [row[0] for row in result]
+        # Cast to int in case model_year is stored as string
+        return [int(row[0]) for row in result]
 
     def _fetch_scenarios(self) -> list[str]:
         """
@@ -372,6 +373,8 @@ class APIClient:
         self._validate_years(years)
 
         # Build SQL query based on group_by parameter
+        # Convert years to strings for SQL comparison since model_year is VARCHAR
+        years_str = [str(y) for y in years]
         if group_by:
             if group_by == "End Use":
                 group_col = "metric"
@@ -379,7 +382,7 @@ class APIClient:
                 group_col = "sector"
 
             sql = f"""
-            SELECT scenario, model_year as year, {group_col}, SUM(value) as value
+            SELECT scenario, CAST(model_year AS INTEGER) as year, {group_col}, SUM(value) as value
             FROM energy_projection
             WHERE geography = ?
             AND scenario = ANY(?)
@@ -387,10 +390,10 @@ class APIClient:
             GROUP BY scenario, model_year, {group_col}
             ORDER BY scenario, model_year, {group_col}
             """
-            params = [self.project_country, scenarios, years]
+            params = [self.project_country, scenarios, years_str]
         else:
             sql = """
-            SELECT scenario, model_year as year, SUM(value) as value
+            SELECT scenario, CAST(model_year AS INTEGER) as year, SUM(value) as value
             FROM energy_projection
             WHERE geography = ?
             AND scenario = ANY(?)
@@ -398,7 +401,7 @@ class APIClient:
             GROUP BY scenario, model_year
             ORDER BY scenario, model_year
             """
-            params = [self.project_country, scenarios, years]
+            params = [self.project_country, scenarios, years_str]
 
         # Execute query and return DataFrame
         logger.debug(f"SQL Query:\n{sql}")
@@ -481,6 +484,8 @@ class APIClient:
         self._validate_scenarios(scenarios)
         self._validate_years(years)
 
+        # Convert years to strings for SQL comparison since model_year is VARCHAR
+        years_str = [str(y) for y in years]
         if group_by:
             if group_by == "End Use":
                 group_col = "metric"
@@ -509,7 +514,7 @@ class APIClient:
             )
             SELECT
                 t.scenario,
-                t.model_year as year,
+                CAST(t.model_year AS INTEGER) as year,
                 t.{group_col},
                 t.value
             FROM energy_projection t
@@ -526,17 +531,17 @@ class APIClient:
             params = [
                 self.project_country,
                 scenarios,
-                years,
+                years_str,
                 self.project_country,
                 scenarios,
-                years,
+                years_str,
             ]
         else:
             # Just get peak totals without breakdown
             sql = """
             SELECT
                 scenario,
-                model_year as year,
+                CAST(model_year AS INTEGER) as year,
                 MAX(total_demand) as value
             FROM (
                 SELECT
@@ -553,7 +558,7 @@ class APIClient:
             GROUP BY scenario, model_year
             ORDER BY scenario, model_year
             """
-            params = [self.project_country, scenarios, years]
+            params = [self.project_country, scenarios, years_str]
 
         # Execute query and return DataFrame
         logger.debug(f"SQL Query:\n{sql}")
@@ -657,6 +662,7 @@ class APIClient:
         logger.debug(f"Querying table: {table_to_query} (has_override={has_override})")
 
         # Query the appropriate table
+        # Note: Secondary metric tables (gdp_country, population_country, hdi_country) have model_year as BIGINT
         sql = """
         SELECT model_year as year, value
         FROM {table}
@@ -752,10 +758,12 @@ class APIClient:
         self._validate_years(years)
 
         # Determine what we're pivoting on
+        # Convert years to strings for SQL comparison since model_year is VARCHAR
+        years_str = [str(y) for y in years]
         if len(years) > 1:
             # Multiple years, single scenario - pivot on year
             pivot_cols = [str(year) for year in years]
-            year_pivot_list = ",".join([str(year) for year in years])
+            year_pivot_list = ",".join([f"'{year}'" for year in years])
 
             sql = f"""
             WITH hourly_totals AS (
@@ -772,7 +780,7 @@ class APIClient:
                 SUM(total_demand) FOR year IN ({year_pivot_list})
             )
             """
-            params: list[Any] = [self.project_country, years, scenarios[0]]
+            params: list[Any] = [self.project_country, years_str, scenarios[0]]
         else:
             # Single year, multiple scenarios - pivot on scenario
             pivot_cols = scenarios
@@ -793,7 +801,7 @@ class APIClient:
                 SUM(total_demand) FOR scenario IN ({scenario_pivot_list})
             )
             """
-            params = [self.project_country, years[0], scenarios]
+            params = [self.project_country, years_str[0], scenarios]
 
         logger.debug(f"SQL Query:\n{sql}")
         df = self.db.execute(sql, params).df()
@@ -1104,6 +1112,9 @@ class APIClient:
         self._validate_scenarios([scenario])
         self._validate_years(years)
 
+        # Convert years to strings for SQL comparison since model_year is VARCHAR
+        years_str = [str(y) for y in years]
+
         if resample == "Hourly":
             # Raw hourly data - use hour of year as time_period
             time_period_calc = (
@@ -1128,7 +1139,7 @@ class APIClient:
                     AND model_year = ANY(?)
                 ORDER BY scenario, model_year, timestamp, {group_col}
                 """
-                params: list[Any] = [self.project_country, scenario, years]
+                params: list[Any] = [self.project_country, scenario, years_str]
             else:
                 sql = f"""
                 WITH hourly_totals AS (
@@ -1151,7 +1162,7 @@ class APIClient:
                 FROM hourly_totals
                 ORDER BY scenario, model_year, timestamp
                 """
-                params = [self.project_country, scenario, years]
+                params = [self.project_country, scenario, years_str]
         else:
             # Resampled data (existing logic)
             # Determine time period calculation based on resample option
@@ -1189,7 +1200,7 @@ class APIClient:
                 GROUP BY scenario, model_year, {time_period_calc}, {group_col}
                 ORDER BY scenario, model_year, time_period, {group_col}
                 """
-                params = [self.project_country, scenario, years]
+                params = [self.project_country, scenario, years_str]
             else:
                 sql = f"""
                 SELECT
@@ -1204,7 +1215,7 @@ class APIClient:
                 GROUP BY scenario, model_year, {time_period_calc}
                 ORDER BY scenario, model_year, time_period
                 """
-                params = [self.project_country, scenario, years]
+                params = [self.project_country, scenario, years_str]
 
         logger.debug(f"SQL Query:\n{sql}")
         df = self.db.execute(sql, params).df()

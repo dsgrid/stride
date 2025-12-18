@@ -207,8 +207,9 @@ def build_seasonal_query(
     tuple[str, list[Any]]
         Tuple containing the SQL query string and list of parameters
     """
-    # Base parameters
-    params: list[Any] = [country, scenario, years]
+    # Base parameters - convert years to strings for SQL comparison since model_year is VARCHAR
+    years_str = [str(y) for y in years]
+    params: list[Any] = [country, scenario, years_str]
 
     # Build WHERE clause using ANY for years
     where_clause = """

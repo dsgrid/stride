@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import plotly.graph_objects as go
 from dash import Input, Output, State, callback
+from dash.exceptions import PreventUpdate
 from loguru import logger
 
 from stride.api.utils import (
@@ -181,6 +182,11 @@ def update_summary_stats(
 
     if not selected_year or scenario not in data_handler.scenarios:
         return "---", "---", "---", "---"
+
+    # Convert selected_year to int in case it comes as string from dropdown
+    selected_year = int(selected_year)
+    if start_year is not None:
+        start_year = int(start_year)
 
     try:
         # Get all consumption and peak demand data for this scenario
@@ -541,8 +547,11 @@ def update_timeseries_plot(
         Plotly figure object or error dictionary
     """
 
-    if isinstance(selected_years, int):
-        selected_years = [selected_years]
+    # Handle both int and string years from dropdown
+    if isinstance(selected_years, (int, str)):
+        selected_years = [int(selected_years)]
+    elif isinstance(selected_years, list):
+        selected_years = [int(y) for y in selected_years]
 
     if not selected_years or scenario not in data_handler.scenarios:
         return {"data": [], "layout": {"title": "Select years to view data"}}
@@ -550,7 +559,7 @@ def update_timeseries_plot(
         # Convert "None" to None and years to int
         breakdown_value = None if breakdown == "None" else breakdown
 
-        selected_years_int = [int(year) for year in selected_years]
+        selected_years_int = selected_years
         # Get timeseries data. Need to pass "End Use" Literal Hera
         df = data_handler.get_time_series_comparison(
             scenario=scenario,
@@ -613,8 +622,11 @@ def update_yearly_plot(
         Plotly figure object or error dictionary
     """
 
-    if isinstance(selected_year, int):
-        selected_year = [selected_year]
+    # Handle both int and string years from dropdown
+    if isinstance(selected_year, (int, str)):
+        selected_year = [int(selected_year)]
+    elif isinstance(selected_year, list):
+        selected_year = [int(y) for y in selected_year]
 
     if not selected_year or scenario not in data_handler.scenarios:
         return {"data": [], "layout": {"title": "Select a year to view data"}}
@@ -622,7 +634,7 @@ def update_yearly_plot(
         # Convert "None" to None
         breakdown_value = None if breakdown == "None" else breakdown
         # Get timeseries data for single year
-        year_int = int(selected_year[0])
+        year_int = selected_year[0]
         df = data_handler.get_time_series_comparison(
             scenario=scenario, years=selected_year, group_by=breakdown_value, resample=resample
         )
@@ -868,16 +880,17 @@ def update_load_duration_plot(
         Plotly figure object or error dictionary
     """
 
-    if isinstance(selected_years, int):
-        selected_years = [selected_years]
+    # Handle both int and string years from dropdown
+    if isinstance(selected_years, (int, str)):
+        selected_years = [int(selected_years)]
+    elif isinstance(selected_years, list):
+        selected_years = [int(y) for y in selected_years]
 
     if not selected_years or scenario not in data_handler.scenarios:
         return {"data": [], "layout": {"title": "Select years to view data"}}
     try:
-        # Convert years to int
-        selected_years_int = [int(year) for year in selected_years]
         # Get load duration curve data
-        df = data_handler.get_load_duration_curve(years=selected_years_int, scenarios=[scenario])
+        df = data_handler.get_load_duration_curve(years=selected_years, scenarios=[scenario])
         return plotter.demand_curve(df)
     except Exception as e:
         print(f"Error in load duration plot: {e}")
@@ -931,6 +944,9 @@ def _register_summary_callbacks(data_handler: "APIClient", plotter: "StridePlots
     def _update_summary_stats_callback(
         scenario: str, selected_year: int, start_year: int
     ) -> tuple[str, str, str, str]:
+        # "compare" is the Home tab, not a scenario
+        if scenario == "compare":
+            raise PreventUpdate
         return update_summary_stats(data_handler, scenario, selected_year, start_year)
 
     @callback(Output("scenario-title", "children"), Input("view-selector", "value"))
@@ -960,6 +976,9 @@ def _register_consumption_callbacks(data_handler: "APIClient", plotter: "StrideP
         secondary_metric: SecondaryMetric | Literal["None"],
         refresh_trigger: int,
     ) -> go.Figure | dict[str, Any]:
+        # "compare" is the Home tab, not a scenario
+        if scenario == "compare":
+            raise PreventUpdate
         return update_consumption_plot(
             data_handler, plotter, scenario, breakdown, secondary_metric
         )
@@ -979,6 +998,9 @@ def _register_consumption_callbacks(data_handler: "APIClient", plotter: "StrideP
         secondary_metric: SecondaryMetric | Literal["None"],
         refresh_trigger: int,
     ) -> go.Figure | dict[str, Any]:
+        # "compare" is the Home tab, not a scenario
+        if scenario == "compare":
+            raise PreventUpdate
         return update_peak_plot(data_handler, plotter, scenario, breakdown, secondary_metric)
 
 
@@ -1004,6 +1026,9 @@ def _register_timeseries_callbacks(data_handler: "APIClient", plotter: "StridePl
         selected_years: list[int] | int,
         refresh_trigger: int,
     ) -> go.Figure | dict[str, Any]:
+        # "compare" is the Home tab, not a scenario
+        if scenario == "compare":
+            raise PreventUpdate
         return update_timeseries_plot(
             data_handler,
             plotter,
@@ -1033,6 +1058,9 @@ def _register_timeseries_callbacks(data_handler: "APIClient", plotter: "StridePl
         selected_year: int,
         refresh_trigger: int,
     ) -> go.Figure | dict[str, Any]:
+        # "compare" is the Home tab, not a scenario
+        if scenario == "compare":
+            raise PreventUpdate
         return update_yearly_plot(
             data_handler,
             plotter,
@@ -1064,6 +1092,9 @@ def _register_seasonal_callbacks(data_handler: "APIClient", plotter: "StridePlot
         weather_var: WeatherVar | Literal["None"] | None,
         refresh_trigger: int,
     ) -> go.Figure | dict[str, Any]:
+        # "compare" is the Home tab, not a scenario
+        if scenario == "compare":
+            raise PreventUpdate
         return update_seasonal_lines_plot(
             data_handler,
             plotter,
@@ -1094,6 +1125,9 @@ def _register_seasonal_callbacks(data_handler: "APIClient", plotter: "StridePlot
         weather_var: WeatherVar | Literal["None"] | None,
         refresh_trigger: int,
     ) -> go.Figure | dict[str, Any]:
+        # "compare" is the Home tab, not a scenario
+        if scenario == "compare":
+            raise PreventUpdate
         return update_seasonal_area_plot(
             data_handler, plotter, scenario, breakdown, selected_year, timegroup, agg, weather_var
         )
@@ -1113,6 +1147,9 @@ def _register_load_duration_callbacks(data_handler: "APIClient", plotter: "Strid
     def _update_load_duration_plot_callback(
         scenario: str, selected_years: list[int] | int, refresh_trigger: int
     ) -> go.Figure | dict[str, Any]:
+        # "compare" is the Home tab, not a scenario
+        if scenario == "compare":
+            raise PreventUpdate
         return update_load_duration_plot(data_handler, plotter, scenario, selected_years)
 
 
