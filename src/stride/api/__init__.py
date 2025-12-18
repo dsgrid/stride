@@ -160,6 +160,29 @@ class APIClient:
         self._years = None
         self._scenarios = None
 
+    def _get_scenario_order_clause(self, table_alias: str = "") -> str:
+        """
+        Generate SQL CASE statement to order scenarios by project config order.
+
+        Parameters
+        ----------
+        table_alias : str, optional
+            Table alias to use (e.g., "t" for "t.scenario"), by default ""
+
+        Returns
+        -------
+        str
+            SQL CASE expression for ordering scenarios
+        """
+        if not self.scenarios:
+            col_name = f"{table_alias}.scenario" if table_alias else "scenario"
+            return col_name
+
+        # Build CASE statement: CASE WHEN scenario='first' THEN 0 WHEN scenario='second' THEN 1 ...
+        col_name = f"{table_alias}.scenario" if table_alias else "scenario"
+        cases = [f"WHEN {col_name}='{s}' THEN {i}" for i, s in enumerate(self.scenarios)]
+        return f"CASE {' '.join(cases)} ELSE 999 END"
+
     def get_unique_sectors(self) -> list[str]:
         """
         Get unique sectors from the energy projection table.
@@ -217,21 +240,27 @@ class APIClient:
 
     def _fetch_scenarios(self) -> list[str]:
         """
-        Fetch scenarios from database.
+        Fetch scenarios from database in project config order.
 
         Returns
         -------
         list[str]
-            Sorted list of unique scenarios from the database
+            List of scenarios in the order defined in the project config
         """
+        # Get scenarios from project config to preserve order
+        config_scenarios = self.project.list_scenario_names()
+
+        # Verify all config scenarios exist in database
         sql = """
         SELECT DISTINCT scenario
         FROM energy_projection
         WHERE geography = ?
-        ORDER BY scenario
         """
         result = self.db.execute(sql, [self.project_country]).fetchall()
-        return [row[0] for row in result]
+        db_scenarios = set(row[0] for row in result)
+
+        # Return scenarios in config order, filtering to only those in database
+        return [s for s in config_scenarios if s in db_scenarios]
 
     def _validate_scenarios(self, scenarios: list[str]) -> None:
         """
@@ -375,6 +404,8 @@ class APIClient:
         # Build SQL query based on group_by parameter
         # Convert years to strings for SQL comparison since model_year is VARCHAR
         years_str = [str(y) for y in years]
+        scenario_order = self._get_scenario_order_clause()
+
         if group_by:
             if group_by == "End Use":
                 group_col = "metric"
@@ -388,18 +419,18 @@ class APIClient:
             AND scenario = ANY(?)
             AND model_year = ANY(?)
             GROUP BY scenario, model_year, {group_col}
-            ORDER BY scenario, model_year, {group_col}
+            ORDER BY {scenario_order}, model_year, {group_col}
             """
             params = [self.project_country, scenarios, years_str]
         else:
-            sql = """
+            sql = f"""
             SELECT scenario, CAST(model_year AS INTEGER) as year, SUM(value) as value
             FROM energy_projection
             WHERE geography = ?
             AND scenario = ANY(?)
             AND model_year = ANY(?)
             GROUP BY scenario, model_year
-            ORDER BY scenario, model_year
+            ORDER BY {scenario_order}, model_year
             """
             params = [self.project_country, scenarios, years_str]
 
@@ -486,12 +517,15 @@ class APIClient:
 
         # Convert years to strings for SQL comparison since model_year is VARCHAR
         years_str = [str(y) for y in years]
+
         if group_by:
             if group_by == "End Use":
                 group_col = "metric"
             else:  # group_by == "Sector"
                 group_col = "sector"
             # Find peak hours and get breakdown values at those hours
+            # Use table alias 't' in ORDER BY since we have a JOIN
+            scenario_order = self._get_scenario_order_clause(table_alias="t")
             sql = f"""
             WITH peak_hours AS (
                 SELECT
@@ -526,7 +560,7 @@ class APIClient:
             WHERE t.geography = ?
             AND t.scenario = ANY(?)
             AND t.model_year = ANY(?)
-            ORDER BY t.scenario, t.model_year, t.{group_col}
+            ORDER BY {scenario_order}, t.model_year, t.{group_col}
             """
             params = [
                 self.project_country,
@@ -538,7 +572,8 @@ class APIClient:
             ]
         else:
             # Just get peak totals without breakdown
-            sql = """
+            scenario_order = self._get_scenario_order_clause()
+            sql = f"""
             SELECT
                 scenario,
                 CAST(model_year AS INTEGER) as year,
@@ -556,7 +591,7 @@ class APIClient:
                 GROUP BY scenario, model_year, timestamp
             ) totals
             GROUP BY scenario, model_year
-            ORDER BY scenario, model_year
+            ORDER BY {scenario_order}, model_year
             """
             params = [self.project_country, scenarios, years_str]
 
@@ -783,8 +818,9 @@ class APIClient:
             params: list[Any] = [self.project_country, years_str, scenarios[0]]
         else:
             # Single year, multiple scenarios - pivot on scenario
-            pivot_cols = scenarios
-            scenario_pivot_list = ",".join([f"'{s}'" for s in scenarios])
+            # Order scenarios according to project config order
+            pivot_cols = [s for s in self.scenarios if s in scenarios]
+            scenario_pivot_list = ",".join([f"'{s}'" for s in pivot_cols])
 
             sql = f"""
             WITH hourly_totals AS (

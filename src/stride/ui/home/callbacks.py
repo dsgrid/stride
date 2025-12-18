@@ -524,12 +524,11 @@ def update_home_scenario_timeseries(  # noqa: C901
                         [{"secondary_y": True} for _ in range(cols)] for _ in range(rows)
                     ]
 
-                    # Create figure with secondary y-axes
-                    scenarios_sorted = sorted(selected_scenarios)
+                    # Create figure with secondary y-axes (preserve scenario order)
                     fig = make_subplots(
                         rows=rows,
                         cols=cols,
-                        subplot_titles=scenarios_sorted,
+                        subplot_titles=selected_scenarios,
                         specs=specs,
                         shared_yaxes=True,
                         vertical_spacing=0.08,
@@ -539,7 +538,7 @@ def update_home_scenario_timeseries(  # noqa: C901
                     # Add primary data traces
                     if breakdown_value:
                         categories = sorted(df[stack_col.lower()].unique())
-                        for idx, scenario in enumerate(scenarios_sorted):
+                        for idx, scenario in enumerate(selected_scenarios):
                             row = (idx // cols) + 1
                             col = (idx % cols) + 1
                             scenario_df = df[df["scenario"] == scenario]
@@ -594,7 +593,7 @@ def update_home_scenario_timeseries(  # noqa: C901
                                         )
                     else:
                         # No breakdown - simple line/area per scenario
-                        for idx, scenario in enumerate(scenarios_sorted):
+                        for idx, scenario in enumerate(selected_scenarios):
                             row = (idx // cols) + 1
                             col = (idx % cols) + 1
                             scenario_df = df[df["scenario"] == scenario].sort_values("year")
@@ -641,7 +640,7 @@ def update_home_scenario_timeseries(  # noqa: C901
                                     )
 
                     # Add secondary metric traces
-                    for idx, scenario in enumerate(scenarios_sorted):
+                    for idx, scenario in enumerate(selected_scenarios):
                         scenario_secondary = all_secondary_df[
                             all_secondary_df["scenario"] == scenario
                         ]
@@ -670,7 +669,7 @@ def update_home_scenario_timeseries(  # noqa: C901
                             )
 
                     # Update axes labels - only on rightmost column for secondary
-                    for idx in range(len(scenarios_sorted)):
+                    for idx in range(len(selected_scenarios)):
                         row = (idx // cols) + 1
                         col = (idx % cols) + 1
                         fig.update_yaxes(
