@@ -3,6 +3,8 @@ import tempfile
 from getpass import getuser
 from pathlib import Path
 
+from stride.models import Scenario
+
 from chronify.exceptions import InvalidParameter
 from dsgrid.config.mapping_tables import MappingTableModel
 from dsgrid.config.registration_models import DimensionType
@@ -305,7 +307,7 @@ def _query_and_create_table(
 def register_scenario_datasets(
     registry_path: Path,
     dataset_dir: Path,
-    scenario: str,
+    scenario: Scenario,
     table_names: list[str],
 ) -> None:
     """Register datasets for a non-baseline scenario.
@@ -319,8 +321,8 @@ def register_scenario_datasets(
         Path to the project/registry
     dataset_dir : Path
         Path to the data directory (e.g., ~/.stride/data/global-test)
-    scenario : str
-        Name of the scenario to create datasets for
+    scenario : Scenario
+        Scenario to create datasets for
     table_names : list[str]
         Names of tables to create datasets for
     """
@@ -350,7 +352,7 @@ def register_scenario_datasets(
             continue
 
         dataset_config = load_json_file(config_file_path)
-        new_dataset_id = f"{scenario}__{table_name}"
+        new_dataset_id = f"{scenario.name}__{table_name}"
         dataset_config["dataset_id"] = new_dataset_id
         config_dir = config_file_path.parent
 
@@ -361,13 +363,7 @@ def register_scenario_datasets(
                 if not file_path.is_absolute():
                     dimension["file"] = str((config_dir / file_path).resolve())
 
-        data_file_path = dataset_config.get("data_layout", {}).get("data_file", {}).get("path")
-        if data_file_path is not None:
-            path = Path(data_file_path)
-            if not path.is_absolute():
-                dataset_config["data_layout"]["data_file"]["path"] = str(
-                    (config_dir / path).resolve()
-                )
+        dataset_config["data_layout"]["data_file"]["path"] = str(getattr(scenario, table_name))
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp_file:
             json.dump(dataset_config, tmp_file)

@@ -157,7 +157,7 @@ class ProjectConfig(DSGBaseModel):  # type: ignore
                     continue
                 val = getattr(scenario, field)
                 if val is not None and not val.is_absolute():
-                    setattr(scenario, field, path.parent / val)
+                    setattr(scenario, field, (path.parent / val).resolve())
                 val = getattr(scenario, field)
                 if val is not None and not val.exists():
                     msg = (

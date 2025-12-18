@@ -108,7 +108,6 @@ class Project:
         project.persist()
         project.copy_dbt_template()
         project._create_views_for_unchanged_tables(unchanged_tables_by_scenario)
-        project._load_scenario_dataset_files(config)
         project.compute_energy_projection(use_table_overrides=False)
         project._apply_calculated_table_overrides()
 
@@ -154,9 +153,7 @@ class Project:
                 ]
                 new_tables = [d for d in datasets if getattr(scenario, d) is not None]
                 if new_tables:
-                    register_scenario_datasets(
-                        project_path, dataset_dir, scenario.name, new_tables
-                    )
+                    register_scenario_datasets(project_path, dataset_dir, scenario, new_tables)
         return unchanged_tables_by_scenario
 
     def _clear_scenario_dataset_paths(self) -> None:
@@ -172,28 +169,6 @@ class Project:
         for scenario_name, unchanged_tables in unchanged_tables_by_scenario.items():
             if unchanged_tables:
                 self._create_baseline_views(scenario_name, unchanged_tables)
-
-    def _load_scenario_dataset_files(self, config: ProjectConfig) -> None:
-        """Load user-provided dataset files for scenarios that override datasets."""
-        datasets = self.list_datasets()
-        for scenario in config.scenarios:
-            if scenario.name == "baseline":
-                continue
-            for dataset_name in datasets:
-                dataset_path = getattr(scenario, dataset_name)
-                if dataset_path is not None:
-                    # User provided a custom file for this dataset
-                    table_name = f"dsgrid_data.{scenario.name}__{dataset_name}__1_0_0"
-                    logger.info(
-                        "Loading custom {} data from {} for scenario {}",
-                        dataset_name,
-                        dataset_path,
-                        scenario.name,
-                    )
-                    create_table_from_file(self._con, table_name, dataset_path, replace=True)
-                    logger.info(
-                        "Loaded custom {} table for scenario {}", dataset_name, scenario.name
-                    )
 
     def _apply_calculated_table_overrides(self) -> None:
         """Apply any calculated table overrides from the config."""
