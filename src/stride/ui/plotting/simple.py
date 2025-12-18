@@ -265,7 +265,8 @@ def grouped_stacked_bars(
     stack_categories = sorted(df[stack_col].unique())
 
     # Get the maximum value to determine indicator bar height
-    max_value = df[value_col].max()
+    # For stacked bars, we need the sum of all stacks for each group/year combination
+    max_value = df.groupby([year_col, group_col])[value_col].sum().max()
     indicator_height = max_value * 0.02  # 2% of max value
 
     # Create data traces - group by sector for sector toggling
