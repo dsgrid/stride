@@ -108,6 +108,7 @@ class Project:
         project.persist()
         project.copy_dbt_template()
         project._create_views_for_unchanged_tables(unchanged_tables_by_scenario)
+        project._load_scenario_dataset_files(config)
         project.compute_energy_projection(use_table_overrides=False)
         project._apply_calculated_table_overrides()
 
@@ -171,6 +172,28 @@ class Project:
         for scenario_name, unchanged_tables in unchanged_tables_by_scenario.items():
             if unchanged_tables:
                 self._create_baseline_views(scenario_name, unchanged_tables)
+
+    def _load_scenario_dataset_files(self, config: ProjectConfig) -> None:
+        """Load user-provided dataset files for scenarios that override datasets."""
+        datasets = self.list_datasets()
+        for scenario in config.scenarios:
+            if scenario.name == "baseline":
+                continue
+            for dataset_name in datasets:
+                dataset_path = getattr(scenario, dataset_name)
+                if dataset_path is not None:
+                    # User provided a custom file for this dataset
+                    table_name = f"dsgrid_data.{scenario.name}__{dataset_name}__1_0_0"
+                    logger.info(
+                        "Loading custom {} data from {} for scenario {}",
+                        dataset_name,
+                        dataset_path,
+                        scenario.name,
+                    )
+                    create_table_from_file(self._con, table_name, dataset_path, replace=True)
+                    logger.info(
+                        "Loaded custom {} table for scenario {}", dataset_name, scenario.name
+                    )
 
     def _apply_calculated_table_overrides(self) -> None:
         """Apply any calculated table overrides from the config."""
@@ -488,7 +511,7 @@ class Project:
     @staticmethod
     def list_datasets() -> list[str]:
         """List the datasets available in any project."""
-        return [x for x in Scenario.model_fields if x != "name"]
+        return [x for x in Scenario.model_fields if x not in ("name", "use_ev_projection")]
 
     def persist(self) -> None:
         """Persist the project config to the project directory."""
@@ -512,13 +535,15 @@ class Project:
             overrides = table_overrides.get(scenario.name, [])
             override_strings = [f'"{x}_override": "{x}_override"' for x in overrides]
             override_str = ", " + ", ".join(override_strings) if override_strings else ""
+            use_ev_str = "true" if scenario.use_ev_projection else "false"
             vars_string = (
                 f'{{"scenario": "{scenario.name}", '
                 f'"country": "{self._config.country}", '
                 f'"model_years": "({model_years})", '
                 f'"weather_year": {self._config.weather_year}, '
                 f'"heating_threshold": {self._config.model_parameters.heating_threshold}, '
-                f'"cooling_threshold": {self._config.model_parameters.cooling_threshold}'
+                f'"cooling_threshold": {self._config.model_parameters.cooling_threshold}, '
+                f'"use_ev_projection": {use_ev_str}'
                 f"{override_str}}}"
             )
             # TODO: May want to run `build` instead of `run` if we add dbt tests.
@@ -536,6 +561,22 @@ class Project:
             finally:
                 os.chdir(orig)
                 self._con = self._connect()
+
+            # Check if the scenario produced any data
+            count_query = f"SELECT COUNT(*) as count FROM {scenario.name}.energy_projection"
+            row_count = self._con.sql(count_query).fetchone()[0]
+            if row_count == 0:
+                msg = (
+                    f"Scenario '{scenario.name}' completed but produced no energy projection data. "
+                    f"This may indicate missing source data tables or configuration issues."
+                )
+                raise InvalidParameter(msg)
+
+            logger.info(
+                "Scenario {} produced {} rows of energy projection data",
+                scenario.name,
+                row_count,
+            )
 
             columns = "timestamp, model_year, scenario, sector, geography, metric, value"
             if i == 0:
@@ -700,10 +741,12 @@ class Project:
                 msg = f"Baseline table or view '{existing_table_name}' does not exist."
                 raise InvalidParameter(msg)
             new_table_name = f"{scenario}__{table_name}__1_0_0"
-            # Skip if the target already exists (e.g., created by make_mapped_datasets)
+            # Drop the existing table/view if it exists, then create a view pointing to baseline
+            # This ensures unchanged tables always reference baseline data
             if self._relation_exists("dsgrid_data", new_table_name):
-                logger.debug("Skipping view creation for {} - already exists", new_table_name)
-                continue
+                self._con.sql(f"DROP TABLE IF EXISTS dsgrid_data.{new_table_name}")
+                self._con.sql(f"DROP VIEW IF EXISTS dsgrid_data.{new_table_name}")
+                logger.debug("Dropped existing {} to replace with baseline view", new_table_name)
             query = (
                 f"CREATE OR REPLACE VIEW dsgrid_data.{new_table_name} AS "
                 f"SELECT * FROM dsgrid_data.{existing_table_name}"

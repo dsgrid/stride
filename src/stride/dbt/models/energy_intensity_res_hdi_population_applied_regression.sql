@@ -2,6 +2,7 @@ SELECT
     geography
     ,model_year
     ,sector
+    ,subsector
     ,CASE
         WHEN regression_type = 'exp'
             THEN EXP(a0 + a1 * (model_year - t0)) * hdi_value * population_value

@@ -12,6 +12,10 @@
             name: "baseline",
         },
         {
+            name: "ev_projection",
+            use_ev_projection: true,
+        },
+        {
             name: "alternate_gdp",
             gdp: "alternate_gdp.csv",
         },

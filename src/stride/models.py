@@ -50,6 +50,10 @@ class Scenario(DSGBaseModel):  # type: ignore
         default=None,
         description="Optional path to a user-provided weather_bait table",
     )
+    use_ev_projection: bool = Field(
+        default=False,
+        description="Use EV-based projection for (Transportation, Road) instead of energy intensity regression",
+    )
     electricity_per_vehicle_km_projections: Path | None = Field(
         default=None,
         description="Optional path to a user-provided population table",
@@ -149,17 +153,18 @@ class ProjectConfig(DSGBaseModel):  # type: ignore
         config = super().from_file(path)
         for scenario in config.scenarios:
             for field in Scenario.model_fields:
-                if field != "name":
-                    val = getattr(scenario, field)
-                    if val is not None and not val.is_absolute():
-                        setattr(scenario, field, path.parent / val)
-                    val = getattr(scenario, field)
-                    if val is not None and not val.exists():
-                        msg = (
-                            f"Scenario={scenario.name} dataset={field} filename={val} "
-                            f"does not exist"
-                        )
-                        raise InvalidParameter(msg)
+                if field in ("name", "use_ev_projection"):
+                    continue
+                val = getattr(scenario, field)
+                if val is not None and not val.is_absolute():
+                    setattr(scenario, field, path.parent / val)
+                val = getattr(scenario, field)
+                if val is not None and not val.exists():
+                    msg = (
+                        f"Scenario={scenario.name} dataset={field} filename={val} "
+                        f"does not exist"
+                    )
+                    raise InvalidParameter(msg)
             for table in config.calculated_table_overrides:
                 if table.filename is not None and not table.filename.is_absolute():
                     table.filename = path.parent / table.filename

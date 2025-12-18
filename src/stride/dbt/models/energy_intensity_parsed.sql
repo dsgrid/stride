@@ -1,6 +1,7 @@
 SELECT
     geography
     ,sector
+    ,subsector
     ,split_part(metric, '_', 2) AS parameter
     ,split_part(metric, '_', 3) AS regression_type
     ,value

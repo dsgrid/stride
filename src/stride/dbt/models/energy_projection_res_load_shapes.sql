@@ -30,6 +30,7 @@ stride_annual_energy AS (
         geography,
         model_year,
         sector,
+        subsector,
         value * 277.777777778 AS stride_annual_total
     FROM {{ table_ref('energy_intensity_res_hdi_population_applied_regression') }}
 ),
@@ -38,13 +39,14 @@ scaling_factors AS (
     -- Compute scaling factor: STRIDE annual / load shape annual
     -- This scales the temperature-adjusted load shapes to match STRIDE totals
     -- Same scaling factor applies to all enduses within a sector
+    -- Note: Load shapes are at sector level, so we aggregate subsectors
     SELECT
         ls.geography,
         ls.model_year,
         ls.sector,
         CASE 
             WHEN ls.load_shape_annual_total > 0 
-            THEN stride.stride_annual_total / ls.load_shape_annual_total
+            THEN SUM(stride.stride_annual_total) / ls.load_shape_annual_total
             ELSE 1.0
         END AS scaling_factor
     FROM load_shapes_annual_totals ls
@@ -52,6 +54,7 @@ scaling_factors AS (
         ON ls.geography = stride.geography
         AND ls.model_year = stride.model_year
         AND ls.sector = stride.sector
+    GROUP BY ls.geography, ls.model_year, ls.sector, ls.load_shape_annual_total
 )
 
 -- Apply scaling factors to create final hourly energy projections
