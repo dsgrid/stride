@@ -328,6 +328,17 @@ def _query_and_create_table(
     )
     # Use Arrow transfer instead of toPandas() for better performance
     arrow_table = df.relation.arrow()  # noqa: F841
+    # Convert model_year from string to integer if needed
+    if "model_year" in arrow_table.schema.names:
+        import pyarrow as pa
+
+        field_index = arrow_table.schema.get_field_index("model_year")
+        if pa.types.is_string(arrow_table.schema.field(field_index).type):
+            arrow_table = arrow_table.set_column(
+                field_index,
+                "model_year",
+                arrow_table.column("model_year").cast(pa.int64()),
+            )
     con.execute(f"CREATE OR REPLACE TABLE {table_name} AS SELECT * FROM arrow_table")
     logger.info("Created table {} from mapped dataset.", table_name)
 
