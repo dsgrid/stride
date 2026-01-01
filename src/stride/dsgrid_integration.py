@@ -59,8 +59,23 @@ def make_mapped_datasets(
     dataset_dir: Path,
     base_path: Path,
     scenario: str,
+    skip_tables: list[str] | None = None,
 ) -> None:
-    """Create mapped datasets from the dsgrid registry and data files."""
+    """Create mapped datasets from the dsgrid registry and data files.
+
+    Parameters
+    ----------
+    con : duckdb.DuckDBPyConnection
+        DuckDB connection
+    dataset_dir : Path
+        Path to the dataset directory
+    base_path : Path
+        Base path for the project
+    scenario : str
+        Scenario name
+    skip_tables : list[str] | None
+        List of table names to skip (these will be replaced with views to baseline)
+    """
     url = _registry_url(base_path)
     mgr = RegistryManager.load(DatabaseConnection(url=url), use_remote_data=False)
     scratch_dir = Path(tempfile.gettempdir())
@@ -74,8 +89,20 @@ def make_mapped_datasets(
     output_dir = base_path / "dsgrid_query_output"
     query_submitter = DatasetQuerySubmitter(output_dir)
     mappings_dir = dimension_mappings_file.parent
+    skip_tables = skip_tables or []
 
     for mapping in mappings:
+        # Extract table name from dataset_id (e.g., "baseline__load_shapes" -> "load_shapes")
+        dataset_id = mapping.get("dataset_id", "")
+        table_name = dataset_id.split("__")[1] if "__" in dataset_id else dataset_id
+        if table_name in skip_tables:
+            logger.debug(
+                "Skipping {} for scenario {} (will use baseline view)",
+                table_name,
+                scenario,
+            )
+            continue
+
         _process_dataset_mapping(
             con=con,
             mapping=mapping,
@@ -289,18 +316,19 @@ def _query_and_create_table(
         dataset_id=dataset_id,
         to_dimension_references=to_dimension_references,
     )
-    # This calls toPandas() because the duckdb connection inside dsgrid is
-    # different than this one. We need to extract it and then add it through this connection.
-    df = query_submitter.submit(  # noqa: F841
+    base_id = dataset_id.split("__")[1]
+    table_name = f"dsgrid_data.{scenario}__{base_id}__1_0_0"
+
+    # Query dsgrid and get the result DataFrame
+    df = query_submitter.submit(
         query,
         mgr,
         scratch_dir=scratch_dir,
         overwrite=True,
-    ).toPandas()
-    base_id = dataset_id.split("__")[1]
-    table_name = f"dsgrid_data.{scenario}__{base_id}__1_0_0"
-    # Note: This overwrites the original table with the mapped table.
-    con.sql(f"CREATE OR REPLACE TABLE {table_name} AS SELECT * FROM df")
+    )
+    # Use Arrow transfer instead of toPandas() for better performance
+    arrow_table = df.relation.arrow()  # noqa: F841
+    con.execute(f"CREATE OR REPLACE TABLE {table_name} AS SELECT * FROM arrow_table")
     logger.info("Created table {} from mapped dataset.", table_name)
 
 

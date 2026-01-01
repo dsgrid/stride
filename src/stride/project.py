@@ -103,7 +103,12 @@ class Project:
         project.con.sql("CREATE SCHEMA stride")
         project._clear_scenario_dataset_paths()
         for scenario in config.scenarios:
-            make_mapped_datasets(project.con, dataset_dir, project.path, scenario.name)
+            # Skip computing mapped datasets for tables that will be replaced with
+            # baseline views (avoids expensive redundant computation)
+            skip_tables = unchanged_tables_by_scenario.get(scenario.name, [])
+            make_mapped_datasets(
+                project.con, dataset_dir, project.path, scenario.name, skip_tables
+            )
 
         project.persist()
         project.copy_dbt_template()
