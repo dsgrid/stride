@@ -184,11 +184,6 @@ def update_summary_stats(
     if not selected_year or scenario not in data_handler.scenarios:
         return "---", "---", "---", "---"
 
-    # Convert selected_year to int in case it comes as string from dropdown
-    selected_year = int(selected_year)
-    if start_year is not None:
-        start_year = int(start_year)
-
     try:
         # Get all consumption and peak demand data for this scenario
         consumption_df = data_handler.get_annual_electricity_consumption(
@@ -548,23 +543,19 @@ def update_timeseries_plot(
         Plotly figure object or error dictionary
     """
 
-    # Handle both int and string years from dropdown
-    if isinstance(selected_years, (int, str)):
-        selected_years = [int(selected_years)]
-    elif isinstance(selected_years, list):
-        selected_years = [int(y) for y in selected_years]
+    if isinstance(selected_years, int):
+        selected_years = [selected_years]
 
     if not selected_years or scenario not in data_handler.scenarios:
         return {"data": [], "layout": {"title": "Select years to view data"}}
     try:
-        # Convert "None" to None and years to int
+        # Convert "None" to None
         breakdown_value = None if breakdown == "None" else breakdown
 
-        selected_years_int = selected_years
         # Get timeseries data. Need to pass "End Use" Literal Hera
         df = data_handler.get_time_series_comparison(
             scenario=scenario,
-            years=selected_years_int,
+            years=selected_years,
             group_by=breakdown_value,
             resample=resample,
         )
@@ -576,7 +567,7 @@ def update_timeseries_plot(
         # Add weather variable if selected
         if weather_var and weather_var != "None":
             _add_weather_to_timeseries(
-                fig, data_handler, plotter, scenario, weather_var, selected_years_int, resample
+                fig, data_handler, plotter, scenario, weather_var, selected_years, resample
             )
         else:
             # No weather variable - just ensure y-axis starts at zero
@@ -623,11 +614,8 @@ def update_yearly_plot(  # noqa: C901
         Plotly figure object or error dictionary
     """
 
-    # Handle both int and string years from dropdown
-    if isinstance(selected_year, (int, str)):
-        selected_year = [int(selected_year)]
-    elif isinstance(selected_year, list):
-        selected_year = [int(y) for y in selected_year]
+    if isinstance(selected_year, int):
+        selected_year = [selected_year]
 
     if not selected_year or scenario not in data_handler.scenarios:
         return {"data": [], "layout": {"title": "Select a year to view data"}}
@@ -635,7 +623,7 @@ def update_yearly_plot(  # noqa: C901
         # Convert "None" to None
         breakdown_value = None if breakdown == "None" else breakdown
         # Get timeseries data for single year
-        year_int = selected_year[0]
+        year_int = int(selected_year[0])
         df = data_handler.get_time_series_comparison(
             scenario=scenario, years=selected_year, group_by=breakdown_value, resample=resample
         )
@@ -881,17 +869,16 @@ def update_load_duration_plot(
         Plotly figure object or error dictionary
     """
 
-    # Handle both int and string years from dropdown
-    if isinstance(selected_years, (int, str)):
-        selected_years = [int(selected_years)]
-    elif isinstance(selected_years, list):
-        selected_years = [int(y) for y in selected_years]
+    if isinstance(selected_years, int):
+        selected_years = [selected_years]
 
     if not selected_years or scenario not in data_handler.scenarios:
         return {"data": [], "layout": {"title": "Select years to view data"}}
     try:
+        # Convert years to int
+        selected_years_int = [int(year) for year in selected_years]
         # Get load duration curve data
-        df = data_handler.get_load_duration_curve(years=selected_years, scenarios=[scenario])
+        df = data_handler.get_load_duration_curve(years=selected_years_int, scenarios=[scenario])
         return plotter.demand_curve(df)
     except Exception as e:
         print(f"Error in load duration plot: {e}")
