@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 """
 STRIDE UI Data API
 
@@ -93,17 +95,20 @@ class APIClient:
         self,
         project: Project,
     ):
-        logger.debug(f"APIClient.__init__ called with project_config: {project is not None}")
-
-        # Always update the project reference, even if already initialized
-        # This ensures the singleton always points to the correct project instance
-        self.project = project
-
-        # Only initialize once
-        if hasattr(self, "_initialized"):
+        # Check if we're switching to a different project
+        if hasattr(self, "_initialized") and self._initialized:
+            # Compare resolved absolute paths to handle relative vs absolute
+            current_path = str(Path(self.project.path).resolve())
+            new_path = str(Path(project.path).resolve())
+            if current_path != new_path:
+                # Switching projects - update project and clear cached state
+                self.project = project
+                self.project_country = self.project.config.country
+                self.refresh_metadata()
             return
 
-        # Set table name and country from config or defaults
+        # First-time initialization
+        self.project = project
         self.energy_proj_table = "energy_projection"
         self.project_country = self.project.config.country
 

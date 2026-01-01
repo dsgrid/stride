@@ -310,6 +310,13 @@ body {
     color: var(--input-text) !important;
 }
 
+.dark-theme input::placeholder,
+.dark-theme textarea::placeholder,
+.dark-theme .form-control::placeholder {
+    color: var(--text-muted) !important;
+    opacity: 1;
+}
+
 .dark-theme .form-label {
     color: var(--text-primary) !important;
 }
@@ -670,4 +677,12 @@ body {
 
 .dark-theme .js-plotly-plot .modebar-btn.active path {
     fill: var(--accent-primary) !important;
+}
+
+
+/* Project name display */
+.dark-theme .project-name-display {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
 }
