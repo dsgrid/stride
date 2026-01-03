@@ -12,7 +12,7 @@ from stride.ui.color_manager import ColorManager
 from stride.ui.home import create_home_layout, register_home_callbacks
 from stride.ui.palette import ColorPalette
 from stride.ui.plotting import StridePlots
-from stride.ui.project_manager import add_recent_project, discover_projects
+from stride.ui.project_manager import add_recent_project, get_recent_projects
 from stride.ui.scenario import create_scenario_layout, register_scenario_callbacks
 from stride.ui.settings import create_settings_layout, register_settings_callbacks
 from stride.ui.settings.layout import get_temp_color_edits
@@ -193,14 +193,19 @@ def create_app(  # noqa: C901
 
     scenarios = data_handler.scenarios
     years = data_handler.years
+    available_projects_ = available_projects or []
 
     # Discover available projects if not provided
-    if available_projects is None:
-        try:
-            available_projects = discover_projects()
-        except Exception as e:
-            logger.warning(f"Could not discover projects: {e}")
-            available_projects = []
+    if not available_projects_:
+        recent = get_recent_projects()
+        seen_ids: set[str] = set()
+
+        for proj in recent:
+            project_id = proj["project_id"]
+            path = Path(proj["path"]).resolve()
+            if project_id not in seen_ids and path.exists():
+                available_projects_.append(proj)
+                seen_ids.add(project_id)
 
     # Add current project to recent projects
     try:
@@ -236,6 +241,17 @@ def create_app(  # noqa: C901
     # Get current project display name
     current_project_name = data_handler.project.config.project_id
 
+    # Build dropdown options with deduplication by project_id
+    dropdown_options = [{"label": current_project_name, "value": current_project_path}]
+    seen_project_ids = {current_project_name}
+    for p in available_projects_:
+        project_id = p.get("project_id", "")
+        if project_id and project_id not in seen_project_ids:
+            dropdown_options.append(
+                {"label": p.get("name", "Unknown"), "value": p.get("path", "")}
+            )
+            seen_project_ids.add(project_id)
+
     # Create sidebar
     sidebar = html.Div(
         [
@@ -253,6 +269,20 @@ def create_app(  # noqa: C901
                                 id="current-project-name",
                                 className="mb-2 p-2 rounded project-name-display",
                                 style={"fontSize": "0.95rem"},
+                            ),
+                            # Current project path (read-only)
+                            dcc.Input(
+                                id="current-project-path-display",
+                                value=current_project_path,
+                                type="text",
+                                readOnly=True,
+                                className="form-control form-control-sm mb-2",
+                                style={
+                                    "fontSize": "0.75rem",
+                                    "backgroundColor": "#2a2a2a",
+                                    "color": "#888",
+                                    "border": "1px solid #444",
+                                },
                             ),
                             # Text input for new path (before dropdown for tab order)
                             dcc.Input(
@@ -278,12 +308,11 @@ def create_app(  # noqa: C901
                                 className="small mb-2",
                                 style={"fontSize": "0.8rem"},
                             ),
-                            # Dropdown for cached projects
+                            # Dropdown for available projects (recent + discovered)
                             dcc.Dropdown(
                                 id="project-switcher-dropdown",
-                                options=[
-                                    {"label": current_project_name, "value": current_project_path}
-                                ],
+                                options=dropdown_options,
+                                value=current_project_path,
                                 placeholder="Switch project...",
                                 className="mb-2",
                                 style={"fontSize": "0.85rem"},
@@ -771,6 +800,7 @@ def create_app(  # noqa: C901
         Output("current-project-path", "data"),
         Output("project-load-status", "children"),
         Output("current-project-name", "children"),
+        Output("current-project-path-display", "value"),
         Output("project-switcher-dropdown", "options"),
         Output("project-switcher-dropdown", "value"),
         Input("load-project-btn", "n_clicks"),
@@ -778,6 +808,7 @@ def create_app(  # noqa: C901
         Input("project-switcher-dropdown", "value"),
         State("project-path-input", "value"),
         State("current-project-path", "data"),
+        State("project-switcher-dropdown", "options"),
         prevent_initial_call=True,
     )
     def handle_project_switch(
@@ -786,7 +817,8 @@ def create_app(  # noqa: C901
         dropdown_value: str | None,
         path_input: str | None,
         current_path: str,
-    ) -> tuple[str, html.Div, str, list[dict[str, str]], str | None]:
+        current_options: list[dict[str, str]],
+    ) -> tuple[str, html.Div, str, str, list[dict[str, str]], str | None]:
         """Handle project loading and switching."""
         from dash import ctx, no_update
 
@@ -798,17 +830,25 @@ def create_app(  # noqa: C901
         if trigger_id in ("load-project-btn", "project-path-input") and path_input:
             success, message = load_project(path_input)
             if success:
-                # Update dropdown options with all loaded projects
-                options = get_loaded_project_options()
                 data_handler = get_current_data_handler()
                 project_name = (
                     data_handler.project.config.project_id if data_handler else "Unknown"
                 )
+                # Add new project to dropdown if not already there
+                existing_paths = {opt.get("value") for opt in current_options}
+                if _current_project_path not in existing_paths:
+                    new_options = [
+                        {"label": project_name, "value": _current_project_path},
+                        *current_options,
+                    ]
+                else:
+                    new_options = no_update
                 return (
                     _current_project_path,
                     html.Span(message, className="text-success"),
                     project_name,
-                    options,
+                    _current_project_path,
+                    new_options,
                     _current_project_path,
                 )
             else:
@@ -818,13 +858,15 @@ def create_app(  # noqa: C901
                     no_update,
                     no_update,
                     no_update,
+                    no_update,
                 )
 
         elif trigger_id == "project-switcher-dropdown" and dropdown_value:
             # Switch to selected project from dropdown
             if dropdown_value != current_path:
-                _current_project_path = dropdown_value
                 if dropdown_value in _loaded_projects:
+                    # Project already loaded - just switch to it
+                    _current_project_path = dropdown_value
                     cached_project, _, _, project_name = _loaded_projects[dropdown_value]
                     # Update the APIClient singleton to point to this project
                     APIClient(cached_project)
@@ -832,9 +874,35 @@ def create_app(  # noqa: C901
                         dropdown_value,
                         html.Span(f"Switched to {project_name}", className="text-success"),
                         project_name,
+                        dropdown_value,
                         no_update,
                         dropdown_value,
                     )
+                else:
+                    # Project not yet loaded - load it (handles recent projects)
+                    success, message = load_project(dropdown_value)
+                    if success:
+                        data_handler = get_current_data_handler()
+                        project_name = (
+                            data_handler.project.config.project_id if data_handler else "Unknown"
+                        )
+                        return (
+                            _current_project_path,
+                            html.Span(message, className="text-success"),
+                            project_name,
+                            _current_project_path,
+                            no_update,  # Don't replace dropdown options
+                            _current_project_path,
+                        )
+                    else:
+                        return (
+                            no_update,
+                            html.Span(message, className="text-danger"),
+                            no_update,
+                            no_update,
+                            no_update,
+                            current_path,  # Reset dropdown to current project
+                        )
 
         raise PreventUpdate
 

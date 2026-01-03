@@ -200,14 +200,16 @@ def list_remote_datasets() -> None:
     print("Known datasets available for download:\n")
     for dataset in datasets:
         print(f"  {dataset.name}")
-        print(f"    Repository: {dataset.repo}")
-        print(f"    Subdirectory: {dataset.subdirectory}")
-        print(f"    Description: {dataset.description}")
+        print(f"    repository: {dataset.repo}")
+        print(f"    subdirectory: {dataset.subdirectory}")
+        if dataset.test_subdirectory:
+            print(f"    test_subdirectory: {dataset.test_subdirectory}")
+        print(f"    description: {dataset.description}")
         versions = repo_versions.get(dataset.repo, [])
         if versions:
-            print(f"    Available versions: {', '.join(versions)}")
+            print(f"    available versions: {', '.join(versions)}")
         else:
-            print("    Available versions: (unable to fetch)")
+            print("    available versions: (unable to fetch)")
         print()
 
 
@@ -406,7 +408,6 @@ def view(
     """
     from stride.api import APIClient
     from stride.ui.app import create_app
-    from stride.ui.project_manager import discover_projects
     from stride.ui.tui import get_default_user_palette, load_user_palette
 
     project = safe_get_project_from_context(ctx, project_path)
@@ -431,20 +432,12 @@ def view(
             logger.error(f"User palette '{palette_name}' not found")
             ctx.exit(1)
 
-    # Discover available projects for the project switcher
-    try:
-        available_projects = discover_projects()
-        logger.info(f"Discovered {len(available_projects)} projects")
-    except Exception as e:
-        logger.warning(f"Could not discover projects: {e}")
-        available_projects = []
-
     data_handler = APIClient(project=project)
 
+    # Let create_app build available_projects from recent projects
     app = create_app(
         data_handler=data_handler,
         user_palette=palette_override,
-        available_projects=available_projects,
     )
     # Run in single threaded mode to avoid data races.
     app.run(host=host, port=port, debug=debug, threaded=False)
