@@ -39,6 +39,7 @@ class KnownDataset:
     repo: str
     subdirectory: str
     description: str
+    test_subdirectory: str | None = None
 
 
 KNOWN_DATASETS: dict[str, KnownDataset] = {
@@ -47,12 +48,7 @@ KNOWN_DATASETS: dict[str, KnownDataset] = {
         repo="dsgrid/stride-data",
         subdirectory="global",
         description="Global energy projection dataset",
-    ),
-    "global-test": KnownDataset(
-        name="global-test",
-        repo="dsgrid/stride-data",
-        subdirectory="global-test",
-        description="Global energy projection test dataset (smaller)",
+        test_subdirectory="global-test",
     ),
 }
 
@@ -174,7 +170,7 @@ def download_dataset(
     Parameters
     ----------
     name : str
-        Name of a known dataset (e.g., "global", "global_test")
+        Name of a known dataset (e.g., "global")
     destination : Path | None
         Directory where the dataset will be placed. Defaults to current directory.
     version : str | None
@@ -201,6 +197,7 @@ def download_dataset(
         subdirectory=dataset.subdirectory,
         destination=destination,
         version=version,
+        test_subdirectory=dataset.test_subdirectory,
     )
 
 
@@ -429,6 +426,7 @@ def download_dataset_from_repo(
     subdirectory: str,
     destination: Path | None = None,
     version: str | None = None,
+    test_subdirectory: str | None = None,
 ) -> Path:
     """Download a dataset from a GitHub repository.
 
@@ -442,6 +440,9 @@ def download_dataset_from_repo(
         Directory where the dataset will be placed. Defaults to ~/.stride/data.
     version : str | None
         Release version/tag to download. Defaults to the latest release.
+    test_subdirectory : str | None
+        Optional subdirectory containing test data. If provided, both the main
+        dataset and test dataset will be extracted from the same archive.
 
     Returns
     -------
@@ -474,5 +475,15 @@ def download_dataset_from_repo(
 
         _download_archive(repo, version, archive_path, token)
         _extract_archive(archive_path, extract_path)
+
+        # Extract main dataset
         source_path = _find_source_in_archive(extract_path, subdirectory)
-        return _move_to_destination(source_path, destination, subdirectory)
+        result = _move_to_destination(source_path, destination, subdirectory)
+
+        # Extract test dataset if specified
+        if test_subdirectory:
+            test_source_path = _find_source_in_archive(extract_path, test_subdirectory)
+            _move_to_destination(test_source_path, destination, test_subdirectory)
+            logger.info("Also extracted test dataset: {}", test_subdirectory)
+
+        return result

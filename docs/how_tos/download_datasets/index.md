@@ -21,7 +21,8 @@ To see the known datasets available for download along with their available vers
 ```
 
 This will display each dataset's name, repository, subdirectory, description, and available
-versions.
+versions. Datasets may also have an associated test dataset (shown as ``test_subdirectory``)
+which is automatically downloaded alongside the main dataset.
 
 ## Download a Known Dataset
 
@@ -31,7 +32,14 @@ To download a known dataset to the default location (``~/.stride/data``):
 
 .. code-block:: console
 
-   $ stride datasets download global-test
+   $ stride datasets download global
+```
+
+```{eval-rst}
+.. note::
+   If a dataset has an associated test dataset (e.g., ``global-test``), it will be
+   automatically downloaded to the same destination directory. This enables the
+   ``--use-test-data`` option when creating projects.
 ```
 
 ### Specify a Destination Directory
@@ -42,7 +50,7 @@ Use the ``-d`` or ``--destination`` option to download to a specific location:
 
 .. code-block:: console
 
-   $ stride datasets download global-test -d ./my_data
+   $ stride datasets download global -d ./my_data
 ```
 
 ### Specify a Version
@@ -53,7 +61,7 @@ By default, the latest release is downloaded. To download a specific version:
 
 .. code-block:: console
 
-   $ stride datasets download global-test -v v0.1.0.beta.1
+   $ stride datasets download global -v v0.1.0.beta.1
 ```
 
 ## Download from a Custom Repository
