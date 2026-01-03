@@ -399,7 +399,8 @@ def faceted_time_series(
     # Get hover label styling based on theme
     hoverlabel_style = get_hoverlabel_style(template)
 
-    scenarios = sorted(df["scenario"].unique())
+    # Note: scenarios should already be in project config order from the API
+    scenarios = list(df["scenario"].unique())
     rows, cols = calculate_subplot_layout(len(scenarios))
 
     # Create subplots with scenario titles
