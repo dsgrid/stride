@@ -438,7 +438,7 @@ class APIClient:
             """
             params = [self.project_country, scenarios, years]
         else:
-            sql = """
+            sql = f"""
             SELECT scenario, model_year as year, SUM(value) as value
             FROM energy_projection
             WHERE geography = ?
