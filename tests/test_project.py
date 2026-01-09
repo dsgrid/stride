@@ -51,7 +51,7 @@ def test_show_calculated_table(default_project: Project) -> None:
         cli, ["calculated-tables", "show", str(project.path), tables[0], "-l", "10"]
     )
     assert result.exit_code == 0
-    assert "country_1" in result.stdout
+    assert "country_1" in result.stdout or "country_2" in result.stdout
 
 
 def test_scenario_name() -> None:

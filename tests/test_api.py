@@ -243,7 +243,7 @@ def test_seasonal_load_lines_time_groupings(  # noqa: C901
 
     # Get API results
     df_api = api_client.get_seasonal_load_lines(
-        scenario="test_scenario", years=[2030], group_by=group_by, agg="Average Day"
+        scenario="baseline", years=[2030], group_by=group_by, agg="Average Day"
     )
 
     # Verify structure
