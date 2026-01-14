@@ -1,16 +1,17 @@
+from __future__ import annotations
+
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import dash_bootstrap_components as dbc
 from dash import Dash, Input, Output, State, callback, dcc, html
 from dash.exceptions import PreventUpdate
 from loguru import logger
 
-if TYPE_CHECKING:
-    from stride.project import Project
 
 from stride.api import APIClient
 from stride.api.utils import Sectors, literal_to_list
+from stride.project import Project
 from stride.ui.color_manager import ColorManager
 from stride.ui.home import create_home_layout, register_home_callbacks
 from stride.ui.palette import ColorPalette
@@ -82,8 +83,6 @@ def load_project(project_path: str) -> tuple[bool, str]:
         (success, message) where success is True if loaded successfully
     """
     global _loaded_projects, _current_project_path
-
-    from stride.project import Project
 
     try:
         path = Path(project_path).resolve()
