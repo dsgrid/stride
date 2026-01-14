@@ -282,7 +282,7 @@ def test_cli_list_remote() -> None:
 def test_cli_download_no_args() -> None:
     """Test the CLI download command with no arguments."""
     runner = CliRunner()
-    result = runner.invoke(cli, ["datasets", "download"])
+    result = runner.invoke(cli, ["datasets", "download"], color=False)
     assert result.exit_code != 0
     assert "Either NAME or --url must be provided" in result.output
 
@@ -290,6 +290,8 @@ def test_cli_download_no_args() -> None:
 def test_cli_download_url_without_subdirectory() -> None:
     """Test the CLI download command with --url but no --subdirectory."""
     runner = CliRunner()
-    result = runner.invoke(cli, ["datasets", "download", "--url", "https://github.com/owner/repo"])
+    result = runner.invoke(
+        cli, ["datasets", "download", "--url", "https://github.com/owner/repo"], color=False
+    )
     assert result.exit_code != 0
     assert "--subdirectory is required" in result.output
