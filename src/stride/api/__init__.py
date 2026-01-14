@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from duckdb import DuckDBPyConnection
+from duckdb import DuckDBPyConnection
 
 """
 STRIDE UI Data API
@@ -114,7 +112,6 @@ class APIClient:
                 self.refresh_metadata()
             return
 
-        # First-time initialization
         self.project = project
         self.energy_proj_table = "energy_projection"
         self.project_country = self.project.config.country
