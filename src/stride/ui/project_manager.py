@@ -4,9 +4,11 @@ import json
 from pathlib import Path
 from typing import Any
 
+from dsgrid.utils.files import dump_json_file, load_json_file
 from loguru import logger
 
-from stride.project import CONFIG_FILE, Project
+from stride import Project, ProjectConfig
+from stride.project import CONFIG_FILE
 
 
 def get_stride_projects_dir() -> Path:
@@ -139,11 +141,7 @@ def _add_project_if_valid(
         if not config_file.exists():
             return
 
-        # Read the config to get project info
-        from stride.models import ProjectConfig
-
         config = ProjectConfig.from_file(config_file)
-
         projects.append(
             {
                 "name": config.project_id,
@@ -199,14 +197,20 @@ def get_recent_projects(max_count: int = 5) -> list[dict[str, Any]]:
     if not config_file.exists():
         return []
 
-    try:
-        with open(config_file) as f:
-            config = json.load(f)
-            recent: list[dict[str, Any]] = config.get("recent_projects", [])
-            return recent[:max_count]
-    except Exception as e:
-        logger.warning(f"Error reading recent projects: {e}")
-        return []
+    config = load_json_file(config_file)
+    recent: list[dict[str, Any]] = config.get("recent_projects", [])
+
+    # Deduplicate by project_id (keep first/most recent entry)
+    seen_ids: set[str] = set()
+    deduplicated: list[dict[str, Any]] = []
+    for proj in recent:
+        project_id = proj["project_id"]
+        if project_id not in seen_ids:
+            proj["path"] = str(Path(proj["path"]).resolve())
+            deduplicated.append(proj)
+            seen_ids.add(project_id)
+
+    return deduplicated[:max_count]
 
 
 def add_recent_project(project_path: str | Path, project_id: str) -> None:
@@ -225,31 +229,31 @@ def add_recent_project(project_path: str | Path, project_id: str) -> None:
     config_file = config_dir / "config.json"
 
     # Load existing config or create new one
-    config = {}
-    if config_file.exists():
-        try:
-            with open(config_file) as f:
-                config = json.load(f)
-        except Exception as e:
-            logger.warning(f"Error reading config file: {e}")
-
+    config = load_json_file(config_file) if config_file.exists() else {}
     recent = config.get("recent_projects", [])
+    abs_path = str(Path(project_path).resolve())
 
-    # Remove if already exists
-    recent = [p for p in recent if p["path"] != str(Path(project_path).absolute())]
+    # Check if project_id already exists
+    existing_entry = next((p for p in recent if p.get("project_id") == project_id), None)
 
-    # Add to front
-    recent.insert(
-        0,
-        {
-            "path": str(Path(project_path).absolute()),
-            "project_id": project_id,
-            "name": project_id,
-        },
-    )
+    if existing_entry:
+        # If same path, nothing to do
+        if existing_entry.get("path") == abs_path:
+            return
+        # If different path, update it
+        existing_entry["path"] = abs_path
+        existing_entry["name"] = project_id
+    else:
+        # New project - add to front
+        recent.insert(
+            0,
+            {
+                "path": abs_path,
+                "project_id": project_id,
+                "name": project_id,
+            },
+        )
 
     # Keep only last 10
     config["recent_projects"] = recent[:10]
-
-    with open(config_file, "w") as f:
-        json.dump(config, f, indent=2)
+    dump_json_file(config, config_file, indent=2)

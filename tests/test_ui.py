@@ -202,17 +202,21 @@ def test_update_summary_stats_valid_inputs(api_client: APIClient) -> None:
     available_scenario = api_client.scenarios[0]
     available_year = api_client.years[-1]  # Use last year for growth calculation
 
-    total, growth, peak = update_summary_stats(api_client, available_scenario, available_year)
+    total, consumption_cagr, peak, peak_cagr = update_summary_stats(
+        api_client, available_scenario, available_year
+    )
 
     # Should return formatted strings
     assert isinstance(total, str)
-    assert isinstance(growth, str)
+    assert isinstance(consumption_cagr, str)
     assert isinstance(peak, str)
+    assert isinstance(peak_cagr, str)
 
     # Should not be error values
     assert total != "Error"
-    assert growth != "Error"
+    assert consumption_cagr != "Error"
     assert peak != "Error"
+    assert peak_cagr != "Error"
 
 
 def test_update_summary_stats_first_year(api_client: APIClient) -> None:
@@ -220,20 +224,24 @@ def test_update_summary_stats_first_year(api_client: APIClient) -> None:
     available_scenario = api_client.scenarios[0]
     first_year = api_client.years[0]
 
-    total, growth, peak = update_summary_stats(api_client, available_scenario, first_year)
+    total, consumption_cagr, peak, peak_cagr = update_summary_stats(
+        api_client, available_scenario, first_year
+    )
 
     assert isinstance(total, str)
-    assert growth == "N/A"  # First year has no previous year
+    assert consumption_cagr == "N/A"  # First year has no previous year
     assert isinstance(peak, str)
+    assert peak_cagr == "N/A"  # First year has no previous year
 
 
 def test_update_summary_stats_invalid_inputs(api_client: APIClient) -> None:
     """Test summary stats with invalid inputs."""
     # Invalid scenario
-    total, growth, peak = update_summary_stats(api_client, "invalid", 2030)
+    total, consumption_cagr, peak, peak_cagr = update_summary_stats(api_client, "invalid", 2030)
     assert total == "---"
-    assert growth == "---"
+    assert consumption_cagr == "---"
     assert peak == "---"
+    assert peak_cagr == "---"
 
 
 @pytest.mark.parametrize("breakdown", literal_to_list(ConsumptionBreakdown, include_none_str=True))
@@ -462,8 +470,11 @@ def test_scenario_callback_api_error(api_client: APIClient, plotter: StridePlots
 def test_summary_stats_exception(api_client: APIClient) -> None:
     """Test summary stats handles exceptions."""
     # Use invalid scenario to trigger error
-    total, growth, peak = update_summary_stats(api_client, "invalid_scenario", 2030)
+    total, consumption_cagr, peak, peak_cagr = update_summary_stats(
+        api_client, "invalid_scenario", 2030
+    )
 
     assert total == "---"
-    assert growth == "---"
+    assert consumption_cagr == "---"
     assert peak == "---"
+    assert peak_cagr == "---"

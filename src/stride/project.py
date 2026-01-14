@@ -8,6 +8,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Self
 
+from dsgrid.dimension.base_models import DatasetDimensionRequirements
 import duckdb
 from chronify.exceptions import InvalidOperation, InvalidParameter
 from chronify.utils.path_utils import check_overwrite
@@ -67,6 +68,7 @@ class Project:
         base_dir: Path = Path(),
         overwrite: bool = False,
         use_test_data: bool = False,
+        dataset_requirements: DatasetDimensionRequirements | None = None,
     ) -> Self:
         """Create a project from a config file.
 
@@ -82,18 +84,29 @@ class Project:
         use_test_data
             If True, use the smaller test dataset (global-test).
             If False (default), use the full dataset (global).
+        dataset_requirements
+            Optional, requirements to use when checking dataset consistency.
 
         Examples
         --------
         >>> Project.create("my_project.json5")
         """
+        # check_time_consistency=os.getenv("STRIDE_CHECK_TIME_CONSISTENCY", True),
+        # check_dimension_associations=os.getenv("STRIDE_CHECK_DIMENSION_ASSOCIATIONS", False),
+        # check_time_consistency=os.getenv("STRIDE_CHECK_TIME_CONSISTENCY", True),
+        # check_dimension_associations=os.getenv("STRIDE_CHECK_DIMENSION_ASSOCIATIONS", False),
+        requirements = dataset_requirements or DatasetDimensionRequirements(
+            check_time_consistency=True,
+            check_dimension_associations=False,
+            require_all_dimension_types=False,
+        )
         config = ProjectConfig.from_file(config_file)
         project_path = base_dir / config.project_id
         check_overwrite(project_path, overwrite)
         project_path.mkdir()
 
         dataset_dir = cls._get_dataset_dir(use_test_data)
-        deploy_to_dsgrid_registry(project_path, dataset_dir)
+        deploy_to_dsgrid_registry(project_path, dataset_dir, requirements)
 
         unchanged_tables_by_scenario = cls._register_scenario_datasets(
             config, project_path, dataset_dir
@@ -103,7 +116,12 @@ class Project:
         project.con.sql("CREATE SCHEMA stride")
         project._clear_scenario_dataset_paths()
         for scenario in config.scenarios:
-            make_mapped_datasets(project.con, dataset_dir, project.path, scenario.name)
+            # Skip computing mapped datasets for tables that will be replaced with
+            # baseline views (avoids expensive redundant computation)
+            skip_tables = unchanged_tables_by_scenario.get(scenario.name, [])
+            make_mapped_datasets(
+                project.con, dataset_dir, project.path, scenario.name, skip_tables
+            )
 
         project.persist()
         project.copy_dbt_template()
@@ -539,7 +557,8 @@ class Project:
 
             # Check if the scenario produced any data
             count_query = f"SELECT COUNT(*) as count FROM {scenario.name}.energy_projection"
-            row_count = self._con.sql(count_query).fetchone()[0]
+            result = self._con.sql(count_query).fetchone()
+            row_count = result[0] if result else 0
             if row_count == 0:
                 msg = (
                     f"Scenario '{scenario.name}' completed but produced no energy projection data. "
@@ -743,7 +762,7 @@ class Project:
             """,
             [schema, name],
         ).fetchone()
-        return result[0] > 0
+        return result is not None and result[0] > 0
 
 
 def _get_base_and_override_names(table_name: str) -> tuple[str, str]:

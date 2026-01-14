@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from duckdb import DuckDBPyConnection
+
 """
 STRIDE UI Data API
 
@@ -79,7 +85,10 @@ class APIClient:
     ... )
     """
 
-    _instance = None
+    _instance: APIClient | None = None
+    _initialized: bool
+    project: Project
+    _con: DuckDBPyConnection | None
 
     def __new__(
         cls,
@@ -92,18 +101,21 @@ class APIClient:
     def __init__(
         self,
         project: Project,
-    ):
-        logger.debug(f"APIClient.__init__ called with project_config: {project is not None}")
-
-        # Always update the project reference, even if already initialized
-        # This ensures the singleton always points to the correct project instance
-        self.project = project
-
-        # Only initialize once
-        if hasattr(self, "_initialized"):
+    ) -> None:
+        # Check if we're switching to a different project
+        if hasattr(self, "_initialized") and self._initialized:
+            # Compare resolved absolute paths to handle relative vs absolute
+            current_path = str(Path(self.project.path).resolve())
+            new_path = str(Path(project.path).resolve())
+            if current_path != new_path:
+                # Switching projects - update project and clear cached state
+                self.project = project
+                self.project_country = self.project.config.country
+                self.refresh_metadata()
             return
 
-        # Set table name and country from config or defaults
+        # First-time initialization
+        self.project = project
         self.energy_proj_table = "energy_projection"
         self.project_country = self.project.config.country
 
@@ -115,12 +127,12 @@ class APIClient:
         self._initialized = True
 
     @property
-    def db(self):
+    def db(self) -> DuckDBPyConnection:
         """Return the current database connection from the project."""
         return self._con if self._con is not None else self.project.con
 
     @db.setter
-    def db(self, connection):
+    def db(self, connection: DuckDBPyConnection | None) -> None:
         """Set the database connection on the project (used for testing)."""
         self._con = connection
 
@@ -227,6 +239,11 @@ class APIClient:
         -------
         list[int]
             Sorted list of unique model years from the database
+
+        Raises
+        ------
+        TypeError
+            If model_year values in the database are not integers.
         """
         sql = """
         SELECT DISTINCT model_year as year
@@ -235,8 +252,14 @@ class APIClient:
         ORDER BY model_year
         """
         result = self.db.execute(sql, [self.project_country]).fetchall()
-        # Cast to int in case model_year is stored as string
-        return [int(row[0]) for row in result]
+        years = [row[0] for row in result]
+        if years and not isinstance(years[0], int):
+            msg = (
+                f"model_year column has type {type(years[0]).__name__}, expected int. "
+                "This is a data pipeline bug - model_year must be an integer in the database."
+            )
+            raise TypeError(msg)
+        return years
 
     def _fetch_scenarios(self) -> list[str]:
         """
@@ -403,7 +426,6 @@ class APIClient:
 
         # Build SQL query based on group_by parameter
         # Convert years to strings for SQL comparison since model_year is VARCHAR
-        years_str = [str(y) for y in years]
         scenario_order = self._get_scenario_order_clause()
 
         if group_by:
@@ -413,7 +435,7 @@ class APIClient:
                 group_col = "sector"
 
             sql = f"""
-            SELECT scenario, CAST(model_year AS INTEGER) as year, {group_col}, SUM(value) as value
+            SELECT scenario, model_year as year, {group_col}, SUM(value) as value
             FROM energy_projection
             WHERE geography = ?
             AND scenario = ANY(?)
@@ -421,10 +443,10 @@ class APIClient:
             GROUP BY scenario, model_year, {group_col}
             ORDER BY {scenario_order}, model_year, {group_col}
             """
-            params = [self.project_country, scenarios, years_str]
+            params = [self.project_country, scenarios, years]
         else:
             sql = f"""
-            SELECT scenario, CAST(model_year AS INTEGER) as year, SUM(value) as value
+            SELECT scenario, model_year as year, SUM(value) as value
             FROM energy_projection
             WHERE geography = ?
             AND scenario = ANY(?)
@@ -432,11 +454,11 @@ class APIClient:
             GROUP BY scenario, model_year
             ORDER BY {scenario_order}, model_year
             """
-            params = [self.project_country, scenarios, years_str]
+            params = [self.project_country, scenarios, years]
 
         # Execute query and return DataFrame
         logger.debug(f"SQL Query:\n{sql}")
-        df = self.db.execute(sql, params).df()
+        df: pd.DataFrame = self.db.execute(sql, params).df()
         logger.debug(f"Returning {len(df)} rows.")
         return df
 
@@ -515,9 +537,6 @@ class APIClient:
         self._validate_scenarios(scenarios)
         self._validate_years(years)
 
-        # Convert years to strings for SQL comparison since model_year is VARCHAR
-        years_str = [str(y) for y in years]
-
         if group_by:
             if group_by == "End Use":
                 group_col = "metric"
@@ -548,7 +567,7 @@ class APIClient:
             )
             SELECT
                 t.scenario,
-                CAST(t.model_year AS INTEGER) as year,
+                t.model_year as year,
                 t.{group_col},
                 t.value
             FROM energy_projection t
@@ -565,10 +584,10 @@ class APIClient:
             params = [
                 self.project_country,
                 scenarios,
-                years_str,
+                years,
                 self.project_country,
                 scenarios,
-                years_str,
+                years,
             ]
         else:
             # Just get peak totals without breakdown
@@ -576,7 +595,7 @@ class APIClient:
             sql = f"""
             SELECT
                 scenario,
-                CAST(model_year AS INTEGER) as year,
+                model_year as year,
                 MAX(total_demand) as value
             FROM (
                 SELECT
@@ -593,11 +612,11 @@ class APIClient:
             GROUP BY scenario, model_year
             ORDER BY {scenario_order}, model_year
             """
-            params = [self.project_country, scenarios, years_str]
+            params = [self.project_country, scenarios, years]
 
         # Execute query and return DataFrame
         logger.debug(f"SQL Query:\n{sql}")
-        df = self.db.execute(sql, params).df()
+        df: pd.DataFrame = self.db.execute(sql, params).df()
         logger.debug(f"Returning {len(df)} rows.")
         return df
 
@@ -697,7 +716,6 @@ class APIClient:
         logger.debug(f"Querying table: {table_to_query} (has_override={has_override})")
 
         # Query the appropriate table
-        # Note: Secondary metric tables (gdp_country, population_country, hdi_country) have model_year as BIGINT
         sql = """
         SELECT model_year as year, value
         FROM {table}
@@ -711,7 +729,7 @@ class APIClient:
         # Execute query and return DataFrame
         logger.debug(f"SQL Query:\n{sql}")
         try:
-            df = self.db.execute(sql, params).df()
+            df: pd.DataFrame = self.db.execute(sql, params).df()
         except Exception as e:
             err = f"Error querying {metric} table for scenario '{scenario}': {str(e)}"
             raise ValueError(err) from e
@@ -793,12 +811,10 @@ class APIClient:
         self._validate_years(years)
 
         # Determine what we're pivoting on
-        # Convert years to strings for SQL comparison since model_year is VARCHAR
-        years_str = [str(y) for y in years]
         if len(years) > 1:
             # Multiple years, single scenario - pivot on year
             pivot_cols = [str(year) for year in years]
-            year_pivot_list = ",".join([f"'{year}'" for year in years])
+            year_pivot_list = ",".join([str(year) for year in years])
 
             sql = f"""
             WITH hourly_totals AS (
@@ -815,7 +831,7 @@ class APIClient:
                 SUM(total_demand) FOR year IN ({year_pivot_list})
             )
             """
-            params: list[Any] = [self.project_country, years_str, scenarios[0]]
+            params: list[Any] = [self.project_country, years, scenarios[0]]
         else:
             # Single year, multiple scenarios - pivot on scenario
             # Order scenarios according to project config order
@@ -837,10 +853,10 @@ class APIClient:
                 SUM(total_demand) FOR scenario IN ({scenario_pivot_list})
             )
             """
-            params = [self.project_country, years_str[0], scenarios]
+            params = [self.project_country, years[0], scenarios]
 
         logger.debug(f"SQL Query:\n{sql}")
-        df = self.db.execute(sql, params).df()
+        df: pd.DataFrame = self.db.execute(sql, params).df()
 
         # Sort each column from highest to lowest
         for col in pivot_cols:
@@ -1047,7 +1063,7 @@ class APIClient:
         logger.debug(f"Query params: geography={self.project_country}")
         logger.debug(f"Querying table: {table_to_query}")
         try:
-            df = self.db.execute(sql, params).df()
+            df: pd.DataFrame = self.db.execute(sql, params).df()
             logger.debug(f"Query returned {len(df)} rows.")
         except Exception as e:
             err = f"Error querying weather data for scenario '{scenario}': {str(e)}"
@@ -1148,9 +1164,6 @@ class APIClient:
         self._validate_scenarios([scenario])
         self._validate_years(years)
 
-        # Convert years to strings for SQL comparison since model_year is VARCHAR
-        years_str = [str(y) for y in years]
-
         if resample == "Hourly":
             # Raw hourly data - use hour of year as time_period
             time_period_calc = (
@@ -1175,7 +1188,7 @@ class APIClient:
                     AND model_year = ANY(?)
                 ORDER BY scenario, model_year, timestamp, {group_col}
                 """
-                params: list[Any] = [self.project_country, scenario, years_str]
+                params: list[Any] = [self.project_country, scenario, years]
             else:
                 sql = f"""
                 WITH hourly_totals AS (
@@ -1198,7 +1211,7 @@ class APIClient:
                 FROM hourly_totals
                 ORDER BY scenario, model_year, timestamp
                 """
-                params = [self.project_country, scenario, years_str]
+                params = [self.project_country, scenario, years]
         else:
             # Resampled data (existing logic)
             # Determine time period calculation based on resample option
@@ -1236,7 +1249,7 @@ class APIClient:
                 GROUP BY scenario, model_year, {time_period_calc}, {group_col}
                 ORDER BY scenario, model_year, time_period, {group_col}
                 """
-                params = [self.project_country, scenario, years_str]
+                params = [self.project_country, scenario, years]
             else:
                 sql = f"""
                 SELECT
@@ -1251,10 +1264,10 @@ class APIClient:
                 GROUP BY scenario, model_year, {time_period_calc}
                 ORDER BY scenario, model_year, time_period
                 """
-                params = [self.project_country, scenario, years_str]
+                params = [self.project_country, scenario, years]
 
         logger.debug(f"SQL Query:\n{sql}")
-        df = self.db.execute(sql, params).df()
+        df: pd.DataFrame = self.db.execute(sql, params).df()
         logger.debug(f"Returning {len(df)} rows.")
         return df
 
@@ -1350,7 +1363,7 @@ class APIClient:
         )
 
         logger.debug(f"SQL Query:\n{sql}")
-        df = self.db.execute(sql, params).df()
+        df: pd.DataFrame = self.db.execute(sql, params).df()
         logger.debug(f"Returning {len(df)} rows.")
         return df
 
@@ -1442,6 +1455,6 @@ class APIClient:
         )
 
         logger.debug(f"SQL Query:\n{sql}")
-        df = self.db.execute(sql, params).df()
+        df: pd.DataFrame = self.db.execute(sql, params).df()
         logger.debug(f"Returning {len(df)} rows.")
         return df

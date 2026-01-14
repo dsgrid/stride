@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, Literal
 
 import plotly.graph_objects as go
@@ -182,11 +183,6 @@ def update_summary_stats(
 
     if not selected_year or scenario not in data_handler.scenarios:
         return "---", "---", "---", "---"
-
-    # Convert selected_year to int in case it comes as string from dropdown
-    selected_year = int(selected_year)
-    if start_year is not None:
-        start_year = int(start_year)
 
     try:
         # Get all consumption and peak demand data for this scenario
@@ -547,23 +543,19 @@ def update_timeseries_plot(
         Plotly figure object or error dictionary
     """
 
-    # Handle both int and string years from dropdown
-    if isinstance(selected_years, (int, str)):
-        selected_years = [int(selected_years)]
-    elif isinstance(selected_years, list):
-        selected_years = [int(y) for y in selected_years]
+    if isinstance(selected_years, int):
+        selected_years = [selected_years]
 
     if not selected_years or scenario not in data_handler.scenarios:
         return {"data": [], "layout": {"title": "Select years to view data"}}
     try:
-        # Convert "None" to None and years to int
+        # Convert "None" to None
         breakdown_value = None if breakdown == "None" else breakdown
 
-        selected_years_int = selected_years
         # Get timeseries data. Need to pass "End Use" Literal Hera
         df = data_handler.get_time_series_comparison(
             scenario=scenario,
-            years=selected_years_int,
+            years=selected_years,
             group_by=breakdown_value,
             resample=resample,
         )
@@ -575,7 +567,7 @@ def update_timeseries_plot(
         # Add weather variable if selected
         if weather_var and weather_var != "None":
             _add_weather_to_timeseries(
-                fig, data_handler, plotter, scenario, weather_var, selected_years_int, resample
+                fig, data_handler, plotter, scenario, weather_var, selected_years, resample
             )
         else:
             # No weather variable - just ensure y-axis starts at zero
@@ -587,7 +579,7 @@ def update_timeseries_plot(
         return {"data": [], "layout": {"title": f"Error: {str(e)}"}}
 
 
-def update_yearly_plot(
+def update_yearly_plot(  # noqa: C901
     data_handler: "APIClient",
     plotter: "StridePlots",
     scenario: str,
@@ -622,11 +614,8 @@ def update_yearly_plot(
         Plotly figure object or error dictionary
     """
 
-    # Handle both int and string years from dropdown
-    if isinstance(selected_year, (int, str)):
-        selected_year = [int(selected_year)]
-    elif isinstance(selected_year, list):
-        selected_year = [int(y) for y in selected_year]
+    if isinstance(selected_year, int):
+        selected_year = [selected_year]
 
     if not selected_year or scenario not in data_handler.scenarios:
         return {"data": [], "layout": {"title": "Select a year to view data"}}
@@ -634,7 +623,7 @@ def update_yearly_plot(
         # Convert "None" to None
         breakdown_value = None if breakdown == "None" else breakdown
         # Get timeseries data for single year
-        year_int = selected_year[0]
+        year_int = int(selected_year[0])
         df = data_handler.get_time_series_comparison(
             scenario=scenario, years=selected_year, group_by=breakdown_value, resample=resample
         )
@@ -880,24 +869,26 @@ def update_load_duration_plot(
         Plotly figure object or error dictionary
     """
 
-    # Handle both int and string years from dropdown
-    if isinstance(selected_years, (int, str)):
-        selected_years = [int(selected_years)]
-    elif isinstance(selected_years, list):
-        selected_years = [int(y) for y in selected_years]
+    if isinstance(selected_years, int):
+        selected_years = [selected_years]
 
     if not selected_years or scenario not in data_handler.scenarios:
         return {"data": [], "layout": {"title": "Select years to view data"}}
     try:
+        # Convert years to int
+        selected_years_int = [int(year) for year in selected_years]
         # Get load duration curve data
-        df = data_handler.get_load_duration_curve(years=selected_years, scenarios=[scenario])
+        df = data_handler.get_load_duration_curve(years=selected_years_int, scenarios=[scenario])
         return plotter.demand_curve(df)
     except Exception as e:
         print(f"Error in load duration plot: {e}")
         return {"data": [], "layout": {"title": f"Error: {str(e)}"}}
 
 
-def _register_summary_callbacks(data_handler: "APIClient", plotter: "StridePlots") -> None:
+def _register_summary_callbacks(  # noqa: C901
+    get_data_handler_func: Callable[[], "APIClient | None"],
+    get_plotter_func: Callable[[], "StridePlots | None"],
+) -> None:
     """Register summary statistics callbacks."""
 
     @callback(
@@ -910,8 +901,12 @@ def _register_summary_callbacks(data_handler: "APIClient", plotter: "StridePlots
     )
     def _update_start_year_options(
         selected_year: int, current_start_year: int | None
-    ) -> tuple[list[dict[str, int]], int]:
+    ) -> tuple[list[dict[str, Any]], int]:
         """Update start year dropdown to only show years <= selected year, preserving current value if valid."""
+        data_handler = get_data_handler_func()
+        if data_handler is None:
+            raise PreventUpdate
+
         if not selected_year:
             years = data_handler.years
             return [{"label": str(year), "value": year} for year in years], years[0]
@@ -944,6 +939,9 @@ def _register_summary_callbacks(data_handler: "APIClient", plotter: "StridePlots
     def _update_summary_stats_callback(
         scenario: str, selected_year: int, start_year: int
     ) -> tuple[str, str, str, str]:
+        data_handler = get_data_handler_func()
+        if data_handler is None:
+            raise PreventUpdate
         # "compare" is the Home tab, not a scenario
         if scenario == "compare":
             raise PreventUpdate
@@ -951,6 +949,9 @@ def _register_summary_callbacks(data_handler: "APIClient", plotter: "StridePlots
 
     @callback(Output("scenario-title", "children"), Input("view-selector", "value"))
     def _update_scenario_title(selected_view: str) -> str:
+        data_handler = get_data_handler_func()
+        if data_handler is None:
+            return "Scenario"
         scenarios = data_handler.scenarios  # Get from data_handler
         if selected_view in scenarios:
             return f"{selected_view}"
@@ -958,7 +959,10 @@ def _register_summary_callbacks(data_handler: "APIClient", plotter: "StridePlots
         return "Scenario"
 
 
-def _register_consumption_callbacks(data_handler: "APIClient", plotter: "StridePlots") -> None:
+def _register_consumption_callbacks(
+    get_data_handler_func: Callable[[], "APIClient | None"],
+    get_plotter_func: Callable[[], "StridePlots | None"],
+) -> None:
     """Register consumption and peak demand callbacks."""
 
     @callback(
@@ -976,6 +980,10 @@ def _register_consumption_callbacks(data_handler: "APIClient", plotter: "StrideP
         secondary_metric: SecondaryMetric | Literal["None"],
         refresh_trigger: int,
     ) -> go.Figure | dict[str, Any]:
+        data_handler = get_data_handler_func()
+        plotter = get_plotter_func()
+        if data_handler is None or plotter is None:
+            raise PreventUpdate
         # "compare" is the Home tab, not a scenario
         if scenario == "compare":
             raise PreventUpdate
@@ -998,13 +1006,20 @@ def _register_consumption_callbacks(data_handler: "APIClient", plotter: "StrideP
         secondary_metric: SecondaryMetric | Literal["None"],
         refresh_trigger: int,
     ) -> go.Figure | dict[str, Any]:
+        data_handler = get_data_handler_func()
+        plotter = get_plotter_func()
+        if data_handler is None or plotter is None:
+            raise PreventUpdate
         # "compare" is the Home tab, not a scenario
         if scenario == "compare":
             raise PreventUpdate
         return update_peak_plot(data_handler, plotter, scenario, breakdown, secondary_metric)
 
 
-def _register_timeseries_callbacks(data_handler: "APIClient", plotter: "StridePlots") -> None:
+def _register_timeseries_callbacks(
+    get_data_handler_func: Callable[[], "APIClient | None"],
+    get_plotter_func: Callable[[], "StridePlots | None"],
+) -> None:
     """Register timeseries and yearly plot callbacks."""
 
     @callback(
@@ -1026,6 +1041,10 @@ def _register_timeseries_callbacks(data_handler: "APIClient", plotter: "StridePl
         selected_years: list[int] | int,
         refresh_trigger: int,
     ) -> go.Figure | dict[str, Any]:
+        data_handler = get_data_handler_func()
+        plotter = get_plotter_func()
+        if data_handler is None or plotter is None:
+            raise PreventUpdate
         # "compare" is the Home tab, not a scenario
         if scenario == "compare":
             raise PreventUpdate
@@ -1058,6 +1077,10 @@ def _register_timeseries_callbacks(data_handler: "APIClient", plotter: "StridePl
         selected_year: int,
         refresh_trigger: int,
     ) -> go.Figure | dict[str, Any]:
+        data_handler = get_data_handler_func()
+        plotter = get_plotter_func()
+        if data_handler is None or plotter is None:
+            raise PreventUpdate
         # "compare" is the Home tab, not a scenario
         if scenario == "compare":
             raise PreventUpdate
@@ -1072,7 +1095,10 @@ def _register_timeseries_callbacks(data_handler: "APIClient", plotter: "StridePl
         )
 
 
-def _register_seasonal_callbacks(data_handler: "APIClient", plotter: "StridePlots") -> None:
+def _register_seasonal_callbacks(
+    get_data_handler_func: Callable[[], "APIClient | None"],
+    get_plotter_func: Callable[[], "StridePlots | None"],
+) -> None:
     """Register seasonal plot callbacks."""
 
     @callback(
@@ -1092,6 +1118,10 @@ def _register_seasonal_callbacks(data_handler: "APIClient", plotter: "StridePlot
         weather_var: WeatherVar | Literal["None"] | None,
         refresh_trigger: int,
     ) -> go.Figure | dict[str, Any]:
+        data_handler = get_data_handler_func()
+        plotter = get_plotter_func()
+        if data_handler is None or plotter is None:
+            raise PreventUpdate
         # "compare" is the Home tab, not a scenario
         if scenario == "compare":
             raise PreventUpdate
@@ -1125,6 +1155,10 @@ def _register_seasonal_callbacks(data_handler: "APIClient", plotter: "StridePlot
         weather_var: WeatherVar | Literal["None"] | None,
         refresh_trigger: int,
     ) -> go.Figure | dict[str, Any]:
+        data_handler = get_data_handler_func()
+        plotter = get_plotter_func()
+        if data_handler is None or plotter is None:
+            raise PreventUpdate
         # "compare" is the Home tab, not a scenario
         if scenario == "compare":
             raise PreventUpdate
@@ -1133,7 +1167,10 @@ def _register_seasonal_callbacks(data_handler: "APIClient", plotter: "StridePlot
         )
 
 
-def _register_load_duration_callbacks(data_handler: "APIClient", plotter: "StridePlots") -> None:
+def _register_load_duration_callbacks(
+    get_data_handler_func: Callable[[], "APIClient | None"],
+    get_plotter_func: Callable[[], "StridePlots | None"],
+) -> None:
     """Register load duration curve callbacks."""
 
     @callback(
@@ -1147,6 +1184,10 @@ def _register_load_duration_callbacks(data_handler: "APIClient", plotter: "Strid
     def _update_load_duration_plot_callback(
         scenario: str, selected_years: list[int] | int, refresh_trigger: int
     ) -> go.Figure | dict[str, Any]:
+        data_handler = get_data_handler_func()
+        plotter = get_plotter_func()
+        if data_handler is None or plotter is None:
+            raise PreventUpdate
         # "compare" is the Home tab, not a scenario
         if scenario == "compare":
             raise PreventUpdate
@@ -1190,25 +1231,22 @@ def _register_state_callback() -> None:
 
 
 def register_scenario_callbacks(
-    scenarios: list[str], years: list[int], data_handler: "APIClient", plotter: "StridePlots"
+    get_data_handler_func: Callable[[], "APIClient | None"],
+    get_plotter_func: Callable[[], "StridePlots | None"],
 ) -> None:
     """
     Register all callbacks for the single scenario view.
 
     Parameters
     ----------
-    scenarios : list[str]
-        List of all available scenarios
-    years : list[int]
-        Available years in the project
-    data_handler : 'APIClient'
-        API client for data access
-    plotter : 'StridePlots'
-        Plotting utilities
+    get_data_handler_func : Callable[[], APIClient | None]
+        Function that returns the current APIClient instance
+    get_plotter_func : Callable[[], StridePlots | None]
+        Function that returns the current StridePlots instance
     """
     _register_state_callback()
-    _register_summary_callbacks(data_handler, plotter)
-    _register_consumption_callbacks(data_handler, plotter)
-    _register_timeseries_callbacks(data_handler, plotter)
-    _register_seasonal_callbacks(data_handler, plotter)
-    _register_load_duration_callbacks(data_handler, plotter)
+    _register_summary_callbacks(get_data_handler_func, get_plotter_func)
+    _register_consumption_callbacks(get_data_handler_func, get_plotter_func)
+    _register_timeseries_callbacks(get_data_handler_func, get_plotter_func)
+    _register_seasonal_callbacks(get_data_handler_func, get_plotter_func)
+    _register_load_duration_callbacks(get_data_handler_func, get_plotter_func)

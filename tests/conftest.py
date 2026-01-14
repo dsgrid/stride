@@ -102,7 +102,7 @@ def weekday_weekend_test_data(default_project: Project) -> DuckDBPyConnection:
                 "geography": default_project.config.country,
                 "sector": "Commercial",
                 "metric": "Electricity",
-                "scenario": "test_scenario",
+                "scenario": "baseline",
                 "value": value,
             }
         )

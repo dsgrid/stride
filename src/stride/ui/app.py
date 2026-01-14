@@ -1,18 +1,21 @@
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import dash_bootstrap_components as dbc
 from dash import Dash, Input, Output, State, callback, dcc, html
 from dash.exceptions import PreventUpdate
 from loguru import logger
 
+if TYPE_CHECKING:
+    from stride.project import Project
+
 from stride.api import APIClient
 from stride.api.utils import Sectors, literal_to_list
-from stride.ui.color_manager import ColorManager, get_color_manager
+from stride.ui.color_manager import ColorManager
 from stride.ui.home import create_home_layout, register_home_callbacks
 from stride.ui.palette import ColorPalette
 from stride.ui.plotting import StridePlots
-from stride.ui.project_manager import add_recent_project, discover_projects
+from stride.ui.project_manager import add_recent_project, get_recent_projects
 from stride.ui.scenario import create_scenario_layout, register_scenario_callbacks
 from stride.ui.settings import create_settings_layout, register_settings_callbacks
 from stride.ui.settings.layout import get_temp_color_edits
@@ -32,8 +35,105 @@ app = Dash(
 
 
 # Global state for loaded projects
-_loaded_projects = {}  # project_path -> (data_handler, color_manager, plotter)
-_current_project_path = None
+# project_path -> (project, color_manager, plotter, project_name)
+# Note: We store Project instead of APIClient because APIClient is a singleton
+_loaded_projects: dict[str, tuple[Project, ColorManager, StridePlots, str]] = {}
+_current_project_path: str | None = None
+
+
+def create_fresh_color_manager(palette: ColorPalette, scenarios: list[str]) -> ColorManager:
+    """Create a fresh ColorManager instance, bypassing the singleton.
+
+    Each project needs its own ColorManager to ensure consistent colors.
+    """
+    from itertools import cycle
+
+    # Reset the palette's iterators to ensure consistent color assignment
+    palette._scenario_iterator = cycle(palette.scenario_theme)
+    palette._model_year_iterator = cycle(palette.model_year_theme)
+    palette._metric_iterator = cycle(palette.metric_theme)
+
+    # Use object.__new__ to bypass ColorManager's singleton __new__ method
+    color_manager = object.__new__(ColorManager)
+    color_manager._initialized = False
+    color_manager._scenario_colors = {}
+    ColorManager.__init__(color_manager, palette)
+    color_manager.initialize_colors(
+        scenarios=scenarios,
+        sectors=literal_to_list(Sectors),
+        end_uses=[],
+    )
+
+    return color_manager
+
+
+def load_project(project_path: str) -> tuple[bool, str]:
+    """
+    Load a project from the given path.
+
+    Parameters
+    ----------
+    project_path : str
+        Path to the project directory
+
+    Returns
+    -------
+    tuple[bool, str]
+        (success, message) where success is True if loaded successfully
+    """
+    global _loaded_projects, _current_project_path
+
+    from stride.project import Project
+
+    try:
+        path = Path(project_path).resolve()
+        path_str = str(path)
+
+        # Check if already loaded - just switch to it
+        if path_str in _loaded_projects:
+            _current_project_path = path_str
+            # Update the APIClient singleton to point to this project
+            cached_project, _, _, project_name = _loaded_projects[path_str]
+            APIClient(cached_project)  # Updates singleton
+            return True, f"Switched to cached project: {project_name}"
+
+        # Load new project
+        project = Project.load(path, read_only=True)
+        data_handler = APIClient(project)  # Updates singleton
+
+        # Create a fresh color manager for this project
+        palette = project.palette.copy()
+        color_manager = create_fresh_color_manager(palette, data_handler.scenarios)
+
+        plotter = StridePlots(color_manager, template="plotly_dark")
+
+        project_name = project.config.project_id
+
+        # Cache Project (not APIClient) since APIClient is singleton
+        _loaded_projects[path_str] = (project, color_manager, plotter, project_name)
+        _current_project_path = path_str
+
+        # Add to recent projects
+        try:
+            add_recent_project(path, project.config.project_id)
+        except Exception as e:
+            logger.warning(f"Could not add to recent projects: {e}")
+
+        return True, f"Loaded project: {project_name}"
+
+    except Exception as e:
+        logger.error(f"Failed to load project from {project_path}: {e}")
+        return False, str(e)
+
+
+def get_loaded_project_options() -> list[dict[str, str]]:
+    """Get dropdown options for loaded projects."""
+    options = []
+    for path_str, cached_tuple in _loaded_projects.items():
+        # Use stored project_name (index 3) since APIClient is singleton
+        project_name = cached_tuple[3] if len(cached_tuple) > 3 else "Unknown"
+        options.append({"label": project_name, "value": path_str})
+    return options
 
 
 def create_app(  # noqa: C901
@@ -60,8 +160,8 @@ def create_app(  # noqa: C901
     """
     global _loaded_projects, _current_project_path
 
-    # Store initial project
-    current_project_path = str(data_handler.project.path)
+    # Store initial project - resolve to absolute path for consistency
+    current_project_path = str(Path(data_handler.project.path).resolve())
     _current_project_path = current_project_path
 
     # Determine palette type
@@ -79,29 +179,36 @@ def create_app(  # noqa: C901
         current_palette_type = "project"
         current_palette_name = None
 
-    # Initialize color manager with the selected palette
-    color_manager = get_color_manager(palette=palette)
-    color_manager.initialize_colors(
-        scenarios=data_handler.scenarios,
-        sectors=literal_to_list(Sectors),
-        end_uses=[],  # Add end uses here if available
-    )
+    # Create fresh color manager for this project
+    color_manager = create_fresh_color_manager(palette.copy(), data_handler.scenarios)
 
     plotter = StridePlots(color_manager, template="plotly_dark")
 
-    # Store in global cache
-    _loaded_projects[current_project_path] = (data_handler, color_manager, plotter)
+    # Store in global cache - store Project (not APIClient) since APIClient is singleton
+    initial_project_name = data_handler.project.config.project_id
+    initial_project = data_handler.project  # Get reference before it changes
+    _loaded_projects[current_project_path] = (
+        initial_project,  # Store Project, not APIClient
+        color_manager,
+        plotter,
+        initial_project_name,
+    )
 
     scenarios = data_handler.scenarios
     years = data_handler.years
+    available_projects_ = available_projects or []
 
     # Discover available projects if not provided
-    if available_projects is None:
-        try:
-            available_projects = discover_projects()
-        except Exception as e:
-            logger.warning(f"Could not discover projects: {e}")
-            available_projects = []
+    if not available_projects_:
+        recent = get_recent_projects()
+        seen_ids: set[str] = set()
+
+        for proj in recent:
+            project_id = proj["project_id"]
+            path = Path(proj["path"]).resolve()
+            if project_id not in seen_ids and path.exists():
+                available_projects_.append(proj)
+                seen_ids.add(project_id)
 
     # Add current project to recent projects
     try:
@@ -137,6 +244,17 @@ def create_app(  # noqa: C901
     # Get current project display name
     current_project_name = data_handler.project.config.project_id
 
+    # Build dropdown options with deduplication by project_id
+    dropdown_options = [{"label": current_project_name, "value": current_project_path}]
+    seen_project_ids = {current_project_name}
+    for p in available_projects_:
+        project_id = p.get("project_id", "")
+        if project_id and project_id not in seen_project_ids:
+            dropdown_options.append(
+                {"label": p.get("name", "Unknown"), "value": p.get("path", "")}
+            )
+            seen_project_ids.add(project_id)
+
     # Create sidebar
     sidebar = html.Div(
         [
@@ -148,10 +266,60 @@ def create_app(  # noqa: C901
                     html.Div(
                         [
                             html.H6("Project", className="text-white-50 mb-2"),
+                            # Current project display
                             html.Div(
                                 current_project_name,
-                                className="text-white mb-3 p-2 bg-dark rounded",
+                                id="current-project-name",
+                                className="mb-2 p-2 rounded project-name-display",
                                 style={"fontSize": "0.95rem"},
+                            ),
+                            # Current project path (read-only)
+                            dcc.Input(
+                                id="current-project-path-display",
+                                value=current_project_path,
+                                type="text",
+                                readOnly=True,
+                                className="form-control form-control-sm mb-2",
+                                style={
+                                    "fontSize": "0.75rem",
+                                    "backgroundColor": "#2a2a2a",
+                                    "color": "#888",
+                                    "border": "1px solid #444",
+                                },
+                            ),
+                            # Text input for new path (before dropdown for tab order)
+                            dcc.Input(
+                                id="project-path-input",
+                                placeholder="Enter project path...",
+                                type="text",
+                                className="form-control form-control-sm mb-2",
+                                autoComplete="off",
+                                spellCheck=False,
+                                debounce=True,  # Only update on Enter or blur
+                            ),
+                            # Load button
+                            dbc.Button(
+                                [html.I(className="bi bi-folder-plus me-2"), "Load Project"],
+                                id="load-project-btn",
+                                color="primary",
+                                size="sm",
+                                className="mb-2 w-100",
+                            ),
+                            # Status message
+                            html.Div(
+                                id="project-load-status",
+                                className="small mb-2",
+                                style={"fontSize": "0.8rem"},
+                            ),
+                            # Dropdown for available projects (recent + discovered)
+                            dcc.Dropdown(
+                                id="project-switcher-dropdown",
+                                options=dropdown_options,  # type: ignore[arg-type]
+                                value=current_project_path,
+                                placeholder="Switch project...",
+                                className="mb-2",
+                                style={"fontSize": "0.85rem"},
+                                clearable=False,
                             ),
                         ]
                     ),
@@ -532,23 +700,26 @@ def create_app(  # noqa: C901
         global _loaded_projects, _current_project_path
 
         if _current_project_path in _loaded_projects:
-            data_handler, _, _ = _loaded_projects[_current_project_path]
+            cached_project, _, _, project_name = _loaded_projects[_current_project_path]
 
             # Create a copy of the palette to avoid modifying the original
             palette_copy = palette.copy()
 
-            # Reinitialize color manager with new palette copy
-            color_manager = get_color_manager(palette=palette_copy)
-            color_manager.initialize_colors(
-                scenarios=data_handler.scenarios,
-                sectors=literal_to_list(Sectors),
-                end_uses=[],
-            )
+            # Get current data handler (singleton)
+            data_handler = APIClient(cached_project)
+
+            # Create fresh color manager with new palette
+            color_manager = create_fresh_color_manager(palette_copy, data_handler.scenarios)
 
             plotter = StridePlots(color_manager, template="plotly_dark")
 
-            # Update cache
-            _loaded_projects[_current_project_path] = (data_handler, color_manager, plotter)
+            # Update cache (preserve project and project_name)
+            _loaded_projects[_current_project_path] = (
+                cached_project,
+                color_manager,
+                plotter,
+                project_name,
+            )
 
             logger.info(f"Palette changed to: {palette_type} / {palette_name}")
 
@@ -556,23 +727,24 @@ def create_app(  # noqa: C901
     def get_current_color_manager() -> ColorManager | None:
         """Get the current color manager instance."""
         if _current_project_path in _loaded_projects:
-            _, color_manager, _ = _loaded_projects[_current_project_path]
+            _, color_manager, _, _ = _loaded_projects[_current_project_path]
             return color_manager
         return None
 
     # Helper function to get data handler
     def get_current_data_handler() -> "APIClient | None":
-        """Get the current data handler instance."""
+        """Get the current data handler instance (APIClient singleton)."""
         if _current_project_path in _loaded_projects:
-            data_handler, _, _ = _loaded_projects[_current_project_path]
-            return data_handler
+            cached_project, _, _, _ = _loaded_projects[_current_project_path]
+            # Ensure singleton is pointing to correct project and return it
+            return APIClient(cached_project)
         return None
 
     # Helper function to get plotter
     def get_current_plotter() -> "StridePlots | None":
         """Get the current plotter instance."""
         if _current_project_path in _loaded_projects:
-            _, _, plotter = _loaded_projects[_current_project_path]
+            _, _, plotter, _ = _loaded_projects[_current_project_path]
             return plotter
         return None
 
@@ -586,7 +758,7 @@ def create_app(  # noqa: C901
         get_current_color_manager,
     )
 
-    register_scenario_callbacks(scenarios, years, data_handler, plotter)
+    register_scenario_callbacks(get_current_data_handler, get_current_plotter)
 
     register_settings_callbacks(
         get_current_data_handler,
@@ -620,6 +792,200 @@ def create_app(  # noqa: C901
                     var style = document.createElement('style');
                     style.id = 'scenario-dynamic-css';
                     style.textContent = `{color_manager.generate_scenario_css(temp_edits)}`;
+                    document.head.appendChild(style);
+                }})();
+                """
+            )
+        ]
+
+    # Project switching callback
+    @callback(
+        Output("current-project-path", "data"),
+        Output("project-load-status", "children"),
+        Output("current-project-name", "children"),
+        Output("current-project-path-display", "value"),
+        Output("project-switcher-dropdown", "options"),
+        Output("project-switcher-dropdown", "value"),
+        Input("load-project-btn", "n_clicks"),
+        Input("project-path-input", "n_submit"),  # Trigger on Enter key
+        Input("project-switcher-dropdown", "value"),
+        State("project-path-input", "value"),
+        State("current-project-path", "data"),
+        State("project-switcher-dropdown", "options"),
+        prevent_initial_call=True,
+    )
+    def handle_project_switch(
+        load_clicks: int | None,
+        n_submit: int | None,
+        dropdown_value: str | None,
+        path_input: str | None,
+        current_path: str,
+        current_options: list[dict[str, str]],
+    ) -> tuple[Any, ...]:
+        """Handle project loading and switching."""
+        from dash import ctx, no_update
+
+        global _current_project_path
+
+        trigger_id = ctx.triggered_id if ctx.triggered_id else None
+
+        # Handle load button click OR Enter key in path input
+        if trigger_id in ("load-project-btn", "project-path-input") and path_input:
+            success, message = load_project(path_input)
+            if success:
+                data_handler = get_current_data_handler()
+                project_name = (
+                    data_handler.project.config.project_id if data_handler else "Unknown"
+                )
+                # Add new project to dropdown if not already there
+                existing_paths = {opt.get("value") for opt in current_options}
+                new_options: Any
+                if _current_project_path not in existing_paths:
+                    new_options = [
+                        {"label": project_name, "value": _current_project_path},
+                        *current_options,
+                    ]
+                else:
+                    new_options = no_update
+                return (
+                    _current_project_path,
+                    html.Span(message, className="text-success"),
+                    project_name,
+                    _current_project_path,
+                    new_options,
+                    _current_project_path,
+                )
+            else:
+                return (
+                    no_update,
+                    html.Span(message, className="text-danger"),
+                    no_update,
+                    no_update,
+                    no_update,
+                    no_update,
+                )
+
+        elif trigger_id == "project-switcher-dropdown" and dropdown_value:
+            # Switch to selected project from dropdown
+            if dropdown_value != current_path:
+                if dropdown_value in _loaded_projects:
+                    # Project already loaded - just switch to it
+                    _current_project_path = dropdown_value
+                    cached_project, _, _, project_name = _loaded_projects[dropdown_value]
+                    # Update the APIClient singleton to point to this project
+                    APIClient(cached_project)
+                    return (
+                        dropdown_value,
+                        html.Span(f"Switched to {project_name}", className="text-success"),
+                        project_name,
+                        dropdown_value,
+                        no_update,
+                        dropdown_value,
+                    )
+                else:
+                    # Project not yet loaded - load it (handles recent projects)
+                    success, message = load_project(dropdown_value)
+                    if success:
+                        data_handler = get_current_data_handler()
+                        project_name = (
+                            data_handler.project.config.project_id if data_handler else "Unknown"
+                        )
+                        return (
+                            _current_project_path,
+                            html.Span(message, className="text-success"),
+                            project_name,
+                            _current_project_path,
+                            no_update,  # Don't replace dropdown options
+                            _current_project_path,
+                        )
+                    else:
+                        return (
+                            no_update,
+                            html.Span(message, className="text-danger"),
+                            no_update,
+                            no_update,
+                            no_update,
+                            current_path,  # Reset dropdown to current project
+                        )
+
+        raise PreventUpdate
+
+    # Update navigation tabs when project changes
+    @callback(
+        Output("view-selector", "options"),
+        Output("view-selector", "value", allow_duplicate=True),
+        Input("current-project-path", "data"),
+        prevent_initial_call=True,
+    )
+    def update_navigation_tabs(project_path: str) -> tuple[list[dict[str, str]], str]:
+        """Update navigation tabs when project changes."""
+        data_handler = get_current_data_handler()
+        if data_handler is None:
+            return [{"label": "Home", "value": "compare"}], "compare"
+
+        new_scenarios = data_handler.scenarios
+        options = [
+            {"label": "Home", "value": "compare"},
+            *[{"label": s, "value": s} for s in new_scenarios],
+        ]
+        return options, "compare"  # Reset to home view
+
+    # Regenerate home layout when project changes
+    @callback(
+        Output("home-view", "children"),
+        Input("current-project-path", "data"),
+        prevent_initial_call=True,
+    )
+    def regenerate_home_layout(project_path: str) -> list[Any]:
+        """Regenerate home layout when project changes."""
+        data_handler = get_current_data_handler()
+        color_manager = get_current_color_manager()
+        if data_handler is None or color_manager is None:
+            return [html.Div("No project loaded")]
+
+        new_scenarios = data_handler.scenarios
+        new_years = data_handler.years
+        return [create_home_layout(new_scenarios, new_years, color_manager)]
+
+    # Regenerate scenario layout when project changes
+    @callback(
+        Output("scenario-view", "children"),
+        Input("current-project-path", "data"),
+        prevent_initial_call=True,
+    )
+    def regenerate_scenario_layout(project_path: str) -> list[Any]:
+        """Regenerate scenario layout when project changes."""
+        data_handler = get_current_data_handler()
+        color_manager = get_current_color_manager()
+        if data_handler is None or color_manager is None:
+            return [html.Div("No project loaded")]
+
+        new_years = data_handler.years
+        return [create_scenario_layout(new_years, color_manager)]
+
+    # Update scenario CSS when project changes
+    @callback(
+        Output("scenario-css-container", "children", allow_duplicate=True),
+        Input("current-project-path", "data"),
+        prevent_initial_call=True,
+    )
+    def update_scenario_css_on_project_change(project_path: str) -> list[Any]:
+        """Update scenario CSS when project changes."""
+        color_manager = get_current_color_manager()
+        if color_manager is None:
+            raise PreventUpdate
+
+        return [
+            html.Script(
+                f"""
+                (function() {{
+                    var existingStyle = document.getElementById('scenario-dynamic-css');
+                    if (existingStyle) {{
+                        existingStyle.remove();
+                    }}
+                    var style = document.createElement('style');
+                    style.id = 'scenario-dynamic-css';
+                    style.textContent = `{color_manager.generate_scenario_css()}`;
                     document.head.appendChild(style);
                 }})();
                 """

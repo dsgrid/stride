@@ -2,10 +2,12 @@ import json
 import tempfile
 from getpass import getuser
 from pathlib import Path
+from typing import Any
 
 from stride.models import Scenario
 
 from chronify.exceptions import InvalidParameter
+from dsgrid.dimension.base_models import DatasetDimensionRequirements
 from dsgrid.config.mapping_tables import MappingTableModel
 from dsgrid.config.registration_models import DimensionType
 from dsgrid.query.models import DimensionReferenceModel, make_dataset_query
@@ -23,6 +25,7 @@ from loguru import logger
 def deploy_to_dsgrid_registry(
     registry_path: Path,
     dataset_dir: Path,
+    requirements: DatasetDimensionRequirements,
 ) -> None:
     """Deploy the Stride project to a dsgrid registry."""
     registration_file = dataset_dir / "registration.json5"
@@ -35,6 +38,7 @@ def deploy_to_dsgrid_registry(
         mgr,
         registration_file,
         repo_base_dir=dataset_dir,
+        dataset_dimension_requirements=requirements,
     )
     logger.info("Registered dsgrid project and datasets from {}", dataset_dir)
 
@@ -59,8 +63,23 @@ def make_mapped_datasets(
     dataset_dir: Path,
     base_path: Path,
     scenario: str,
+    skip_tables: list[str] | None = None,
 ) -> None:
-    """Create mapped datasets from the dsgrid registry and data files."""
+    """Create mapped datasets from the dsgrid registry and data files.
+
+    Parameters
+    ----------
+    con : duckdb.DuckDBPyConnection
+        DuckDB connection
+    dataset_dir : Path
+        Path to the dataset directory
+    base_path : Path
+        Base path for the project
+    scenario : str
+        Scenario name
+    skip_tables : list[str] | None
+        List of table names to skip (these will be replaced with views to baseline)
+    """
     url = _registry_url(base_path)
     mgr = RegistryManager.load(DatabaseConnection(url=url), use_remote_data=False)
     scratch_dir = Path(tempfile.gettempdir())
@@ -74,8 +93,20 @@ def make_mapped_datasets(
     output_dir = base_path / "dsgrid_query_output"
     query_submitter = DatasetQuerySubmitter(output_dir)
     mappings_dir = dimension_mappings_file.parent
+    skip_tables = skip_tables or []
 
     for mapping in mappings:
+        # Extract table name from dataset_id (e.g., "baseline__load_shapes" -> "load_shapes")
+        dataset_id = mapping.get("dataset_id", "")
+        table_name = dataset_id.split("__")[1] if "__" in dataset_id else dataset_id
+        if table_name in skip_tables:
+            logger.debug(
+                "Skipping {} for scenario {} (will use baseline view)",
+                table_name,
+                scenario,
+            )
+            continue
+
         _process_dataset_mapping(
             con=con,
             mapping=mapping,
@@ -89,7 +120,7 @@ def make_mapped_datasets(
 
 def _process_dataset_mapping(
     con: duckdb.DuckDBPyConnection,
-    mapping: dict,
+    mapping: dict[str, Any],
     mappings_dir: Path,
     mgr: RegistryManager,
     scenario: str,
@@ -149,10 +180,10 @@ def _process_dataset_mapping(
 
 
 def _build_mapping_models(
-    mapping_config: dict,
+    mapping_config: dict[str, Any],
     mapping_config_dir: Path,
-    dataset_config,
-    project,
+    dataset_config: Any,
+    project: Any,
 ) -> list[MappingTableModel]:
     """Build MappingTableModel instances for a dataset's dimension mappings."""
     mapping_models = []
@@ -203,9 +234,9 @@ def _build_mapping_models(
 
 def _find_matching_dimensions(
     dimension_type: DimensionType,
-    dataset_config,
-    project,
-) -> tuple | None:
+    dataset_config: Any,
+    project: Any,
+) -> tuple[Any, Any] | None:
     """Find matching dataset and project dimensions for a dimension type.
 
     Returns
@@ -241,9 +272,9 @@ def _find_matching_dimensions(
 
 def _register_dimension_mappings(
     mapping_models: list[MappingTableModel],
-    mapping_mgr,
+    mapping_mgr: Any,
     dataset_id: str,
-) -> list:
+) -> list[Any]:
     """Register dimension mappings and return registered mapping objects."""
     mappings_data = {
         "mappings": [m.model_dump(mode="json", by_alias=True) for m in mapping_models]
@@ -269,7 +300,7 @@ def _query_and_create_table(
     con: duckdb.DuckDBPyConnection,
     scenario: str,
     dataset_id: str,
-    registered_mappings: list,
+    registered_mappings: list[Any],
     query_submitter: DatasetQuerySubmitter,
     mgr: RegistryManager,
     scratch_dir: Path,
@@ -289,18 +320,30 @@ def _query_and_create_table(
         dataset_id=dataset_id,
         to_dimension_references=to_dimension_references,
     )
-    # This calls toPandas() because the duckdb connection inside dsgrid is
-    # different than this one. We need to extract it and then add it through this connection.
-    df = query_submitter.submit(  # noqa: F841
+    base_id = dataset_id.split("__")[1]
+    table_name = f"dsgrid_data.{scenario}__{base_id}__1_0_0"
+
+    # Query dsgrid and get the result DataFrame
+    df = query_submitter.submit(
         query,
         mgr,
         scratch_dir=scratch_dir,
         overwrite=True,
-    ).toPandas()
-    base_id = dataset_id.split("__")[1]
-    table_name = f"dsgrid_data.{scenario}__{base_id}__1_0_0"
-    # Note: This overwrites the original table with the mapped table.
-    con.sql(f"CREATE OR REPLACE TABLE {table_name} AS SELECT * FROM df")
+    )
+    # Use Arrow transfer instead of toPandas() for better performance
+    arrow_table = df.relation.arrow()  # noqa: F841
+    # Convert model_year from string to integer if needed
+    if "model_year" in arrow_table.schema.names:
+        import pyarrow as pa  # type: ignore[import-untyped]
+
+        field_index = arrow_table.schema.get_field_index("model_year")
+        if pa.types.is_string(arrow_table.schema.field(field_index).type):
+            arrow_table = arrow_table.set_column(
+                field_index,
+                "model_year",
+                arrow_table.column("model_year").cast(pa.int64()),
+            )
+    con.execute(f"CREATE OR REPLACE TABLE {table_name} AS SELECT * FROM arrow_table")
     logger.info("Created table {} from mapped dataset.", table_name)
 
 
@@ -369,10 +412,16 @@ def register_scenario_datasets(
             json.dump(dataset_config, tmp_file)
             tmp_path = Path(tmp_file.name)
         try:
+            requirements = DatasetDimensionRequirements(
+                check_time_consistency=True,
+                check_dimension_associations=False,
+                require_all_dimension_types=False,
+            )
             mgr.dataset_manager.register(
                 tmp_path,
                 submitter=getuser(),
                 log_message=f"Registered scenario dataset {new_dataset_id}",
+                requirements=requirements,
             )
             logger.info("Registered scenario dataset {}", new_dataset_id)
         finally:
