@@ -143,7 +143,8 @@ def grouped_multi_bars(
     added_y_legend = set()
     y_group_title_added = False
     for y_value in sorted(df[y_group].unique()):
-        for x_value in sorted(df[x_group].unique()):
+        # Preserve order from DataFrame (which comes from API in project config order)
+        for x_value in list(df[x_group].unique()):
             df_subset = df[(df[x_group] == x_value) & (df[y_group] == y_value)]
             bars.append(
                 go.Bar(
@@ -170,7 +171,8 @@ def grouped_multi_bars(
     # not the data bars. Use scenario selection checkboxes for full scenario toggling.
     years = sorted(df["year"].unique())
     scenario_title_added = False
-    for i, x_value in enumerate(sorted(df[x_group].unique())):
+    # Preserve order from DataFrame (which comes from API in project config order)
+    for i, x_value in enumerate(list(df[x_group].unique())):
         bars.append(
             go.Bar(
                 x=[str(year) for year in years],
@@ -261,11 +263,13 @@ def grouped_stacked_bars(
     hoverlabel_style = get_hoverlabel_style(template)
 
     years = sorted(df[year_col].unique())
-    groups = sorted(df[group_col].unique())
+    # Preserve order from DataFrame (which comes from API in project config order)
+    groups = list(df[group_col].unique())
     stack_categories = sorted(df[stack_col].unique())
 
     # Get the maximum value to determine indicator bar height
-    max_value = df[value_col].max()
+    # For stacked bars, we need the sum of all stacks for each group/year combination
+    max_value = df.groupby([year_col, group_col])[value_col].sum().max()
     indicator_height = max_value * 0.02  # 2% of max value
 
     # Create data traces - group by sector for sector toggling
@@ -414,7 +418,7 @@ def time_series(
         paper_bgcolor=TRANSPARENT,
         margin=dict(l=20, r=20, t=20, b=40),
         xaxis_title="Time Period",
-        yaxis_title="Energy Consumption (TWh)",
+        yaxis_title="Average Power Demand (MW)",
         legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02),
         hoverlabel=hoverlabel_style,
         hovermode="x unified",
@@ -470,6 +474,7 @@ def demand_curve(
         margin_l=20,
         margin_r=20,
         barmode="stack",
+        yaxis=dict(title="Power Demand (MW)"),
         hoverlabel=hoverlabel_style,
         hovermode="x unified",
     )

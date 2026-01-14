@@ -1,6 +1,7 @@
 SELECT
     e.geography
     ,e.sector
+    ,e.subsector
     ,e.a0
     ,e.a1
     ,e.t0

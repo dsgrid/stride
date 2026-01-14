@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from pathlib import Path
+
+from duckdb import DuckDBPyConnection
+
 """
 STRIDE UI Data API
 
@@ -35,7 +39,7 @@ from .utils import (
 
 # TODO
 # Secondary metric queries (GDP per capita is slightly different.)
-# Weather (Temp and humidity). Waiting on what that schema looks like.
+# Weather: Currently only BAIT (Building-Adjusted Internal Temperature) is available via weather_bait_daily.
 
 
 class APIClient:
@@ -79,7 +83,10 @@ class APIClient:
     ... )
     """
 
-    _instance = None
+    _instance: APIClient | None = None
+    _initialized: bool
+    project: Project
+    _con: DuckDBPyConnection | None
 
     def __new__(
         cls,
@@ -92,25 +99,39 @@ class APIClient:
     def __init__(
         self,
         project: Project,
-    ):
-        # Only initialize once
-        if hasattr(self, "_initialized"):
+    ) -> None:
+        # Check if we're switching to a different project
+        if hasattr(self, "_initialized") and self._initialized:
+            # Compare resolved absolute paths to handle relative vs absolute
+            current_path = str(Path(self.project.path).resolve())
+            new_path = str(Path(project.path).resolve())
+            if current_path != new_path:
+                # Switching projects - update project and clear cached state
+                self.project = project
+                self.project_country = self.project.config.country
+                self.refresh_metadata()
             return
 
-        logger.debug(f"APIClient.__init__ called with project_config: {project is not None}")
-
         self.project = project
-
-        # Set table name and country from config or defaults
         self.energy_proj_table = "energy_projection"
         self.project_country = self.project.config.country
 
         self._years: list[int] | None = None
         self._scenarios: list[str] | None = None
 
-        self.db = self.project.con
+        self._con = None
 
         self._initialized = True
+
+    @property
+    def db(self) -> DuckDBPyConnection:
+        """Return the current database connection from the project."""
+        return self._con if self._con is not None else self.project.con
+
+    @db.setter
+    def db(self, connection: DuckDBPyConnection | None) -> None:
+        """Set the database connection on the project (used for testing)."""
+        self._con = connection
 
     @property
     def years(self) -> list[int]:
@@ -147,6 +168,29 @@ class APIClient:
         """
         self._years = None
         self._scenarios = None
+
+    def _get_scenario_order_clause(self, table_alias: str = "") -> str:
+        """
+        Generate SQL CASE statement to order scenarios by project config order.
+
+        Parameters
+        ----------
+        table_alias : str, optional
+            Table alias to use (e.g., "t" for "t.scenario"), by default ""
+
+        Returns
+        -------
+        str
+            SQL CASE expression for ordering scenarios
+        """
+        if not self.scenarios:
+            col_name = f"{table_alias}.scenario" if table_alias else "scenario"
+            return col_name
+
+        # Build CASE statement: CASE WHEN scenario='first' THEN 0 WHEN scenario='second' THEN 1 ...
+        col_name = f"{table_alias}.scenario" if table_alias else "scenario"
+        cases = [f"WHEN {col_name}='{s}' THEN {i}" for i, s in enumerate(self.scenarios)]
+        return f"CASE {' '.join(cases)} ELSE 999 END"
 
     def get_unique_sectors(self) -> list[str]:
         """
@@ -192,6 +236,11 @@ class APIClient:
         -------
         list[int]
             Sorted list of unique model years from the database
+
+        Raises
+        ------
+        TypeError
+            If model_year values in the database are not integers.
         """
         sql = """
         SELECT DISTINCT model_year as year
@@ -200,25 +249,38 @@ class APIClient:
         ORDER BY model_year
         """
         result = self.db.execute(sql, [self.project_country]).fetchall()
-        return [row[0] for row in result]
+        years = [row[0] for row in result]
+        if years and not isinstance(years[0], int):
+            msg = (
+                f"model_year column has type {type(years[0]).__name__}, expected int. "
+                "This is a data pipeline bug - model_year must be an integer in the database."
+            )
+            raise TypeError(msg)
+        return years
 
     def _fetch_scenarios(self) -> list[str]:
         """
-        Fetch scenarios from database.
+        Fetch scenarios from database in project config order.
 
         Returns
         -------
         list[str]
-            Sorted list of unique scenarios from the database
+            List of scenarios in the order defined in the project config
         """
+        # Get scenarios from project config to preserve order
+        config_scenarios = self.project.list_scenario_names()
+
+        # Verify all config scenarios exist in database
         sql = """
         SELECT DISTINCT scenario
         FROM energy_projection
         WHERE geography = ?
-        ORDER BY scenario
         """
         result = self.db.execute(sql, [self.project_country]).fetchall()
-        return [row[0] for row in result]
+        db_scenarios = set(row[0] for row in result)
+
+        # Return scenarios in config order, filtering to only those in database
+        return [s for s in config_scenarios if s in db_scenarios]
 
     def _validate_scenarios(self, scenarios: list[str]) -> None:
         """
@@ -310,7 +372,7 @@ class APIClient:
             - scenario: str, scenario name
             - year: int, projection year
             - sector/end_use: str, breakdown category (if group_by specified)
-            - value: float, consumption value in TWh
+            - value: float, consumption value in MWh
 
         Examples
         --------
@@ -360,6 +422,9 @@ class APIClient:
         self._validate_years(years)
 
         # Build SQL query based on group_by parameter
+        # Convert years to strings for SQL comparison since model_year is VARCHAR
+        scenario_order = self._get_scenario_order_clause()
+
         if group_by:
             if group_by == "End Use":
                 group_col = "metric"
@@ -373,24 +438,24 @@ class APIClient:
             AND scenario = ANY(?)
             AND model_year = ANY(?)
             GROUP BY scenario, model_year, {group_col}
-            ORDER BY scenario, model_year, {group_col}
+            ORDER BY {scenario_order}, model_year, {group_col}
             """
             params = [self.project_country, scenarios, years]
         else:
-            sql = """
+            sql = f"""
             SELECT scenario, model_year as year, SUM(value) as value
             FROM energy_projection
             WHERE geography = ?
             AND scenario = ANY(?)
             AND model_year = ANY(?)
             GROUP BY scenario, model_year
-            ORDER BY scenario, model_year
+            ORDER BY {scenario_order}, model_year
             """
             params = [self.project_country, scenarios, years]
 
         # Execute query and return DataFrame
         logger.debug(f"SQL Query:\n{sql}")
-        df = self.db.execute(sql, params).df()
+        df: pd.DataFrame = self.db.execute(sql, params).df()
         logger.debug(f"Returning {len(df)} rows.")
         return df
 
@@ -475,6 +540,8 @@ class APIClient:
             else:  # group_by == "Sector"
                 group_col = "sector"
             # Find peak hours and get breakdown values at those hours
+            # Use table alias 't' in ORDER BY since we have a JOIN
+            scenario_order = self._get_scenario_order_clause(table_alias="t")
             sql = f"""
             WITH peak_hours AS (
                 SELECT
@@ -509,7 +576,7 @@ class APIClient:
             WHERE t.geography = ?
             AND t.scenario = ANY(?)
             AND t.model_year = ANY(?)
-            ORDER BY t.scenario, t.model_year, t.{group_col}
+            ORDER BY {scenario_order}, t.model_year, t.{group_col}
             """
             params = [
                 self.project_country,
@@ -521,7 +588,8 @@ class APIClient:
             ]
         else:
             # Just get peak totals without breakdown
-            sql = """
+            scenario_order = self._get_scenario_order_clause()
+            sql = f"""
             SELECT
                 scenario,
                 model_year as year,
@@ -539,13 +607,13 @@ class APIClient:
                 GROUP BY scenario, model_year, timestamp
             ) totals
             GROUP BY scenario, model_year
-            ORDER BY scenario, model_year
+            ORDER BY {scenario_order}, model_year
             """
             params = [self.project_country, scenarios, years]
 
         # Execute query and return DataFrame
         logger.debug(f"SQL Query:\n{sql}")
-        df = self.db.execute(sql, params).df()
+        df: pd.DataFrame = self.db.execute(sql, params).df()
         logger.debug(f"Returning {len(df)} rows.")
         return df
 
@@ -658,17 +726,18 @@ class APIClient:
         # Execute query and return DataFrame
         logger.debug(f"SQL Query:\n{sql}")
         try:
-            df = self.db.execute(sql, params).df()
+            df: pd.DataFrame = self.db.execute(sql, params).df()
         except Exception as e:
             err = f"Error querying {metric} table for scenario '{scenario}': {str(e)}"
             raise ValueError(err) from e
 
-        # For GDP Per Capita, divide GDP by population
+        # For GDP Per Capita, divide GDP by population and convert to USD/person
         if metric == "GDP Per Capita":
             pop_df = self.get_secondary_metric(scenario, "Population", years)
             if not pop_df.empty and not df.empty:
                 df = df.merge(pop_df, on="year", suffixes=("_gdp", "_pop"))
-                df["value"] = df["value_gdp"] / df["value_pop"]
+                # GDP is in billion USD-2024, so multiply by 1e9 to get USD-2024/person
+                df["value"] = (df["value_gdp"] * 1e9) / df["value_pop"]
                 df = df[["year", "value"]]
 
         logger.debug(f"Returning {len(df)} rows.")
@@ -762,8 +831,9 @@ class APIClient:
             params: list[Any] = [self.project_country, years, scenarios[0]]
         else:
             # Single year, multiple scenarios - pivot on scenario
-            pivot_cols = scenarios
-            scenario_pivot_list = ",".join([f"'{s}'" for s in scenarios])
+            # Order scenarios according to project config order
+            pivot_cols = [s for s in self.scenarios if s in scenarios]
+            scenario_pivot_list = ",".join([f"'{s}'" for s in pivot_cols])
 
             sql = f"""
             WITH hourly_totals AS (
@@ -783,7 +853,7 @@ class APIClient:
             params = [self.project_country, years[0], scenarios]
 
         logger.debug(f"SQL Query:\n{sql}")
-        df = self.db.execute(sql, params).df()
+        df: pd.DataFrame = self.db.execute(sql, params).df()
 
         # Sort each column from highest to lowest
         for col in pivot_cols:
@@ -811,7 +881,7 @@ class APIClient:
             Dictionary of KPI metrics with metric names as keys and values as floats.
 
             Keys:
-            - TOTAL_CONSUMPTION: float, total electricity consumption (TWh)
+            - TOTAL_CONSUMPTION: float, total electricity consumption (MWh)
             - PERCENT_GROWTH: float, percentage growth from base year
             - PEAK_DEMAND: float, peak demand (MW)
             - Additional KPIs to be defined
@@ -852,9 +922,9 @@ class APIClient:
         scenario : str
             The scenario specific weather source data
         year : int
-            The valid model year to choose for the weather metric (temperature or humidity)
+            The valid model year to choose for the weather metric
         wvar : WeatherVar
-            The weather variable to choose
+            The weather variable to choose (currently only "BAIT" is supported)
         resample : ResampleOptions, optional
             Resampling option for the data
         timegroup : TimeGroup, optional
@@ -867,12 +937,12 @@ class APIClient:
 
             Columns:
                 - datetime: Datetime64, datetime or time period depending on resample option
-                - value: float,  weather metric values (temperature in °C or humidity in %)
+                - value: float, BAIT (Balance Point Adjusted Integrated Temperature) values
 
         Examples
         --------
         >>> client = APIClient(path_or_conn)
-        >>> weather = client.get_weather_metric("baseline", 2030, "Temperature", "Daily Mean")
+        >>> weather = client.get_weather_metric("baseline", 2030, "BAIT", "Daily Mean")
         >>> print(weather.head())
 
         ::
@@ -896,18 +966,20 @@ class APIClient:
 
         # Map weather variable to column name
         wvar_column_map = {
-            "Temperature": "temperature",
-            "Humidity": "humidity",
+            "BAIT": "bait",
+            "HDD": "hdd",
+            "CDD": "cdd",
         }
 
         if wvar not in wvar_column_map:
-            err = f"Weather variable '{wvar}' is not supported."
+            err = f"Weather variable '{wvar}' is not supported. Available options: {list(wvar_column_map.keys())}"
             raise ValueError(err)
 
         column_name = wvar_column_map[wvar]
 
-        # Check for override table
-        base_table = "weather"
+        # Use weather_degree_days which includes bait, hdd, and cdd
+        # This is a dbt model that's created per scenario
+        base_table = "weather_degree_days"
         override_table = f"{base_table}_override"
 
         table_exists_sql = """
@@ -916,6 +988,8 @@ class APIClient:
         WHERE table_schema = ?
         AND table_name = ?
         """
+
+        # Check for override table in scenario schema
         result = self.db.execute(table_exists_sql, [scenario, override_table]).fetchone()
         has_override = result[0] > 0 if result else False
 
@@ -930,7 +1004,7 @@ class APIClient:
         table_exists = result[0] > 0 if result else False
 
         if not table_exists:
-            err = f"Weather table not available for scenario '{scenario}'"
+            err = f"Weather table '{table_name_only}' not available in schema '{scenario}'"
             raise ValueError(err)
 
         logger.debug(f"Querying table: {table_to_query} (has_override={has_override})")
@@ -938,51 +1012,59 @@ class APIClient:
         # Build the query based on resample option
         if resample == "Hourly":
             # Return hourly data
+            # Note: Weather data uses weather_year column, not EXTRACT(YEAR FROM timestamp)
             sql = """
             SELECT timestamp as datetime, {column} as value
             FROM {table}
             WHERE geography = ?
-            AND EXTRACT(YEAR FROM timestamp) = ?
             ORDER BY timestamp
             """.format(table=table_to_query, column=column_name)
         elif resample == "Daily Mean":
             # Aggregate to daily mean
+            # Note: Weather data uses weather_year column, not EXTRACT(YEAR FROM timestamp)
             sql = """
             SELECT
                 DATE_TRUNC('day', timestamp) as datetime,
                 AVG({column}) as value
             FROM {table}
             WHERE geography = ?
-            AND EXTRACT(YEAR FROM timestamp) = ?
             GROUP BY DATE_TRUNC('day', timestamp)
             ORDER BY datetime
             """.format(table=table_to_query, column=column_name)
         elif resample == "Weekly Mean":
-            # Aggregate to weekly mean
+            # Aggregate to weekly mean using day-of-year to avoid cross-year week issues
+            # Week calculation: FLOOR((DOY - 1) / 7) groups days 1-7 as week 0, 8-14 as week 1, etc.
+            # This matches the calculation in get_time_series_comparison() but without the +1
+            # since we only use this for grouping and then take MIN(timestamp) for the x-axis
+            # Note: Weather data is intensive (temperature), not extensive (energy), so we don't
+            # rescale partial weeks. Temperature average is the same regardless of week length.
+            # Note: Weather data uses weather_year column, not EXTRACT(YEAR FROM timestamp)
             sql = """
             SELECT
-                DATE_TRUNC('week', timestamp) as datetime,
+                MIN(timestamp) as datetime,
                 AVG({column}) as value
             FROM {table}
             WHERE geography = ?
-            AND EXTRACT(YEAR FROM timestamp) = ?
-            GROUP BY DATE_TRUNC('week', timestamp)
+            GROUP BY FLOOR((EXTRACT(DOY FROM timestamp) - 1) / 7)
             ORDER BY datetime
             """.format(table=table_to_query, column=column_name)
         else:
             err = f"Resample option '{resample}' is not supported."
             raise ValueError(err)
 
-        params = [self.project_country, year]
+        # Weather data is filtered by geography only (not by year, since weather_year is fixed)
+        params = [self.project_country]
 
         # Execute query and return DataFrame
         logger.debug(f"SQL Query:\n{sql}")
+        logger.debug(f"Query params: geography={self.project_country}")
+        logger.debug(f"Querying table: {table_to_query}")
         try:
-            df = self.db.execute(sql, params).df()
+            df: pd.DataFrame = self.db.execute(sql, params).df()
+            logger.debug(f"Query returned {len(df)} rows.")
         except Exception as e:
             err = f"Error querying weather data for scenario '{scenario}': {str(e)}"
             raise ValueError(err) from e
-        logger.debug(f"Returning {len(df)} rows.")
         return df
 
     # NOTE we don't restrict the user to two model years here in case they use the api outside of the UI.
@@ -1133,10 +1215,17 @@ class APIClient:
             if resample == "Daily Mean":
                 time_period_calc = "FLOOR(EXTRACT(DOY FROM timestamp)) + 1"
             elif resample == "Weekly Mean":
+                # Week calculation: FLOOR((DOY - 1) / 7) + 1 gives 1-indexed weeks
+                # Days 1-7 = week 1, 8-14 = week 2, etc. This avoids DATE_TRUNC cross-year issues.
+                # Same base calculation used in get_weather_metric() for consistency.
                 time_period_calc = "FLOOR((EXTRACT(DOY FROM timestamp) - 1) / 7) + 1"
             else:
                 err = f"Invalid resample option: {resample}"
                 raise ValueError(err)
+
+            # Note: We use AVG for both Daily Mean and Weekly Mean, so no rescaling needed.
+            # Averaging is an intensive operation (value per unit time), not extensive (total),
+            # so partial weeks have the same average as full weeks.
 
             if group_by:
                 if group_by == "End Use":
@@ -1164,7 +1253,7 @@ class APIClient:
                     scenario,
                     model_year as year,
                     {time_period_calc} as time_period,
-                    SUM(value) as value
+                    AVG(value) as value
                 FROM energy_projection
                 WHERE geography = ?
                     AND scenario = ?
@@ -1175,7 +1264,7 @@ class APIClient:
                 params = [self.project_country, scenario, years]
 
         logger.debug(f"SQL Query:\n{sql}")
-        df = self.db.execute(sql, params).df()
+        df: pd.DataFrame = self.db.execute(sql, params).df()
         logger.debug(f"Returning {len(df)} rows.")
         return df
 
@@ -1271,7 +1360,7 @@ class APIClient:
         )
 
         logger.debug(f"SQL Query:\n{sql}")
-        df = self.db.execute(sql, params).df()
+        df: pd.DataFrame = self.db.execute(sql, params).df()
         logger.debug(f"Returning {len(df)} rows.")
         return df
 
@@ -1363,6 +1452,6 @@ class APIClient:
         )
 
         logger.debug(f"SQL Query:\n{sql}")
-        df = self.db.execute(sql, params).df()
+        df: pd.DataFrame = self.db.execute(sql, params).df()
         logger.debug(f"Returning {len(df)} rows.")
         return df

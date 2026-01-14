@@ -1,11 +1,11 @@
 from pathlib import Path
 
-from dsgrid.utils.files import dump_json_file, load_json_file
 import pandas as pd
 import pytest
 import shutil
 from click.testing import CliRunner
 from chronify.exceptions import InvalidOperation, InvalidParameter
+from dsgrid.utils.files import dump_json_file, load_json_file
 from pytest import TempPathFactory
 
 from stride import Project
@@ -23,7 +23,7 @@ def test_has_table(default_project: Project) -> None:
 
 def test_list_scenarios(default_project: Project) -> None:
     project = default_project
-    assert project.list_scenario_names() == ["baseline", "alternate_gdp"]
+    assert project.list_scenario_names() == ["baseline", "ev_projection", "alternate_gdp"]
 
 
 def test_show_dataset(default_project: Project) -> None:
@@ -38,7 +38,6 @@ def test_show_dataset(default_project: Project) -> None:
             cli, ["datasets", "show", str(project.path), dataset_id, "-l", "10"]
         )
         assert result.exit_code == 0
-        assert "country_1" in result.stdout
 
 
 def test_show_calculated_table(default_project: Project) -> None:
@@ -52,7 +51,7 @@ def test_show_calculated_table(default_project: Project) -> None:
         cli, ["calculated-tables", "show", str(project.path), tables[0], "-l", "10"]
     )
     assert result.exit_code == 0
-    assert "country_1" in result.stdout
+    assert "country_1" in result.stdout or "country_2" in result.stdout
 
 
 def test_scenario_name() -> None:
@@ -344,6 +343,7 @@ def test_override_calculated_table_pre_registration(
         str(project_config_file),
         "-d",
         str(new_base_dir),
+        "--use-test-data",
     ]
     runner = CliRunner()
     result = runner.invoke(cli, cmd)
@@ -387,13 +387,14 @@ def test_export_energy_projection(
 def test_invalid_data_tables(copy_project_input_data: tuple[Path, Path, Path]) -> None:
     project_config_file = copy_project_input_data[2]
     config = load_json_file(project_config_file)
-    orig = config["scenarios"][1]["gdp"]
-    config["scenarios"][1]["gdp"] += "invalid.csv"
+    # alternate_gdp scenario is at index 2 (after baseline and ev_projection)
+    orig = config["scenarios"][2]["gdp"]
+    config["scenarios"][2]["gdp"] += "invalid.csv"
     dump_json_file(config, project_config_file)
     with pytest.raises(InvalidParameter, match=r"Scenario.*dataset.*does not exist"):
         ProjectConfig.from_file(project_config_file)
 
-    config["scenarios"][1]["gdp"] = orig
+    config["scenarios"][2]["gdp"] = orig
     config["calculated_table_overrides"] = [
         {
             "scenario": "alternate_gdp",

@@ -10,8 +10,18 @@ sources:
       - name: hdi
         identifier: "{{ var('scenario', 'active_scenario') }}__hdi__1_0_0"
       - name: load_shapes
-        identifier: "{{ var('scenario', 'active_scenario') }}__load_shapes"
+        identifier: "{{ var('scenario', 'active_scenario') }}__load_shapes__1_0_0"
       - name: population
         identifier: "{{ var('scenario', 'active_scenario') }}__population__1_0_0"
-      - name: weather
-        identifier: "{{ var('scenario', 'active_scenario') }}__weather"
+      - name: weather_bait
+        identifier: "{{ var('scenario', 'active_scenario') }}__weather_bait__1_0_0"
+      - name: electricity_per_vehicle_km_projections
+        identifier: "{{ var('scenario', 'active_scenario') }}__electricity_per_vehicle_km_projections__1_0_0"
+      - name: ev_stock_share_projections
+        identifier: "{{ var('scenario', 'active_scenario') }}__ev_stock_share_projections__1_0_0"
+      - name: km_per_vehicle_year_regressions
+        identifier: "{{ var('scenario', 'active_scenario') }}__km_per_vehicle_year_regressions__1_0_0"
+      - name: phev_share_projections
+        identifier: "{{ var('scenario', 'active_scenario') }}__phev_share_projections__1_0_0"
+      - name: vehicle_per_capita_regressions
+        identifier: "{{ var('scenario', 'active_scenario') }}__vehicle_per_capita_regressions__1_0_0"

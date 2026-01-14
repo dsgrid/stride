@@ -6,5 +6,6 @@ calculations.
 ```{eval-rst}
 .. autoclass:: stride.api.APIClient
    :members:
+   :exclude-members: db
 ```
 

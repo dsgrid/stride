@@ -19,9 +19,9 @@ def create_home_layout(
     stored_state = stored_state or {}
 
     def create_styled_checklist(scenarios_list: list[str], checklist_id: Any) -> html.Div:
-        # Get stored value or default
+        # Get stored value or default (select up to 5 scenarios by default)
         stored_value = stored_state.get(
-            checklist_id, scenarios_list[:2] if len(scenarios_list) >= 2 else scenarios_list
+            checklist_id, scenarios_list[:5] if len(scenarios_list) > 0 else scenarios_list
         )
 
         # Create custom styled buttons for each scenario

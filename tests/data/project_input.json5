@@ -2,14 +2,18 @@
     project_id: "test_project",
     creator: "tester",
     description: "This is a test project.",
-    country: "country_1",
+    country: "country_2",
     start_year: 2025,
     step_year: 5,
-    end_year: 2055,
+    end_year: 2050,
     weather_year: 2018,
     scenarios: [
         {
             name: "baseline",
+        },
+        {
+            name: "ev_projection",
+            use_ev_projection: true,
         },
         {
             name: "alternate_gdp",

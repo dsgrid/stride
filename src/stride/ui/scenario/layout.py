@@ -148,6 +148,27 @@ def create_scenario_layout(
                                         ],
                                         width=3,
                                     ),
+                                    dbc.Col(
+                                        [
+                                            html.Label(
+                                                "Start Year for Compound Annual Growth Rate (CAGR):",
+                                                style={"fontWeight": "bold", "fontSize": "0.9em"},
+                                            ),
+                                            dcc.Dropdown(
+                                                id="scenario-summary-start-year",
+                                                options=[
+                                                    {"label": str(year), "value": year}
+                                                    for year in years
+                                                ],
+                                                value=stored_state.get(
+                                                    "scenario-summary-start-year",
+                                                    years[0] if years else None,
+                                                ),
+                                                clearable=False,
+                                            ),
+                                        ],
+                                        width=3,
+                                    ),
                                 ],
                                 align="center",
                             )
@@ -161,18 +182,18 @@ def create_scenario_layout(
                                         [
                                             create_summary_stat_card(
                                                 "scenario-total-consumption",
-                                                "Total Consumption (TWh)",
+                                                "Annual Consumption (MWh)",
                                             )
                                         ],
-                                        width=4,
+                                        width=3,
                                     ),
                                     dbc.Col(
                                         [
                                             create_summary_stat_card(
-                                                "scenario-percent-growth", "Percent Growth (%)"
+                                                "scenario-consumption-cagr", "Consumption CAGR"
                                             )
                                         ],
-                                        width=4,
+                                        width=3,
                                     ),
                                     dbc.Col(
                                         [
@@ -180,7 +201,15 @@ def create_scenario_layout(
                                                 "scenario-peak-demand", "Peak Demand (MW)"
                                             )
                                         ],
-                                        width=4,
+                                        width=3,
+                                    ),
+                                    dbc.Col(
+                                        [
+                                            create_summary_stat_card(
+                                                "scenario-peak-demand-cagr", "Peak Demand CAGR"
+                                            )
+                                        ],
+                                        width=3,
                                     ),
                                 ]
                             )
@@ -333,7 +362,9 @@ def create_scenario_layout(
                         [
                             dbc.Row(
                                 [
-                                    dbc.Col([html.H4("Timeseries", className="mb-0")], width=2),
+                                    dbc.Col(
+                                        [html.H4("Timeseries Lines", className="mb-0")], width=2
+                                    ),
                                     dbc.Col(
                                         [
                                             html.Label(
@@ -344,15 +375,15 @@ def create_scenario_layout(
                                                 id="scenario-timeseries-breakdown",
                                                 options=[
                                                     {
-                                                        "label": "Annual Energy Consumption",
+                                                        "label": "Energy Consumption",
                                                         "value": "None",
                                                     },
                                                     {
-                                                        "label": "Annual Energy Consumption by Sector",
+                                                        "label": "Energy Consumption by Sector",
                                                         "value": "Sector",
                                                     },
                                                     {
-                                                        "label": "Annual Energy Consumption by End Use",
+                                                        "label": "Energy Consumption by End Use",
                                                         "value": "End Use",
                                                     },
                                                 ],
@@ -374,7 +405,7 @@ def create_scenario_layout(
                                                     {"label": val, "value": val}
                                                     for val in literal_to_list(ResampleOptions)
                                                 ],
-                                                value="Daily Mean",
+                                                value="Hourly",
                                                 clearable=False,
                                             ),
                                         ],
@@ -417,7 +448,7 @@ def create_scenario_layout(
                                             create_styled_checklist(
                                                 [str(year) for year in years],
                                                 "scenario-timeseries-years",
-                                                [str(year) for year in years[:2]]
+                                                [str(years[0]), str(years[-1])]
                                                 if len(years) >= 2
                                                 else [str(years[0])]
                                                 if years
@@ -441,7 +472,9 @@ def create_scenario_layout(
                         [
                             dbc.Row(
                                 [
-                                    dbc.Col([html.H4("Yearly", className="mb-0")], width=2),
+                                    dbc.Col(
+                                        [html.H4("Timeseries Area", className="mb-0")], width=2
+                                    ),
                                     dbc.Col(
                                         [
                                             html.Label(
@@ -452,15 +485,15 @@ def create_scenario_layout(
                                                 id="scenario-yearly-breakdown",
                                                 options=[
                                                     {
-                                                        "label": "Annual Energy Consumption",
+                                                        "label": "Energy Consumption",
                                                         "value": "None",
                                                     },
                                                     {
-                                                        "label": "Annual Energy Consumption by Sector",
+                                                        "label": "Energy Consumption by Sector",
                                                         "value": "Sector",
                                                     },
                                                     {
-                                                        "label": "Annual Energy Consumption by End Use",
+                                                        "label": "Energy Consumption by End Use",
                                                         "value": "End Use",
                                                     },
                                                 ],
@@ -591,7 +624,7 @@ def create_scenario_layout(
                                                     {"label": val, "value": val}
                                                     for val in literal_to_list(WeatherVar)
                                                 ],
-                                                value="Temperature",
+                                                value="BAIT",
                                                 clearable=False,
                                             ),
                                         ],
@@ -619,6 +652,23 @@ def create_scenario_layout(
                                     dbc.Col(
                                         [
                                             html.Label(
+                                                "TIME GROUP:",
+                                                style={"fontWeight": "bold", "fontSize": "0.9em"},
+                                            ),
+                                            dcc.RadioItems(
+                                                id="scenario-seasonal-area-timegroup",
+                                                options=[
+                                                    {"label": val, "value": val}
+                                                    for val in literal_to_list(TimeGroup)
+                                                ],
+                                                value="Seasonal",
+                                            ),
+                                        ],
+                                        width=2,
+                                    ),
+                                    dbc.Col(
+                                        [
+                                            html.Label(
                                                 "BREAKDOWN:",
                                                 style={"fontWeight": "bold", "fontSize": "0.9em"},
                                             ),
@@ -626,15 +676,15 @@ def create_scenario_layout(
                                                 id="scenario-seasonal-area-breakdown",
                                                 options=[
                                                     {
-                                                        "label": "Annual Energy Consumption",
+                                                        "label": "Energy Consumption",
                                                         "value": "None",
                                                     },
                                                     {
-                                                        "label": "Annual Energy Consumption by Sector",
+                                                        "label": "Energy Consumption by Sector",
                                                         "value": "Sector",
                                                     },
                                                     {
-                                                        "label": "Annual Energy Consumption by End Use",
+                                                        "label": "Energy Consumption by End Use",
                                                         "value": "End Use",
                                                     },
                                                 ],
@@ -642,7 +692,7 @@ def create_scenario_layout(
                                                 clearable=False,
                                             ),
                                         ],
-                                        width=3,
+                                        width=2,
                                     ),
                                     dbc.Col(
                                         [
@@ -660,12 +710,12 @@ def create_scenario_layout(
                                                 clearable=False,
                                             ),
                                         ],
-                                        width=2,
+                                        width=1,
                                     ),
                                     dbc.Col(
                                         [
                                             html.Label(
-                                                "TIME GROUP AGG:",
+                                                "AGGREGATION:",
                                                 style={"fontWeight": "bold", "fontSize": "0.9em"},
                                             ),
                                             dcc.Dropdown(
@@ -683,29 +733,6 @@ def create_scenario_layout(
                                     dbc.Col(
                                         [
                                             html.Label(
-                                                "TIME GROUP:",
-                                                style={"fontWeight": "bold", "fontSize": "0.9em"},
-                                            ),
-                                            dcc.RadioItems(
-                                                id="scenario-seasonal-area-timegroup",
-                                                options=[
-                                                    {"label": val, "value": val}
-                                                    for val in literal_to_list(TimeGroup)
-                                                ],
-                                                value="Seasonal",
-                                            ),
-                                        ],
-                                        width=3,
-                                    ),
-                                ],
-                                align="center",
-                                className="mb-2",
-                            ),
-                            dbc.Row(
-                                [
-                                    dbc.Col(
-                                        [
-                                            html.Label(
                                                 "WEATHER VAR:",
                                                 style={"fontWeight": "bold", "fontSize": "0.9em"},
                                             ),
@@ -715,12 +742,12 @@ def create_scenario_layout(
                                                     {"label": val, "value": val}
                                                     for val in literal_to_list(WeatherVar)
                                                 ],
-                                                value="Temperature",
+                                                value="BAIT",
                                                 clearable=False,
                                             ),
                                         ],
-                                        width=3,
-                                    )
+                                        width=2,
+                                    ),
                                 ],
                                 align="center",
                             ),
@@ -746,7 +773,11 @@ def create_scenario_layout(
                                             create_styled_checklist(
                                                 [str(year) for year in years],
                                                 "scenario-load-duration-years",
-                                                [str(years[0])] if years else [],
+                                                [str(years[0]), str(years[-1])]
+                                                if len(years) >= 2
+                                                else [str(years[0])]
+                                                if years
+                                                else [],
                                             ),
                                         ],
                                         width=12,

@@ -2,11 +2,13 @@ import importlib.resources
 import os
 import shutil
 import subprocess
+import sys
 import time
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Self
 
+from dsgrid.dimension.base_models import DatasetDimensionRequirements
 import duckdb
 from chronify.exceptions import InvalidOperation, InvalidParameter
 from chronify.utils.path_utils import check_overwrite
@@ -14,10 +16,13 @@ from dsgrid.utils.files import dump_json_file
 from duckdb import DuckDBPyConnection, DuckDBPyRelation
 from loguru import logger
 
+from stride.dataset_download import get_default_data_directory
 from stride.db_interface import make_dsgrid_data_table_name
-from stride.default_datasets import create_test_datasets
-from stride.default_project import create_dsgrid_project
-from stride.dsgrid_integration import deploy_to_dsgrid_registry, make_mapped_datasets
+from stride.dsgrid_integration import (
+    deploy_to_dsgrid_registry,
+    make_mapped_datasets,
+    register_scenario_datasets,
+)
 from stride.io import create_table_from_file, export_table
 from stride.models import (
     CalculatedTableOverride,
@@ -58,7 +63,12 @@ class Project:
 
     @classmethod
     def create(
-        cls, config_file: Path | str, base_dir: Path = Path(), overwrite: bool = False
+        cls,
+        config_file: Path | str,
+        base_dir: Path = Path(),
+        overwrite: bool = False,
+        use_test_data: bool = False,
+        dataset_requirements: DatasetDimensionRequirements | None = None,
     ) -> Self:
         """Create a project from a config file.
 
@@ -71,41 +81,121 @@ class Project:
             The project directory will be `base_dir / project_id`.
         overwrite
             Set to True to overwrite the project directory if it already exists.
+        use_test_data
+            If True, use the smaller test dataset (global-test).
+            If False (default), use the full dataset (global).
+        dataset_requirements
+            Optional, requirements to use when checking dataset consistency.
 
         Examples
         --------
         >>> Project.create("my_project.json5")
         """
+        check_time_consistency = _parse_bool_env("STRIDE_CHECK_TIME_CONSISTENCY", default=True)
+        check_dimension_associations = _parse_bool_env(
+            "STRIDE_CHECK_DIMENSION_ASSOCIATIONS", default=False
+        )
+        requirements = dataset_requirements or DatasetDimensionRequirements(
+            check_time_consistency=check_time_consistency,
+            check_dimension_associations=check_dimension_associations,
+            require_all_dimension_types=False,
+        )
         config = ProjectConfig.from_file(config_file)
         project_path = base_dir / config.project_id
         check_overwrite(project_path, overwrite)
         project_path.mkdir()
-        dsg_project = create_dsgrid_project(config)
-        # TODO: this eventually needs a switch between test and real datasets.
-        datasets = create_test_datasets(config, dsg_project)
-        deploy_to_dsgrid_registry(project_path, dsg_project, datasets)
+
+        dataset_dir = cls._get_dataset_dir(use_test_data)
+        deploy_to_dsgrid_registry(project_path, dataset_dir, requirements)
+
+        unchanged_tables_by_scenario = cls._register_scenario_datasets(
+            config, project_path, dataset_dir
+        )
+
         project = cls(config, project_path)
         project.con.sql("CREATE SCHEMA stride")
+        project._clear_scenario_dataset_paths()
         for scenario in config.scenarios:
-            make_mapped_datasets(project.con, project_path, config.project_id, scenario.name)
-            for dataset in project.list_datasets():
-                # There is no reason to keep the user's dataset paths.
-                setattr(scenario, dataset, None)
+            # Skip computing mapped datasets for tables that will be replaced with
+            # baseline views (avoids expensive redundant computation)
+            skip_tables = unchanged_tables_by_scenario.get(scenario.name, [])
+            make_mapped_datasets(
+                project.con, dataset_dir, project.path, scenario.name, skip_tables
+            )
+
         project.persist()
         project.copy_dbt_template()
+        project._create_views_for_unchanged_tables(unchanged_tables_by_scenario)
         project.compute_energy_projection(use_table_overrides=False)
-        if config.calculated_table_overrides:
-            overrides = config.calculated_table_overrides
-            # The override method will append to this list after a successful operation,
-            # so we need to reassign it first.
-            config.calculated_table_overrides = []
-            project.override_calculated_tables(overrides)
+        project._apply_calculated_table_overrides()
 
         # Populate the color palette with all metrics from the database
         project.populate_palette_metrics()
         project.save_palette()
 
-        return project
+        # Close the connection and reload to return a clean project instance
+        # This ensures the returned project has a fresh connection with default settings
+        project.close()
+        return cls.load(project_path)
+
+    @classmethod
+    def _get_dataset_dir(cls, use_test_data: bool) -> Path:
+        """Get and validate the dataset directory."""
+        dataset_name = "global-test" if use_test_data else "global"
+        dataset_dir = get_default_data_directory() / dataset_name
+        if not dataset_dir.exists():
+            msg = (
+                f"Dataset directory not found: {dataset_dir}. "
+                f"Please download it first using: stride datasets download {dataset_name}"
+            )
+            raise InvalidParameter(msg)
+        return dataset_dir
+
+    @classmethod
+    def _register_scenario_datasets(
+        cls,
+        config: ProjectConfig,
+        project_path: Path,
+        dataset_dir: Path,
+    ) -> dict[str, list[str]]:
+        """Register alias datasets with dsgrid for non-baseline scenarios.
+
+        Returns a mapping of scenario name to list of unchanged table names.
+        """
+        datasets = cls.list_datasets()
+        unchanged_tables_by_scenario: dict[str, list[str]] = {}
+        for scenario in config.scenarios:
+            if scenario.name != "baseline":
+                unchanged_tables_by_scenario[scenario.name] = [
+                    d for d in datasets if getattr(scenario, d) is None
+                ]
+                new_tables = [d for d in datasets if getattr(scenario, d) is not None]
+                if new_tables:
+                    register_scenario_datasets(project_path, dataset_dir, scenario, new_tables)
+        return unchanged_tables_by_scenario
+
+    def _clear_scenario_dataset_paths(self) -> None:
+        """Clear dataset paths from scenario configs (no longer needed after loading)."""
+        for scenario in self._config.scenarios:
+            for dataset in self.list_datasets():
+                setattr(scenario, dataset, None)
+
+    def _create_views_for_unchanged_tables(
+        self, unchanged_tables_by_scenario: dict[str, list[str]]
+    ) -> None:
+        """Create views for unchanged tables in non-baseline scenarios."""
+        for scenario_name, unchanged_tables in unchanged_tables_by_scenario.items():
+            if unchanged_tables:
+                self._create_baseline_views(scenario_name, unchanged_tables)
+
+    def _apply_calculated_table_overrides(self) -> None:
+        """Apply any calculated table overrides from the config."""
+        if self._config.calculated_table_overrides:
+            overrides = self._config.calculated_table_overrides
+            # The override method will append to this list after a successful operation,
+            # so we need to reassign it first.
+            self._config.calculated_table_overrides = []
+            self.override_calculated_tables(overrides)
 
     @classmethod
     def load(cls, project_path: Path | str, **connection_kwargs: Any) -> Self:
@@ -272,7 +362,7 @@ class Project:
             existing_full_name = f"{table.scenario}.{table.table_name}"
             override_name = f"{table.table_name}_override_table"
             override_full_name = f"{table.scenario}.{override_name}"
-            dtypes = self._get_dtypes(Path(table.filename))
+            dtypes = self._get_dtypes_from_table(Path(table.filename), existing_full_name)
             create_table_from_file(
                 self._con, override_full_name, table.filename, replace=True, dtypes=dtypes
             )  # noqa: F841
@@ -414,7 +504,7 @@ class Project:
     @staticmethod
     def list_datasets() -> list[str]:
         """List the datasets available in any project."""
-        return [x for x in Scenario.model_fields if x != "name"]
+        return [x for x in Scenario.model_fields if x not in ("name", "use_ev_projection")]
 
     def persist(self) -> None:
         """Persist the project config to the project directory."""
@@ -438,14 +528,21 @@ class Project:
             overrides = table_overrides.get(scenario.name, [])
             override_strings = [f'"{x}_override": "{x}_override"' for x in overrides]
             override_str = ", " + ", ".join(override_strings) if override_strings else ""
+            use_ev_str = "true" if scenario.use_ev_projection else "false"
             vars_string = (
                 f'{{"scenario": "{scenario.name}", '
                 f'"country": "{self._config.country}", '
-                f'"model_years": "({model_years})"'
+                f'"model_years": "({model_years})", '
+                f'"weather_year": {self._config.weather_year}, '
+                f'"heating_threshold": {self._config.model_parameters.heating_threshold}, '
+                f'"cooling_threshold": {self._config.model_parameters.cooling_threshold}, '
+                f'"use_ev_projection": {use_ev_str}'
                 f"{override_str}}}"
             )
             # TODO: May want to run `build` instead of `run` if we add dbt tests.
-            cmd = ["dbt", "run", "--vars", vars_string]
+            # Use dbt from the same environment as the running Python interpreter
+            dbt_executable = Path(sys.executable).parent / "dbt"
+            cmd = [str(dbt_executable), "run", "--vars", vars_string]
             self._con.close()
             try:
                 os.chdir(self._path / DBT_DIR)
@@ -457,6 +554,23 @@ class Project:
             finally:
                 os.chdir(orig)
                 self._con = self._connect()
+
+            # Check if the scenario produced any data
+            count_query = f"SELECT COUNT(*) as count FROM {scenario.name}.energy_projection"
+            result = self._con.sql(count_query).fetchone()
+            row_count = result[0] if result else 0
+            if row_count == 0:
+                msg = (
+                    f"Scenario '{scenario.name}' completed but produced no energy projection data. "
+                    f"This may indicate missing source data tables or configuration issues."
+                )
+                raise InvalidParameter(msg)
+
+            logger.info(
+                "Scenario {} produced {} rows of energy projection data",
+                scenario.name,
+                row_count,
+            )
 
             columns = "timestamp, model_year, scenario, sector, geography, metric, value"
             if i == 0:
@@ -579,20 +693,18 @@ class Project:
             msg = f"{table_name=} is not a calculated table in scenario={scenario_name}"
             raise InvalidParameter(msg)
 
-    @staticmethod
-    def _get_dtypes(filename: Path) -> dict[str, Any] | None:
-        """Should only be used when we know it's safe."""
-        dtypes: dict[str, str] | None = None
-        if filename.suffix == ".csv":
-            has_timestamp = False
-            with open(filename, "r", encoding="utf-8") as f_in:
-                for line in f_in:
-                    if "timestamp" in line:
-                        has_timestamp = True
-                    break
-            if has_timestamp:
-                dtypes = {"timestamp": "timestamp with time zone"}
-        return dtypes
+    def _get_dtypes_from_table(self, filename: Path, existing_table: str) -> dict[str, Any] | None:
+        """Get dtypes for CSV files based on the existing table's schema.
+
+        For CSV files, DuckDB's type inference may not match the existing table.
+        This method extracts the schema from the existing table and returns
+        appropriate dtype hints for CSV reading.
+        """
+        if filename.suffix != ".csv":
+            return None
+
+        schema = self._get_table_schema_types(existing_table)
+        return {col["column_name"]: col["column_type"] for col in schema}
 
     def _get_table_schema_types(self, table_name: str) -> list[dict[str, str]]:
         """Return the types of each column in the table."""
@@ -600,6 +712,75 @@ class Project:
             {"column_name": x[0], "column_type": x[1]}
             for x in self._con.sql(f"DESCRIBE {table_name}").fetchall()
         ]
+
+    def _create_baseline_views(self, scenario: str, table_names: list[str]) -> None:
+        """Create views in a scenario schema that point to baseline tables.
+
+        Parameters
+        ----------
+        scenario : str
+            Name of the scenario
+        table_names : list[str]
+            Names of tables to create views for
+        """
+        scenario_config = next((s for s in self._config.scenarios if s.name == scenario), None)
+        if scenario_config is None:
+            return
+
+        self._con.sql(f"CREATE SCHEMA IF NOT EXISTS {scenario}")
+
+        for table_name in table_names:
+            existing_table_name = f"baseline__{table_name}__1_0_0"
+            if not self._relation_exists("dsgrid_data", existing_table_name):
+                msg = f"Baseline table or view '{existing_table_name}' does not exist."
+                raise InvalidParameter(msg)
+            new_table_name = f"{scenario}__{table_name}__1_0_0"
+            # Drop the existing table/view if it exists, then create a view pointing to baseline
+            # This ensures unchanged tables always reference baseline data
+            if self._relation_exists("dsgrid_data", new_table_name):
+                self._con.sql(f"DROP TABLE IF EXISTS dsgrid_data.{new_table_name}")
+                self._con.sql(f"DROP VIEW IF EXISTS dsgrid_data.{new_table_name}")
+                logger.debug("Dropped existing {} to replace with baseline view", new_table_name)
+            query = (
+                f"CREATE OR REPLACE VIEW dsgrid_data.{new_table_name} AS "
+                f"SELECT * FROM dsgrid_data.{existing_table_name}"
+            )
+            self._con.sql(query)
+            logger.debug(
+                "Created view dsgrid_data.{} -> dsgrid_data.{}",
+                new_table_name,
+                existing_table_name,
+            )
+
+    def _relation_exists(self, schema: str, name: str) -> bool:
+        """Check if a table or view exists in the specified schema."""
+        result = self._con.execute(
+            """
+            SELECT COUNT(*)
+            FROM information_schema.tables
+            WHERE table_schema = ? AND table_name = ?
+            """,
+            [schema, name],
+        ).fetchone()
+        return result is not None and result[0] > 0
+
+
+def _parse_bool_env(name: str, default: bool) -> bool:
+    """Parse a boolean environment variable.
+
+    Accepts "true", "True", "TRUE", "1" for True
+    and "false", "False", "FALSE", "0" for False.
+    Returns the default if the variable is not set.
+    """
+    value = os.getenv(name)
+    if value is None:
+        return default
+    if value.lower() in ("true", "1"):
+        return True
+    if value.lower() in ("false", "0"):
+        return False
+    msg = f"Invalid boolean value for {name}: {value!r}. Use true/false or 1/0."
+    raise InvalidParameter(msg)
 
 
 def _get_base_and_override_names(table_name: str) -> tuple[str, str]:

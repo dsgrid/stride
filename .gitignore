@@ -172,3 +172,5 @@ cython_debug/
 
 # Ignore test_project
 test_project
+__dsgrid_scratch__
+journal*.json5

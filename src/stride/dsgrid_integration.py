@@ -1,254 +1,432 @@
-import os
-import shutil
+import json
 import tempfile
+from getpass import getuser
 from pathlib import Path
 from typing import Any
 
+from stride.models import Scenario
 
+from chronify.exceptions import InvalidParameter
+from dsgrid.dimension.base_models import DatasetDimensionRequirements
+from dsgrid.config.mapping_tables import MappingTableModel
+from dsgrid.config.registration_models import DimensionType
 from dsgrid.query.models import DimensionReferenceModel, make_dataset_query
+from dsgrid.utils.files import load_json_file
 import duckdb
-from dsgrid.config.dataset_config import DataSchemaType
-from dsgrid.dimension.base_models import DimensionType
 from dsgrid.query.query_submitter import (
     DatasetQuerySubmitter,
-)
-import json5
-from dsgrid.config.registration_models import (
-    RegistrationModel,
-    ProjectRegistrationModel,
-    DatasetRegistrationModel,
 )
 from dsgrid.registry.bulk_register import bulk_register
 from dsgrid.registry.common import DataStoreType, DatabaseConnection
 from dsgrid.registry.registry_manager import RegistryManager
 from loguru import logger
 
-from stride.io import create_table_from_file
-from stride.models import DatasetConfig
-
 
 def deploy_to_dsgrid_registry(
-    base_path: Path, project_config: dict[str, Any], datasets: list[DatasetConfig]
+    registry_path: Path,
+    dataset_dir: Path,
+    requirements: DatasetDimensionRequirements,
 ) -> None:
     """Deploy the Stride project to a dsgrid registry."""
-    mgr = create_dsgrid_registry(base_path)
-    create_project_directory_structure(base_path, project_config)
-    datasets_data_path = base_path / "datasets"
-    datasets_data_path.mkdir()
-    dataset_paths = write_datasets_to_dsgrid_format(mgr, base_path, datasets_data_path, datasets)
-    _bulk_register(mgr, base_path, dataset_paths)
+    registration_file = dataset_dir / "registration.json5"
+    if not registration_file.exists():
+        msg = f"Registration file not found: {registration_file}"
+        raise FileNotFoundError(msg)
+
+    mgr = create_dsgrid_registry(registry_path)
+    bulk_register(
+        mgr,
+        registration_file,
+        repo_base_dir=dataset_dir,
+        dataset_dimension_requirements=requirements,
+    )
+    logger.info("Registered dsgrid project and datasets from {}", dataset_dir)
 
 
-def create_dsgrid_registry(base_path: Path) -> RegistryManager:
+def create_dsgrid_registry(registry_path: Path) -> RegistryManager:
     """Create a dsgrid registry."""
-    url = _registry_url(base_path)
-    data_dir = base_path / "registry_data"
+    url = _registry_url(registry_path)
+    data_dir = registry_path / "registry_data"
+    scratch_dir = (registry_path / "__dsgrid_scratch__").resolve()
     conn = DatabaseConnection(url=url)
     return RegistryManager.create(
-        conn, data_dir, data_store_type=DataStoreType.DUCKDB, overwrite=True
-    )
-
-
-def _bulk_register(
-    mgr: RegistryManager,
-    base_path: Path,
-    dataset_paths: list[dict[str, Any]],
-) -> None:
-    """Register the project and all datasets."""
-    bulk_config = _make_bulk_registration_config(base_path, dataset_paths)
-    bulk_config_file = base_path / "registration.json5"
-    bulk_config.to_file(bulk_config_file)
-    skip_checks = False
-    try:
-        bulk_register(mgr, bulk_config_file)
-    finally:
-        if skip_checks:
-            os.environ.pop("__DSGRID_SKIP_CHECK_DATASET_TO_PROJECT_MAPPING__")
-
-
-def _make_bulk_registration_config(
-    base_path: Path,
-    dataset_paths: list[dict[str, Any]],
-) -> RegistrationModel:
-    """Create a bulk registration config file from a project and datasets."""
-    project_file = _project_config_path(base_path)
-    project_config = json5.loads(project_file.read_text(encoding="utf-8"))
-    project_id = project_config["project_id"]
-    return RegistrationModel(
-        projects=[
-            ProjectRegistrationModel(
-                project_id=project_id,
-                config_file=project_file,
-            )
-        ],
-        datasets=[
-            DatasetRegistrationModel(
-                dataset_id=x["dataset_id"],
-                config_file=x["config_file"],
-                dataset_path=x["dataset_path"],
-            )
-            for x in dataset_paths
-        ],
-        dataset_submissions=[],
+        conn,
+        data_dir,
+        data_store_type=DataStoreType.DUCKDB,
+        overwrite=True,
+        scratch_dir=scratch_dir,
     )
 
 
 def make_mapped_datasets(
     con: duckdb.DuckDBPyConnection,
+    dataset_dir: Path,
     base_path: Path,
-    project_id: str,
     scenario: str,
+    skip_tables: list[str] | None = None,
 ) -> None:
+    """Create mapped datasets from the dsgrid registry and data files.
+
+    Parameters
+    ----------
+    con : duckdb.DuckDBPyConnection
+        DuckDB connection
+    dataset_dir : Path
+        Path to the dataset directory
+    base_path : Path
+        Base path for the project
+    scenario : str
+        Scenario name
+    skip_tables : list[str] | None
+        List of table names to skip (these will be replaced with views to baseline)
+    """
     url = _registry_url(base_path)
     mgr = RegistryManager.load(DatabaseConnection(url=url), use_remote_data=False)
     scratch_dir = Path(tempfile.gettempdir())
+    dimension_mappings_file = dataset_dir / "dimension_mappings.json5"
+    if not dimension_mappings_file.exists():
+        return
+    mappings = load_json_file(dimension_mappings_file).get("dimension_mappings")
+    if not mappings:
+        return
+
+    output_dir = base_path / "dsgrid_query_output"
+    query_submitter = DatasetQuerySubmitter(output_dir)
+    mappings_dir = dimension_mappings_file.parent
+    skip_tables = skip_tables or []
+
+    for mapping in mappings:
+        # Extract table name from dataset_id (e.g., "baseline__load_shapes" -> "load_shapes")
+        dataset_id = mapping.get("dataset_id", "")
+        table_name = dataset_id.split("__")[1] if "__" in dataset_id else dataset_id
+        if table_name in skip_tables:
+            logger.debug(
+                "Skipping {} for scenario {} (will use baseline view)",
+                table_name,
+                scenario,
+            )
+            continue
+
+        _process_dataset_mapping(
+            con=con,
+            mapping=mapping,
+            mappings_dir=mappings_dir,
+            mgr=mgr,
+            scenario=scenario,
+            query_submitter=query_submitter,
+            scratch_dir=scratch_dir,
+        )
+
+
+def _process_dataset_mapping(
+    con: duckdb.DuckDBPyConnection,
+    mapping: dict[str, Any],
+    mappings_dir: Path,
+    mgr: RegistryManager,
+    scenario: str,
+    query_submitter: DatasetQuerySubmitter,
+    scratch_dir: Path,
+) -> None:
+    """Process dimension mappings for a single dataset.
+
+    Registers the mappings, queries the dataset with those mappings,
+    and creates a table in DuckDB with the results.
+    """
+    mapping_file = mapping.get("dimension_mapping_file")
+    if not mapping_file:
+        return
+
+    mapping_path = Path(mapping_file)
+    if not mapping_path.is_absolute():
+        mapping_path = (mappings_dir / mapping_path).resolve()
+
+    mapping_config = load_json_file(mapping_path)
+    mapping_config_dir = mapping_path.parent
+
+    project_id = mapping["project_id"]
+    dataset_id = mapping["dataset_id"]
     project = mgr.project_manager.load_project(project_id)
-    time_dimension = project.config.get_base_time_dimension()
+    dataset_config = mgr.dataset_manager.get_by_id(dataset_id)
+
+    # Build mapping models for this dataset
+    mapping_models = _build_mapping_models(
+        mapping_config=mapping_config,
+        mapping_config_dir=mapping_config_dir,
+        dataset_config=dataset_config,
+        project=project,
+    )
+
+    if not mapping_models:
+        return
+
+    # Register mappings and get registered mapping objects
+    mapping_mgr = project.dimension_mapping_manager
+    registered_mappings = _register_dimension_mappings(
+        mapping_models=mapping_models,
+        mapping_mgr=mapping_mgr,
+        dataset_id=dataset_id,
+    )
+
+    # Query the dataset and create table
+    _query_and_create_table(
+        con=con,
+        scenario=scenario,
+        dataset_id=dataset_id,
+        registered_mappings=registered_mappings,
+        query_submitter=query_submitter,
+        mgr=mgr,
+        scratch_dir=scratch_dir,
+    )
+
+
+def _build_mapping_models(
+    mapping_config: dict[str, Any],
+    mapping_config_dir: Path,
+    dataset_config: Any,
+    project: Any,
+) -> list[MappingTableModel]:
+    """Build MappingTableModel instances for a dataset's dimension mappings."""
+    mapping_models = []
+
+    for mapping_entry in mapping_config.get("mappings", []):
+        dimension_type = DimensionType(mapping_entry["dimension_type"])
+        mapping_type = mapping_entry.get("mapping_type", "many_to_one_aggregation")
+        description = mapping_entry.get("description")
+
+        csv_file = mapping_entry.get("file")
+        if not csv_file:
+            continue
+        csv_path = Path(csv_file)
+        if not csv_path.is_absolute():
+            csv_path = (mapping_config_dir / csv_path).resolve()
+
+        # Find matching project and dataset dimensions
+        dims = _find_matching_dimensions(
+            dimension_type=dimension_type,
+            dataset_config=dataset_config,
+            project=project,
+        )
+        if dims is None:
+            msg = f"No matching dimensions found for dimension type {dimension_type}"
+            raise InvalidParameter(msg)
+        dataset_dim, project_dim = dims
+
+        mapping_model = MappingTableModel(
+            from_dimension=DimensionReferenceModel(
+                dimension_id=dataset_dim.model.dimension_id,
+                type=dataset_dim.model.dimension_type,
+                version=dataset_dim.model.version,
+            ),
+            to_dimension=DimensionReferenceModel(
+                dimension_id=project_dim.model.dimension_id,
+                type=project_dim.model.dimension_type,
+                version=project_dim.model.version,
+            ),
+            mapping_type=mapping_type,
+            description=description,
+            file=str(csv_path),
+        )
+        mapping_models.append(mapping_model)
+        logger.debug("Prepared dimension mapping for {} from {}", dimension_type, csv_path)
+
+    return mapping_models
+
+
+def _find_matching_dimensions(
+    dimension_type: DimensionType,
+    dataset_config: Any,
+    project: Any,
+) -> tuple[Any, Any] | None:
+    """Find matching dataset and project dimensions for a dimension type.
+
+    Returns
+    -------
+    tuple | None
+        (dataset_dim, project_dim) if found, None otherwise
+    """
+    if dimension_type == DimensionType.METRIC:
+        dataset_dim = dataset_config.get_dimension(dimension_type)
+        project_dims = project.config.list_base_dimensions(dimension_type)
+        project_dim = None
+        for pdim in project_dims:
+            if pdim.model.class_name == dataset_dim.model.class_name:
+                project_dim = pdim
+                break
+        if project_dim is None:
+            logger.warning(
+                "No matching project dimension found for metric class_name={}",
+                dataset_dim.model.class_name,
+            )
+            return None
+    else:
+        project_dims = project.config.list_base_dimensions(dimension_type)
+        if not project_dims:
+            logger.warning("No project dimension found for type {}", dimension_type)
+            return None
+        assert len(project_dims) == 1, f"Multiple project dimensions found: {project_dims}"
+        project_dim = project_dims[0]
+        dataset_dim = dataset_config.get_dimension(dimension_type)
+
+    return dataset_dim, project_dim
+
+
+def _register_dimension_mappings(
+    mapping_models: list[MappingTableModel],
+    mapping_mgr: Any,
+    dataset_id: str,
+) -> list[Any]:
+    """Register dimension mappings and return registered mapping objects."""
+    mappings_data = {
+        "mappings": [m.model_dump(mode="json", by_alias=True) for m in mapping_models]
+    }
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp_file:
+        json.dump(mappings_data, tmp_file)
+        tmp_path = Path(tmp_file.name)
+
+    try:
+        mapping_ids = mapping_mgr.register(
+            tmp_path,
+            submitter=getuser(),
+            log_message=f"Registered dimension mappings for {dataset_id}",
+        )
+        registered_mappings = [mapping_mgr.get_by_id(x) for x in mapping_ids]
+        logger.info("Registered {} dimension mappings for {}", len(mapping_models), dataset_id)
+        return registered_mappings
+    finally:
+        tmp_path.unlink()
+
+
+def _query_and_create_table(
+    con: duckdb.DuckDBPyConnection,
+    scenario: str,
+    dataset_id: str,
+    registered_mappings: list[Any],
+    query_submitter: DatasetQuerySubmitter,
+    mgr: RegistryManager,
+    scratch_dir: Path,
+) -> None:
+    """Query a dataset with mappings and create a DuckDB table."""
     to_dimension_references = [
         DimensionReferenceModel(
-            dimension_id=time_dimension.model.dimension_id,
-            type=time_dimension.model.dimension_type,
-            version=time_dimension.model.version,
-        ),
+            dimension_id=m.model.to_dimension.dimension_id,
+            type=m.model.to_dimension.dimension_type,
+            version=m.model.to_dimension.version,
+        )
+        for m in registered_mappings
     ]
-    dataset_ids = [f"{scenario}__load_shapes"]
-    output_dir = base_path / "dsgrid_query_output"
-    submitter = DatasetQuerySubmitter(output_dir)
-    for dataset_id in dataset_ids:
-        query = make_dataset_query(
-            name=dataset_id,
-            dataset_id=dataset_id,
-            to_dimension_references=to_dimension_references,
-        )
-        # This calls toPandas() because the duckdb connection inside dsgrid is
-        # different than this one. We need to extract it and then add it through this connection.
-        df = submitter.submit(  # noqa F841
-            query,
-            mgr,
-            scratch_dir=scratch_dir,
-            overwrite=True,
-        ).toPandas()
-        # TODO: this should go into the stride schema.
-        # ... challenges with sources.yml
-        # table_name = f"stride.{dataset_id}"
-        table_name = f"dsgrid_data.{dataset_id}"
-        con.sql(f"CREATE TABLE {table_name} AS SELECT * FROM df")
-        logger.info("Created table {} from mapped dataset.", table_name)
+
+    query = make_dataset_query(
+        name=dataset_id,
+        dataset_id=dataset_id,
+        to_dimension_references=to_dimension_references,
+    )
+    base_id = dataset_id.split("__")[1]
+    table_name = f"dsgrid_data.{scenario}__{base_id}__1_0_0"
+
+    # Query dsgrid and get the result DataFrame
+    df = query_submitter.submit(
+        query,
+        mgr,
+        scratch_dir=scratch_dir,
+        overwrite=True,
+    )
+    # Use Arrow transfer instead of toPandas() for better performance
+    arrow_table = df.relation.arrow()  # noqa: F841
+    # Convert model_year from string to integer if needed
+    if "model_year" in arrow_table.schema.names:
+        import pyarrow as pa  # type: ignore[import-untyped]
+
+        field_index = arrow_table.schema.get_field_index("model_year")
+        if pa.types.is_string(arrow_table.schema.field(field_index).type):
+            arrow_table = arrow_table.set_column(
+                field_index,
+                "model_year",
+                arrow_table.column("model_year").cast(pa.int64()),
+            )
+    con.execute(f"CREATE OR REPLACE TABLE {table_name} AS SELECT * FROM arrow_table")
+    logger.info("Created table {} from mapped dataset.", table_name)
 
 
-def _registry_url(base_path: Path) -> str:
-    return f"sqlite:///{base_path}/registry.db"
+def register_scenario_datasets(
+    registry_path: Path,
+    dataset_dir: Path,
+    scenario: Scenario,
+    table_names: list[str],
+) -> None:
+    """Register datasets for a non-baseline scenario.
 
+    For tables that are not overridden in a scenario, create dsgrid dataset
+    registrations that reference the baseline dataset configuration files.
 
-def _dsg_base_path(base_path: Path) -> Path:
-    return base_path / "dsgrid_project"
-
-
-def _datasets_config_path(base_path: Path) -> Path:
-    return _dsg_base_path(base_path) / "datasets"
-
-
-def _dataset_config_path(base_path: Path, dataset_id: str) -> Path:
-    return _datasets_config_path(base_path) / dataset_id / "dataset.json5"
-
-
-def _project_config_path(base_path: Path) -> Path:
-    return _dsg_base_path(base_path) / "project" / "project.json5"
-
-
-def create_project_directory_structure(base_path: Path, project_config: dict[str, Any]) -> Path:
-    dsg_base_path = _dsg_base_path(base_path)
-    dsg_project_path = dsg_base_path / "project"
-    dsg_datasets_path = dsg_base_path / "datasets"
-    dsg_project_path.mkdir(parents=True)
-    dsg_datasets_path.mkdir(parents=True)
-    project_file = _project_config_path(base_path)
-    project_file.write_text(json5.dumps(project_config, indent=2), encoding="utf-8")
-    return dsg_base_path
-
-
-def write_datasets_to_dsgrid_format(
-    mgr: RegistryManager,
-    base_path: Path,
-    datasets_data_path: Path,
-    datasets: list[DatasetConfig],
-) -> list[dict[str, Any]]:
-    """Write the datasets to files in dsgrid format.
-    This converts CSV to Parquet and converts custom column names to dimension types.
-    The function lets DuckDB infer data types. Could add schemas if necessary.
+    Parameters
+    ----------
+    registry_path : Path
+        Path to the project/registry
+    dataset_dir : Path
+        Path to the data directory (e.g., ~/.stride/data/global-test)
+    scenario : Scenario
+        Scenario to create datasets for
+    table_names : list[str]
+        Names of tables to create datasets for
     """
-    con = duckdb.connect()
-    dataset_paths: list[dict[str, Any]] = []
-    for dataset in datasets:
-        dataset_data_path = datasets_data_path / dataset.dataset_id
-        dataset_data_path.mkdir()
-        included_dimensions = [x for x in dataset.dimension_columns.values()]
-        if dataset.time_type is not None:
-            included_dimensions.append(DimensionType.TIME)
-        rel = create_table_from_file(con, dataset.dataset_id, dataset.path)
-        expr: list[str] = dataset.time_columns + [dataset.value_column]
-        needs_rename = False
-        for column, dim_type in dataset.dimension_columns.items():
-            if column != dim_type.value:
-                expr.append(f"{column} AS {dim_type.value}")
-                needs_rename = True
-            else:
-                expr.append(column)
-        if needs_rename:
-            cols = ",".join(expr)
-            rel = con.sql(f"SELECT {cols} FROM {rel.alias}")
+    url = _registry_url(registry_path)
+    mgr = RegistryManager.load(DatabaseConnection(url=url), use_remote_data=False)
 
-        dst = dataset_data_path / "table.parquet"
-        rel.to_parquet(str(dst))
-        logger.info("Wrote dataset {} to dsgrid format at {}", dataset.dataset_id, dst)
-        if dataset.missing_associations_file is not None:
-            dst = (
-                dataset_data_path
-                / f"missing_associations{dataset.missing_associations_file.suffix}"
+    # Load the registration file to find dataset config files
+    registration_file = dataset_dir / "registration.json5"
+    registration_data = load_json_file(registration_file)
+
+    # Build a mapping of dataset_id -> config_file path
+    dataset_config_files: dict[str, Path] = {}
+    for dataset_entry in registration_data.get("datasets", []):
+        dataset_id = dataset_entry.get("dataset_id")
+        config_file = dataset_entry.get("config_file")
+        if dataset_id and config_file:
+            dataset_config_files[dataset_id] = dataset_dir / config_file
+
+    for table_name in table_names:
+        baseline_dataset_id = f"baseline__{table_name}"
+        config_file_path = dataset_config_files.get(baseline_dataset_id)
+        if config_file_path is None or not config_file_path.exists():
+            logger.debug(
+                "Config file for {} not found, skipping alias creation",
+                baseline_dataset_id,
             )
-            shutil.copyfile(dataset.missing_associations_file, dst)
-            logger.info(
-                "Copied dataset {}'s missing associations file to {}", dataset.dataset_id, dst
+            continue
+
+        dataset_config = load_json_file(config_file_path)
+        new_dataset_id = f"{scenario.name}__{table_name}"
+        dataset_config["dataset_id"] = new_dataset_id
+        config_dir = config_file_path.parent
+
+        # Convert dimension file paths
+        for dimension in dataset_config.get("dimensions", []):
+            if "file" in dimension:
+                file_path = Path(dimension["file"])
+                if not file_path.is_absolute():
+                    dimension["file"] = str((config_dir / file_path).resolve())
+
+        dataset_config["data_layout"]["data_file"]["path"] = str(getattr(scenario, table_name))
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp_file:
+            json.dump(dataset_config, tmp_file)
+            tmp_path = Path(tmp_file.name)
+        try:
+            requirements = DatasetDimensionRequirements(
+                check_time_consistency=True,
+                check_dimension_associations=False,
+                require_all_dimension_types=False,
             )
-
-        config_file = _dataset_config_path(base_path, dataset.dataset_id)
-        config_file.parent.mkdir()
-        generate_dsgrid_dataset_config_file(dataset, config_file)
-        dataset_paths.append(
-            {
-                "dataset_id": dataset.dataset_id,
-                "config_file": _dataset_config_path(base_path, dataset.dataset_id),
-                "dataset_path": dataset_data_path,
-                "base_dataset_id": dataset.dataset_id.split("__")[1],
-            }
-        )
-
-    return dataset_paths
+            mgr.dataset_manager.register(
+                tmp_path,
+                submitter=getuser(),
+                log_message=f"Registered scenario dataset {new_dataset_id}",
+                requirements=requirements,
+            )
+            logger.info("Registered scenario dataset {}", new_dataset_id)
+        finally:
+            tmp_path.unlink()
 
 
-def generate_dsgrid_dataset_config_file(dataset: DatasetConfig, config_file: Path) -> None:
-    # dsgrid has a function to do this, but there are too many dimension-specific things here.
-    config = {
-        "dataset_id": dataset.dataset_id,
-        "dimensions": dataset.dimensions,
-        "trivial_dimensions": [x.value for x in dataset.trivial_dimensions],
-        "dataset_type": "modeled",
-        "data_schema": {
-            "data_schema_type": DataSchemaType.ONE_TABLE.value,
-            "table_format": {"format_type": "unpivoted"},
-        },
-        "version": "1.0.0",
-        "description": "",
-        "origin_creator": "",
-        "origin_organization": "",
-        "origin_date": "",
-        "origin_project": "",
-        "origin_version": "",
-        "data_source": "",
-        "source": "",
-        "data_classification": "moderate",
-        "use_project_geography_time_zone": False,
-        "tags": [],
-        "user_defined_metadata": {},
-    }
-    config_file.write_text(json5.dumps(config, indent=2), encoding="utf-8")
+def _registry_url(registry_path: Path) -> str:
+    return f"sqlite:///{registry_path}/registry.db"

@@ -1,11 +1,9 @@
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, Self
+from typing import Self
 
 from chronify.exceptions import InvalidParameter
 from dsgrid.data_models import DSGBaseModel
-from dsgrid.dimension.base_models import DimensionType
-from dsgrid.dimension.time import TimeDimensionType
 from pydantic import Field, field_validator
 
 
@@ -22,37 +20,6 @@ class ProjectionSliceType(StrEnum):
     ENERGY_BY_SECTOR = "energy_by_sector"
     EVS = "evs"
     HEAT_PUMPS = "heat_pumps"
-
-
-class DatasetConfig(DSGBaseModel):  # type: ignore
-    """Defines a Stride dataset."""
-
-    dataset_id: str
-    path: Path
-    # dataset_type: DatasetType
-    # projection_slice: ProjectionSliceType | None = None  # TODO
-    metric_class: str
-    metric_dimension_name: str
-    time_type: TimeDimensionType | None = None
-    time_columns: list[str] = []
-    dimension_columns: dict[str, DimensionType] = {}
-    trivial_dimensions: list[DimensionType] = []
-    dimensions: list[dict[str, Any]]
-    missing_associations_file: Path | None = None
-    value_column: str = "value"
-
-    @field_validator("dimension_columns")
-    @classmethod
-    def assign_dimensions(
-        cls, columns: dict[str, DimensionType | str]
-    ) -> dict[str, DimensionType]:
-        final: dict[str, DimensionType] = {}
-        for name, value in columns.items():
-            if isinstance(value, DimensionType):
-                final[name] = value
-            else:
-                final[name] = DimensionType(value)
-        return final
 
 
 class Scenario(DSGBaseModel):  # type: ignore
@@ -79,11 +46,34 @@ class Scenario(DSGBaseModel):  # type: ignore
         default=None,
         description="Optional path to a user-provided population table",
     )
-    weather: Path | None = Field(
+    weather_bait: Path | None = Field(
         default=None,
-        description="Optional path to a user-provided weather table",
+        description="Optional path to a user-provided weather_bait table",
     )
-    # TODO: bait, ev_share, vmt_per_capita
+    use_ev_projection: bool = Field(
+        default=False,
+        description="Use EV-based projection for (Transportation, Road) instead of energy intensity regression",
+    )
+    electricity_per_vehicle_km_projections: Path | None = Field(
+        default=None,
+        description="Optional path to a user-provided population table",
+    )
+    ev_stock_share_projections: Path | None = Field(
+        default=None,
+        description="Optional path to a user-provided ev_stock_share_projections table",
+    )
+    km_per_vehicle_year_regressions: Path | None = Field(
+        default=None,
+        description="Optional path to a user-provided km_per_vehicle_year_regressions table",
+    )
+    phev_share_projections: Path | None = Field(
+        default=None,
+        description="Optional path to a user-provided phev_share_projections table",
+    )
+    vehicle_per_capita_regressions: Path | None = Field(
+        default=None,
+        description="Optional path to a user-provided vehicle_per_capita_regressions table",
+    )
 
     @field_validator("name")
     @classmethod
@@ -113,6 +103,21 @@ class CalculatedTableOverride(DSGBaseModel):  # type: ignore
     )
 
 
+class ModelParameters(DSGBaseModel):  # type: ignore
+    """Advanced model parameters for energy projections."""
+
+    heating_threshold: float = Field(
+        default=18.0,
+        description="Temperature threshold (°C) below which heating degree days are calculated. "
+        "Used for temperature adjustment of heating end uses in load shapes.",
+    )
+    cooling_threshold: float = Field(
+        default=18.0,
+        description="Temperature threshold (°C) above which cooling degree days are calculated. "
+        "Used for temperature adjustment of cooling end uses in load shapes.",
+    )
+
+
 class ProjectConfig(DSGBaseModel):  # type: ignore
     """Defines a Stride project."""
 
@@ -124,6 +129,10 @@ class ProjectConfig(DSGBaseModel):  # type: ignore
     end_year: int = Field(description="End year for the forecasted data")
     step_year: int = Field(default=1, description="End year for the forecasted data")
     weather_year: int = Field(description="Weather year upon which the data is based")
+    model_parameters: ModelParameters = Field(
+        default_factory=ModelParameters,
+        description="Advanced model parameters for temperature adjustments and other calculations",
+    )
     scenarios: list[Scenario] = Field(
         default=[Scenario(name="baseline")],
         description="Scenarios for the project. Users may add custom scenarios.",
@@ -144,17 +153,18 @@ class ProjectConfig(DSGBaseModel):  # type: ignore
         config = super().from_file(path)
         for scenario in config.scenarios:
             for field in Scenario.model_fields:
-                if field != "name":
-                    val = getattr(scenario, field)
-                    if val is not None and not val.is_absolute():
-                        setattr(scenario, field, path.parent / val)
-                    val = getattr(scenario, field)
-                    if val is not None and not val.exists():
-                        msg = (
-                            f"Scenario={scenario.name} dataset={field} filename={val} "
-                            f"does not exist"
-                        )
-                        raise InvalidParameter(msg)
+                if field in ("name", "use_ev_projection"):
+                    continue
+                val = getattr(scenario, field)
+                if val is not None and not val.is_absolute():
+                    setattr(scenario, field, (path.parent / val).resolve())
+                val = getattr(scenario, field)
+                if val is not None and not val.exists():
+                    msg = (
+                        f"Scenario={scenario.name} dataset={field} filename={val} "
+                        f"does not exist"
+                    )
+                    raise InvalidParameter(msg)
             for table in config.calculated_table_overrides:
                 if table.filename is not None and not table.filename.is_absolute():
                     table.filename = path.parent / table.filename

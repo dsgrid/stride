@@ -150,7 +150,7 @@ def seasonal_load_lines(
             paper_bgcolor=TRANSPARENT,
             margin=dict(l=20, r=20, t=20, b=40),
             xaxis_title="Hour of Day",
-            yaxis_title="Load (MW)",
+            yaxis_title="Average Power Demand (MW)",
             xaxis=dict(
                 range=[0, 23],
                 showgrid=True,
@@ -342,7 +342,7 @@ def seasonal_load_area(
             paper_bgcolor=TRANSPARENT,
             margin=dict(l=20, r=20, t=20, b=40),
             xaxis_title="Hour of Day",
-            yaxis_title="Load (MW)",
+            yaxis_title="Average Power Demand (MW)",
             xaxis=dict(
                 range=[0, 23],
                 showgrid=True,
@@ -399,7 +399,8 @@ def faceted_time_series(
     # Get hover label styling based on theme
     hoverlabel_style = get_hoverlabel_style(template)
 
-    scenarios = sorted(df["scenario"].unique())
+    # Note: scenarios should already be in project config order from the API
+    scenarios = list(df["scenario"].unique())
     rows, cols = calculate_subplot_layout(len(scenarios))
 
     # Create subplots with scenario titles
