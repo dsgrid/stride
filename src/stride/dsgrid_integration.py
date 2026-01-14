@@ -6,6 +6,7 @@ from pathlib import Path
 from stride.models import Scenario
 
 from chronify.exceptions import InvalidParameter
+from dsgrid.dimension.base_models import DatasetDimensionRequirements
 from dsgrid.config.mapping_tables import MappingTableModel
 from dsgrid.config.registration_models import DimensionType
 from dsgrid.query.models import DimensionReferenceModel, make_dataset_query
@@ -23,6 +24,7 @@ from loguru import logger
 def deploy_to_dsgrid_registry(
     registry_path: Path,
     dataset_dir: Path,
+    requirements: DatasetDimensionRequirements,
 ) -> None:
     """Deploy the Stride project to a dsgrid registry."""
     registration_file = dataset_dir / "registration.json5"
@@ -35,6 +37,7 @@ def deploy_to_dsgrid_registry(
         mgr,
         registration_file,
         repo_base_dir=dataset_dir,
+        dataset_dimension_requirements=requirements,
     )
     logger.info("Registered dsgrid project and datasets from {}", dataset_dir)
 
@@ -408,10 +411,16 @@ def register_scenario_datasets(
             json.dump(dataset_config, tmp_file)
             tmp_path = Path(tmp_file.name)
         try:
+            requirements = DatasetDimensionRequirements(
+                check_time_consistency=True,
+                check_dimension_associations=False,
+                require_all_dimension_types=False,
+            )
             mgr.dataset_manager.register(
                 tmp_path,
                 submitter=getuser(),
                 log_message=f"Registered scenario dataset {new_dataset_id}",
+                requirements=requirements,
             )
             logger.info("Registered scenario dataset {}", new_dataset_id)
         finally:

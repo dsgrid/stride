@@ -30,7 +30,7 @@ dependencies = [
     "dash-bootstrap-components>=2.0.3",
     "dbt-core >= 1.10.5, < 2",
     "dbt-duckdb",
-    "dsgrid-toolkit",
+    "dsgrid-toolkit >= 0.3.0, < 0.4.0",
     "duckdb >= 1.1, < 2",
     "loguru",
     "pandas>=2.2,<3",
