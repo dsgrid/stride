@@ -2,6 +2,7 @@ import json
 import tempfile
 from getpass import getuser
 from pathlib import Path
+from typing import Any
 
 from stride.models import Scenario
 
@@ -119,7 +120,7 @@ def make_mapped_datasets(
 
 def _process_dataset_mapping(
     con: duckdb.DuckDBPyConnection,
-    mapping: dict,
+    mapping: dict[str, Any],
     mappings_dir: Path,
     mgr: RegistryManager,
     scenario: str,
@@ -179,10 +180,10 @@ def _process_dataset_mapping(
 
 
 def _build_mapping_models(
-    mapping_config: dict,
+    mapping_config: dict[str, Any],
     mapping_config_dir: Path,
-    dataset_config,
-    project,
+    dataset_config: Any,
+    project: Any,
 ) -> list[MappingTableModel]:
     """Build MappingTableModel instances for a dataset's dimension mappings."""
     mapping_models = []
@@ -233,9 +234,9 @@ def _build_mapping_models(
 
 def _find_matching_dimensions(
     dimension_type: DimensionType,
-    dataset_config,
-    project,
-) -> tuple | None:
+    dataset_config: Any,
+    project: Any,
+) -> tuple[Any, Any] | None:
     """Find matching dataset and project dimensions for a dimension type.
 
     Returns
@@ -271,9 +272,9 @@ def _find_matching_dimensions(
 
 def _register_dimension_mappings(
     mapping_models: list[MappingTableModel],
-    mapping_mgr,
+    mapping_mgr: Any,
     dataset_id: str,
-) -> list:
+) -> list[Any]:
     """Register dimension mappings and return registered mapping objects."""
     mappings_data = {
         "mappings": [m.model_dump(mode="json", by_alias=True) for m in mapping_models]
@@ -299,7 +300,7 @@ def _query_and_create_table(
     con: duckdb.DuckDBPyConnection,
     scenario: str,
     dataset_id: str,
-    registered_mappings: list,
+    registered_mappings: list[Any],
     query_submitter: DatasetQuerySubmitter,
     mgr: RegistryManager,
     scratch_dir: Path,
@@ -333,7 +334,7 @@ def _query_and_create_table(
     arrow_table = df.relation.arrow()  # noqa: F841
     # Convert model_year from string to integer if needed
     if "model_year" in arrow_table.schema.names:
-        import pyarrow as pa
+        import pyarrow as pa  # type: ignore[import-untyped]
 
         field_index = arrow_table.schema.get_field_index("model_year")
         if pa.types.is_string(arrow_table.schema.field(field_index).type):

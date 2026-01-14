@@ -1,10 +1,13 @@
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import dash_bootstrap_components as dbc
 from dash import Dash, Input, Output, State, callback, dcc, html
 from dash.exceptions import PreventUpdate
 from loguru import logger
+
+if TYPE_CHECKING:
+    from stride.project import Project
 
 from stride.api import APIClient
 from stride.api.utils import Sectors, literal_to_list
@@ -34,7 +37,7 @@ app = Dash(
 # Global state for loaded projects
 # project_path -> (project, color_manager, plotter, project_name)
 # Note: We store Project instead of APIClient because APIClient is a singleton
-_loaded_projects: dict[str, tuple] = {}
+_loaded_projects: dict[str, tuple[Project, ColorManager, StridePlots, str]] = {}
 _current_project_path: str | None = None
 
 
@@ -54,7 +57,7 @@ def create_fresh_color_manager(palette: ColorPalette, scenarios: list[str]) -> C
     color_manager = object.__new__(ColorManager)
     color_manager._initialized = False
     color_manager._scenario_colors = {}
-    color_manager.__init__(palette)
+    ColorManager.__init__(color_manager, palette)
     color_manager.initialize_colors(
         scenarios=scenarios,
         sectors=literal_to_list(Sectors),
@@ -311,7 +314,7 @@ def create_app(  # noqa: C901
                             # Dropdown for available projects (recent + discovered)
                             dcc.Dropdown(
                                 id="project-switcher-dropdown",
-                                options=dropdown_options,
+                                options=dropdown_options,  # type: ignore[arg-type]
                                 value=current_project_path,
                                 placeholder="Switch project...",
                                 className="mb-2",
@@ -818,7 +821,7 @@ def create_app(  # noqa: C901
         path_input: str | None,
         current_path: str,
         current_options: list[dict[str, str]],
-    ) -> tuple[str, html.Div, str, str, list[dict[str, str]], str | None]:
+    ) -> tuple[Any, ...]:
         """Handle project loading and switching."""
         from dash import ctx, no_update
 
@@ -836,6 +839,7 @@ def create_app(  # noqa: C901
                 )
                 # Add new project to dropdown if not already there
                 existing_paths = {opt.get("value") for opt in current_options}
+                new_options: Any
                 if _current_project_path not in existing_paths:
                     new_options = [
                         {"label": project_name, "value": _current_project_path},

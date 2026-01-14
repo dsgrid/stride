@@ -901,7 +901,7 @@ def _register_summary_callbacks(  # noqa: C901
     )
     def _update_start_year_options(
         selected_year: int, current_start_year: int | None
-    ) -> tuple[list[dict[str, int]], int]:
+    ) -> tuple[list[dict[str, Any]], int]:
         """Update start year dropdown to only show years <= selected year, preserving current value if valid."""
         data_handler = get_data_handler_func()
         if data_handler is None:

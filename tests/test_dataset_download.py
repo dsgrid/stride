@@ -3,6 +3,7 @@
 import tempfile
 import zipfile
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -20,7 +21,7 @@ from stride.dataset_download import (
 )
 
 
-def test_list_known_datasets():
+def test_list_known_datasets() -> None:
     """Test that list_known_datasets returns the expected datasets."""
     datasets = list_known_datasets()
     assert len(datasets) >= 1
@@ -28,7 +29,7 @@ def test_list_known_datasets():
     assert "global" in names
 
 
-def test_known_datasets_have_required_fields():
+def test_known_datasets_have_required_fields() -> None:
     """Test that all known datasets have required fields."""
     for name, dataset in KNOWN_DATASETS.items():
         assert isinstance(dataset, KnownDataset)
@@ -38,13 +39,13 @@ def test_known_datasets_have_required_fields():
         assert dataset.description
 
 
-def test_global_dataset_has_test_subdirectory():
+def test_global_dataset_has_test_subdirectory() -> None:
     """Test that the global dataset has an associated test dataset."""
     global_dataset = KNOWN_DATASETS["global"]
     assert global_dataset.test_subdirectory == "global-test"
 
 
-def test_parse_github_url_valid():
+def test_parse_github_url_valid() -> None:
     """Test parsing valid GitHub URLs."""
     assert _parse_github_url("https://github.com/owner/repo") == "owner/repo"
     assert _parse_github_url("https://github.com/owner/repo/") == "owner/repo"
@@ -52,7 +53,7 @@ def test_parse_github_url_valid():
     assert _parse_github_url("github.com/owner/repo") == "owner/repo"
 
 
-def test_parse_github_url_invalid():
+def test_parse_github_url_invalid() -> None:
     """Test parsing invalid GitHub URLs."""
     from click import UsageError
 
@@ -63,14 +64,14 @@ def test_parse_github_url_invalid():
         _parse_github_url("not a url")
 
 
-def test_download_unknown_dataset():
+def test_download_unknown_dataset() -> None:
     """Test that downloading an unknown dataset raises an error."""
     with pytest.raises(DatasetDownloadError, match="Unknown dataset"):
         download_dataset("nonexistent_dataset")
 
 
 @patch("stride.dataset_download.subprocess.run")
-def test_get_latest_release_tag(mock_run):
+def test_get_latest_release_tag(mock_run: Any) -> None:
     """Test getting the latest release tag."""
     mock_run.return_value = MagicMock(stdout="v1.0.0\nv0.9.0\n", returncode=0)
 
@@ -79,7 +80,7 @@ def test_get_latest_release_tag(mock_run):
 
 
 @patch("stride.dataset_download.subprocess.run")
-def test_get_latest_release_tag_no_releases(mock_run):
+def test_get_latest_release_tag_no_releases(mock_run: Any) -> None:
     """Test getting latest release when there are no releases."""
     import subprocess
 
@@ -106,7 +107,7 @@ def create_test_archive(
 @patch("stride.dataset_download._get_github_token")
 @patch("stride.dataset_download.get_latest_release_tag")
 @patch("stride.dataset_download.subprocess.run")
-def test_download_dataset_from_repo(mock_run, mock_get_tag, mock_get_token):
+def test_download_dataset_from_repo(mock_run: Any, mock_get_tag: Any, mock_get_token: Any) -> None:
     """Test downloading a dataset from a repository."""
     mock_get_tag.return_value = "v1.0.0"
     mock_get_token.return_value = None
@@ -121,7 +122,7 @@ def test_download_dataset_from_repo(mock_run, mock_get_tag, mock_get_token):
         create_test_archive(source_archive, "repo", "mydata")
 
         # Mock subprocess.run to copy our test archive to the output path
-        def fake_run(cmd, **kwargs):
+        def fake_run(cmd: list[str], **kwargs: Any) -> MagicMock:
             import shutil
 
             if "gh" in cmd and "release" in cmd and "download" in cmd:
@@ -150,7 +151,9 @@ def test_download_dataset_from_repo(mock_run, mock_get_tag, mock_get_token):
 @patch("stride.dataset_download._get_github_token")
 @patch("stride.dataset_download.get_latest_release_tag")
 @patch("stride.dataset_download.subprocess.run")
-def test_download_dataset_with_test_subdirectory(mock_run, mock_get_tag, mock_get_token):
+def test_download_dataset_with_test_subdirectory(
+    mock_run: Any, mock_get_tag: Any, mock_get_token: Any
+) -> None:
     """Test downloading a dataset with its test subdirectory."""
     mock_get_tag.return_value = "v1.0.0"
     mock_get_token.return_value = None
@@ -164,7 +167,7 @@ def test_download_dataset_with_test_subdirectory(mock_run, mock_get_tag, mock_ge
         source_archive = tmp_path / "source_archive.zip"
         create_test_archive(source_archive, "repo", "mydata", test_subdirectory="mydata-test")
 
-        def fake_run(cmd, **kwargs):
+        def fake_run(cmd: list[str], **kwargs: Any) -> MagicMock:
             import shutil
 
             if "gh" in cmd and "release" in cmd and "download" in cmd:
@@ -199,7 +202,9 @@ def test_download_dataset_with_test_subdirectory(mock_run, mock_get_tag, mock_ge
 @patch("stride.dataset_download._get_github_token")
 @patch("stride.dataset_download.get_latest_release_tag")
 @patch("stride.dataset_download.subprocess.run")
-def test_download_dataset_destination_exists(mock_run, mock_get_tag, mock_get_token):
+def test_download_dataset_destination_exists(
+    mock_run: Any, mock_get_tag: Any, mock_get_token: Any
+) -> None:
     """Test that downloading fails if destination already exists."""
     mock_get_tag.return_value = "v1.0.0"
     mock_get_token.return_value = None
@@ -217,7 +222,7 @@ def test_download_dataset_destination_exists(mock_run, mock_get_tag, mock_get_to
         source_archive = tmp_path / "source_archive.zip"
         create_test_archive(source_archive, "repo", "mydata")
 
-        def fake_run(cmd, **kwargs):
+        def fake_run(cmd: list[str], **kwargs: Any) -> MagicMock:
             import shutil
 
             if "gh" in cmd and "release" in cmd and "download" in cmd:
@@ -237,7 +242,7 @@ def test_download_dataset_destination_exists(mock_run, mock_get_tag, mock_get_to
             )
 
 
-def test_cli_list_remote():
+def test_cli_list_remote() -> None:
     """Test the CLI list-remote command."""
     runner = CliRunner()
     result = runner.invoke(cli, ["datasets", "list-remote"])
@@ -247,7 +252,7 @@ def test_cli_list_remote():
     assert "test_subdirectory: global-test" in result.output
 
 
-def test_cli_download_no_args():
+def test_cli_download_no_args() -> None:
     """Test the CLI download command with no arguments."""
     runner = CliRunner()
     result = runner.invoke(cli, ["datasets", "download"])
@@ -255,7 +260,7 @@ def test_cli_download_no_args():
     assert "Either NAME or --url must be provided" in result.output
 
 
-def test_cli_download_url_without_subdirectory():
+def test_cli_download_url_without_subdirectory() -> None:
     """Test the CLI download command with --url but no --subdirectory."""
     runner = CliRunner()
     result = runner.invoke(cli, ["datasets", "download", "--url", "https://github.com/owner/repo"])

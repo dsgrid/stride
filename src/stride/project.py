@@ -557,7 +557,8 @@ class Project:
 
             # Check if the scenario produced any data
             count_query = f"SELECT COUNT(*) as count FROM {scenario.name}.energy_projection"
-            row_count = self._con.sql(count_query).fetchone()[0]
+            result = self._con.sql(count_query).fetchone()
+            row_count = result[0] if result else 0
             if row_count == 0:
                 msg = (
                     f"Scenario '{scenario.name}' completed but produced no energy projection data. "
@@ -761,7 +762,7 @@ class Project:
             """,
             [schema, name],
         ).fetchone()
-        return result[0] > 0
+        return result is not None and result[0] > 0
 
 
 def _get_base_and_override_names(table_name: str) -> tuple[str, str]:

@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from duckdb import DuckDBPyConnection
 
 """
 STRIDE UI Data API
@@ -81,7 +85,10 @@ class APIClient:
     ... )
     """
 
-    _instance = None
+    _instance: APIClient | None = None
+    _initialized: bool
+    project: Project
+    _con: DuckDBPyConnection | None
 
     def __new__(
         cls,
@@ -94,7 +101,7 @@ class APIClient:
     def __init__(
         self,
         project: Project,
-    ):
+    ) -> None:
         # Check if we're switching to a different project
         if hasattr(self, "_initialized") and self._initialized:
             # Compare resolved absolute paths to handle relative vs absolute
@@ -120,12 +127,12 @@ class APIClient:
         self._initialized = True
 
     @property
-    def db(self):
+    def db(self) -> DuckDBPyConnection:
         """Return the current database connection from the project."""
         return self._con if self._con is not None else self.project.con
 
     @db.setter
-    def db(self, connection):
+    def db(self, connection: DuckDBPyConnection | None) -> None:
         """Set the database connection on the project (used for testing)."""
         self._con = connection
 
@@ -451,7 +458,7 @@ class APIClient:
 
         # Execute query and return DataFrame
         logger.debug(f"SQL Query:\n{sql}")
-        df = self.db.execute(sql, params).df()
+        df: pd.DataFrame = self.db.execute(sql, params).df()
         logger.debug(f"Returning {len(df)} rows.")
         return df
 
@@ -609,7 +616,7 @@ class APIClient:
 
         # Execute query and return DataFrame
         logger.debug(f"SQL Query:\n{sql}")
-        df = self.db.execute(sql, params).df()
+        df: pd.DataFrame = self.db.execute(sql, params).df()
         logger.debug(f"Returning {len(df)} rows.")
         return df
 
@@ -722,7 +729,7 @@ class APIClient:
         # Execute query and return DataFrame
         logger.debug(f"SQL Query:\n{sql}")
         try:
-            df = self.db.execute(sql, params).df()
+            df: pd.DataFrame = self.db.execute(sql, params).df()
         except Exception as e:
             err = f"Error querying {metric} table for scenario '{scenario}': {str(e)}"
             raise ValueError(err) from e
@@ -849,7 +856,7 @@ class APIClient:
             params = [self.project_country, years[0], scenarios]
 
         logger.debug(f"SQL Query:\n{sql}")
-        df = self.db.execute(sql, params).df()
+        df: pd.DataFrame = self.db.execute(sql, params).df()
 
         # Sort each column from highest to lowest
         for col in pivot_cols:
@@ -1056,7 +1063,7 @@ class APIClient:
         logger.debug(f"Query params: geography={self.project_country}")
         logger.debug(f"Querying table: {table_to_query}")
         try:
-            df = self.db.execute(sql, params).df()
+            df: pd.DataFrame = self.db.execute(sql, params).df()
             logger.debug(f"Query returned {len(df)} rows.")
         except Exception as e:
             err = f"Error querying weather data for scenario '{scenario}': {str(e)}"
@@ -1260,7 +1267,7 @@ class APIClient:
                 params = [self.project_country, scenario, years]
 
         logger.debug(f"SQL Query:\n{sql}")
-        df = self.db.execute(sql, params).df()
+        df: pd.DataFrame = self.db.execute(sql, params).df()
         logger.debug(f"Returning {len(df)} rows.")
         return df
 
@@ -1356,7 +1363,7 @@ class APIClient:
         )
 
         logger.debug(f"SQL Query:\n{sql}")
-        df = self.db.execute(sql, params).df()
+        df: pd.DataFrame = self.db.execute(sql, params).df()
         logger.debug(f"Returning {len(df)} rows.")
         return df
 
@@ -1448,6 +1455,6 @@ class APIClient:
         )
 
         logger.debug(f"SQL Query:\n{sql}")
-        df = self.db.execute(sql, params).df()
+        df: pd.DataFrame = self.db.execute(sql, params).df()
         logger.debug(f"Returning {len(df)} rows.")
         return df
