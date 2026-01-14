@@ -6,21 +6,21 @@ When the current prototype phase is complete, STRIDE will support load forecasti
 
 ## How to use this guide
 
+- Refer to {ref}`core-concepts` for details on STRIDE's data pipeline and architecture.
 - Refer to {ref}`getting-started` for installation and configuration details.
 - Refer to {ref}`how-tos` for step-by-step instructions for common activities.
 - Refer to {ref}`tutorials` for examples of creating a project and viewing energy projections.
 - Refer to {ref}`reference` for API documentation and CLI reference documentation.
-- Refer to {ref}`explanation` for full details on stride functionality.
 
 ```{eval-rst}
 .. toctree::
     :maxdepth: 2
     :caption: Contents:
 
+    explanation/index
     how_tos/index
     tutorials/index
     reference/index
-    explanation/index
 ```
 
 ## Indices and tables

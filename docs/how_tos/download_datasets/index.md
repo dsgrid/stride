@@ -35,12 +35,9 @@ To download a known dataset to the default location (``~/.stride/data``):
    $ stride datasets download global
 ```
 
-```{eval-rst}
-.. note::
-   If a dataset has an associated test dataset (e.g., ``global-test``), it will be
-   automatically downloaded to the same destination directory. This enables the
-   ``--use-test-data`` option when creating projects.
-```
+This single command downloads both the full ``global`` dataset and the smaller ``global-test``
+subset from the same release archive. The test dataset enables the ``--use-test-data`` option
+when creating projects, which is useful for faster iteration during development.
 
 ### Specify a Destination Directory
 
@@ -61,7 +58,7 @@ By default, the latest release is downloaded. To download a specific version:
 
 .. code-block:: console
 
-   $ stride datasets download global -v v0.1.0.beta.1
+   $ stride datasets download global -v v0.2.0
 ```
 
 ## Download from a Custom Repository

@@ -91,13 +91,13 @@ class Project:
         --------
         >>> Project.create("my_project.json5")
         """
-        # check_time_consistency=os.getenv("STRIDE_CHECK_TIME_CONSISTENCY", True),
-        # check_dimension_associations=os.getenv("STRIDE_CHECK_DIMENSION_ASSOCIATIONS", False),
-        # check_time_consistency=os.getenv("STRIDE_CHECK_TIME_CONSISTENCY", True),
-        # check_dimension_associations=os.getenv("STRIDE_CHECK_DIMENSION_ASSOCIATIONS", False),
+        check_time_consistency = _parse_bool_env("STRIDE_CHECK_TIME_CONSISTENCY", default=True)
+        check_dimension_associations = _parse_bool_env(
+            "STRIDE_CHECK_DIMENSION_ASSOCIATIONS", default=False
+        )
         requirements = dataset_requirements or DatasetDimensionRequirements(
-            check_time_consistency=True,
-            check_dimension_associations=False,
+            check_time_consistency=check_time_consistency,
+            check_dimension_associations=check_dimension_associations,
             require_all_dimension_types=False,
         )
         config = ProjectConfig.from_file(config_file)
@@ -763,6 +763,24 @@ class Project:
             [schema, name],
         ).fetchone()
         return result is not None and result[0] > 0
+
+
+def _parse_bool_env(name: str, default: bool) -> bool:
+    """Parse a boolean environment variable.
+
+    Accepts "true", "True", "TRUE", "1" for True
+    and "false", "False", "FALSE", "0" for False.
+    Returns the default if the variable is not set.
+    """
+    value = os.getenv(name)
+    if value is None:
+        return default
+    if value.lower() in ("true", "1"):
+        return True
+    if value.lower() in ("false", "0"):
+        return False
+    msg = f"Invalid boolean value for {name}: {value!r}. Use true/false or 1/0."
+    raise InvalidParameter(msg)
 
 
 def _get_base_and_override_names(table_name: str) -> tuple[str, str]:
