@@ -33,7 +33,7 @@ jobs:
         python -m pip install ".[dev]"
     - name: Download test data
       env:
-        GH_TOKEN: ${{ secrets.STRIDE_DATA_TOKEN }}
+        GH_TOKEN: ${{ secrets.STRIDE_DATA_DEPLOY_KEY }}
       run: |
         stride datasets download global
     - name: Run pytest with coverage
