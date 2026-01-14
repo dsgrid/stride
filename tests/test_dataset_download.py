@@ -1,5 +1,6 @@
 """Tests for dataset downloading functionality."""
 
+import re
 import tempfile
 import zipfile
 from pathlib import Path
@@ -8,6 +9,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from click.testing import CliRunner
+
+
+def _strip_ansi(text: str) -> str:
+    """Remove ANSI escape codes from text."""
+    return re.sub(r"\x1b\[[0-9;]*m", "", text)
+
 
 from stride.cli.stride import cli, _parse_github_url
 from stride.dataset_download import (
@@ -282,16 +289,14 @@ def test_cli_list_remote() -> None:
 def test_cli_download_no_args() -> None:
     """Test the CLI download command with no arguments."""
     runner = CliRunner()
-    result = runner.invoke(cli, ["datasets", "download"], color=False)
+    result = runner.invoke(cli, ["datasets", "download"])
     assert result.exit_code != 0
-    assert "Either NAME or --url must be provided" in result.output
+    assert "Either NAME or --url must be provided" in _strip_ansi(result.output)
 
 
 def test_cli_download_url_without_subdirectory() -> None:
     """Test the CLI download command with --url but no --subdirectory."""
     runner = CliRunner()
-    result = runner.invoke(
-        cli, ["datasets", "download", "--url", "https://github.com/owner/repo"], color=False
-    )
+    result = runner.invoke(cli, ["datasets", "download", "--url", "https://github.com/owner/repo"])
     assert result.exit_code != 0
-    assert "--subdirectory is required" in result.output
+    assert "--subdirectory is required" in _strip_ansi(result.output)
