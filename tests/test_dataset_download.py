@@ -13,6 +13,7 @@ from stride.cli.stride import cli, _parse_github_url
 from stride.dataset_download import (
     DatasetDownloadError,
     KnownDataset,
+    _check_gh_cli_available,
     download_dataset,
     download_dataset_from_repo,
     get_latest_release_tag,
@@ -70,6 +71,27 @@ def test_download_unknown_dataset() -> None:
         download_dataset("nonexistent_dataset")
 
 
+@patch("stride.dataset_download.shutil.which")
+def test_check_gh_cli_not_available(mock_which: Any) -> None:
+    """Test that a clear error is raised when gh CLI is not installed."""
+    mock_which.return_value = None
+
+    with pytest.raises(DatasetDownloadError, match="GitHub CLI.*not installed"):
+        _check_gh_cli_available()
+
+
+@patch("stride.dataset_download.shutil.which")
+def test_download_dataset_gh_cli_not_available(mock_which: Any) -> None:
+    """Test that downloading fails early with a clear message when gh CLI is missing."""
+    mock_which.return_value = None
+
+    with pytest.raises(DatasetDownloadError, match="GitHub CLI.*not installed"):
+        download_dataset_from_repo(
+            repo="owner/repo",
+            subdirectory="mydata",
+        )
+
+
 @patch("stride.dataset_download.subprocess.run")
 def test_get_latest_release_tag(mock_run: Any) -> None:
     """Test getting the latest release tag."""
@@ -104,10 +126,13 @@ def create_test_archive(
             zf.writestr(f"{prefix}/{test_subdirectory}/test_config.json", '{"test": true}')
 
 
+@patch("stride.dataset_download._check_gh_cli_available")
 @patch("stride.dataset_download._get_github_token")
 @patch("stride.dataset_download.get_latest_release_tag")
 @patch("stride.dataset_download.subprocess.run")
-def test_download_dataset_from_repo(mock_run: Any, mock_get_tag: Any, mock_get_token: Any) -> None:
+def test_download_dataset_from_repo(
+    mock_run: Any, mock_get_tag: Any, mock_get_token: Any, mock_check_gh: Any
+) -> None:
     """Test downloading a dataset from a repository."""
     mock_get_tag.return_value = "v1.0.0"
     mock_get_token.return_value = None
@@ -148,11 +173,12 @@ def test_download_dataset_from_repo(mock_run: Any, mock_get_tag: Any, mock_get_t
         assert (result / "config.json").exists()
 
 
+@patch("stride.dataset_download._check_gh_cli_available")
 @patch("stride.dataset_download._get_github_token")
 @patch("stride.dataset_download.get_latest_release_tag")
 @patch("stride.dataset_download.subprocess.run")
 def test_download_dataset_with_test_subdirectory(
-    mock_run: Any, mock_get_tag: Any, mock_get_token: Any
+    mock_run: Any, mock_get_tag: Any, mock_get_token: Any, mock_check_gh: Any
 ) -> None:
     """Test downloading a dataset with its test subdirectory."""
     mock_get_tag.return_value = "v1.0.0"
@@ -199,11 +225,12 @@ def test_download_dataset_with_test_subdirectory(
         assert (test_path / "test_config.json").exists()
 
 
+@patch("stride.dataset_download._check_gh_cli_available")
 @patch("stride.dataset_download._get_github_token")
 @patch("stride.dataset_download.get_latest_release_tag")
 @patch("stride.dataset_download.subprocess.run")
 def test_download_dataset_destination_exists(
-    mock_run: Any, mock_get_tag: Any, mock_get_token: Any
+    mock_run: Any, mock_get_tag: Any, mock_get_token: Any, mock_check_gh: Any
 ) -> None:
     """Test that downloading fails if destination already exists."""
     mock_get_tag.return_value = "v1.0.0"

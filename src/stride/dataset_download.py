@@ -57,6 +57,23 @@ class DatasetDownloadError(Exception):
     """Error downloading a dataset."""
 
 
+def _check_gh_cli_available() -> None:
+    """Check if GitHub CLI is available and raise a clear error if not.
+
+    Raises
+    ------
+    DatasetDownloadError
+        If gh CLI is not installed or not in PATH
+    """
+    if shutil.which("gh") is None:
+        msg = (
+            "GitHub CLI (gh) is required but not installed or not found in PATH. "
+            "Please install it from https://cli.github.com/ and ensure it's in your PATH. "
+            "After installation, authenticate with 'gh auth login'."
+        )
+        raise DatasetDownloadError(msg)
+
+
 def list_known_datasets() -> list[KnownDataset]:
     """Return the list of known downloadable datasets."""
     return list(KNOWN_DATASETS.values())
@@ -454,6 +471,9 @@ def download_dataset_from_repo(
     DatasetDownloadError
         If the dataset cannot be downloaded
     """
+    # Check upfront that gh CLI is available (required for downloading)
+    _check_gh_cli_available()
+
     destination = destination or get_default_data_directory()
     destination = destination.resolve()
 
