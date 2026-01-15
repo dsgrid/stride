@@ -14,7 +14,7 @@ current directory (`./stride`).
     ```{eval-rst}
     .. code-block:: console
     
-        $ stride projects create stride/tests/data/project_input.json5
+        $ stride projects create stride/tests/data/project_input.json5 --use-test-data
     ```
 
 Upon successful completion there will be a directory called `test_project` in the current
