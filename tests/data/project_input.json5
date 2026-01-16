@@ -1,12 +1,12 @@
 {
-    project_id: "test_project",
+    project_id: "test_project_norway2",
     creator: "tester",
     description: "This is a test project.",
-    country: "country_2",
+    country: "Norway",
     start_year: 2025,
     step_year: 5,
     end_year: 2050,
-    weather_year: 2018,
+    weather_year: 2013,
     scenarios: [
         {
             name: "baseline",
