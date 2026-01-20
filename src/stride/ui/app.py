@@ -993,6 +993,8 @@ def create_app(  # noqa: C901
 
     return app
 
+## CLAUDE INPUT
+
 
 def create_app_no_project(
     user_palette: ColorPalette | None = None,
@@ -1548,3 +1550,5 @@ def _register_no_project_callbacks(
     )
 
     register_scenario_callbacks(get_current_data_handler, get_current_plotter)
+    
+## END CLAUDE INPUT
