@@ -671,3 +671,41 @@ body {
     color: var(--text-primary);
     border: 1px solid var(--border-color);
 }
+
+/* ============================================
+   WELCOME BOX (No Project State)
+   ============================================ */
+
+.light-theme .welcome-box {
+    background-color: #ffffff;
+    border: 1px solid #dee2e6;
+    color: var(--text-primary);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.light-theme .welcome-title {
+    color: var(--text-primary);
+}
+
+.light-theme .welcome-subtitle {
+    color: var(--text-primary);
+}
+
+.light-theme .welcome-list {
+    color: var(--text-primary);
+}
+
+.light-theme .welcome-list li {
+    color: var(--text-primary);
+}
+
+.light-theme .welcome-hr {
+    border-color: var(--border-color);
+}
+
+.light-theme .welcome-code {
+    background-color: var(--bg-tertiary);
+    color: var(--accent-primary);
+    padding: 2px 6px;
+    border-radius: 4px;
+}

@@ -1050,13 +1050,13 @@ def create_app_no_project(
         [
             html.Div(
                 [
-                    html.H2("Welcome to STRIDE", className="text-center mb-4"),
+                    html.H2("Welcome to STRIDE", className="text-center mb-4 welcome-title"),
                     html.P(
                         "No project is currently loaded.",
                         className="text-center text-muted mb-4",
                     ),
-                    html.Hr(),
-                    html.H5("To get started:", className="mb-3"),
+                    html.Hr(className="welcome-hr"),
+                    html.H5("To get started:", className="mb-3 welcome-subtitle"),
                     html.Ol(
                         [
                             html.Li(
@@ -1084,7 +1084,7 @@ def create_app_no_project(
                                 className="mb-2",
                             ),
                         ],
-                        className="mb-4",
+                        className="mb-4 welcome-list",
                     ),
                     html.P(
                         [
@@ -1092,22 +1092,20 @@ def create_app_no_project(
                         ],
                         className="text-muted",
                     ),
-                    html.Hr(),
+                    html.Hr(className="welcome-hr"),
                     html.P(
                         [
                             "To create a new project, use the CLI: ",
-                            html.Code("stride projects create <config.json5>"),
+                            html.Code("stride projects create <config.json5>", className="welcome-code"),
                         ],
                         className="text-muted small",
                     ),
                 ],
-                className="p-5",
+                className="p-5 welcome-box",
                 style={
                     "maxWidth": "600px",
                     "margin": "100px auto",
-                    "backgroundColor": "#1e1e1e",
                     "borderRadius": "10px",
-                    "border": "1px solid #333",
                 },
             ),
         ],
@@ -1281,6 +1279,44 @@ def create_app_no_project(
                                         ],
                                         width=6,
                                     ),
+                                    dbc.Col(
+                                        [
+                                            html.Div(
+                                                [
+                                                    html.Span(
+                                                        "☀",
+                                                        className="theme-icon sun-icon",
+                                                        style={
+                                                            "fontSize": "1.4rem",
+                                                            "marginRight": "15px",
+                                                        },
+                                                    ),
+                                                    dbc.Switch(
+                                                        id="theme-toggle",
+                                                        value=True,
+                                                        style={
+                                                            "transform": "scale(1.2)",
+                                                        },
+                                                    ),
+                                                    html.Span(
+                                                        "☾",
+                                                        className="theme-icon moon-icon",
+                                                        style={
+                                                            "fontSize": "1.4rem",
+                                                            "marginLeft": "0px",
+                                                        },
+                                                    ),
+                                                ],
+                                                style={
+                                                    "display": "flex",
+                                                    "alignItems": "center",
+                                                    "justifyContent": "flex-end",
+                                                    "padding": "20px",
+                                                },
+                                            ),
+                                        ],
+                                        width=6,
+                                    ),
                                 ],
                             ),
                         ],
@@ -1314,7 +1350,8 @@ def create_app_no_project(
                         style={"padding": "20px"},
                     ),
                 ],
-                id="main-content",
+                id="page-content",
+                className="page-content dark-theme",
                 style={
                     "marginLeft": "0",
                     "transition": "margin-left 0.3s ease-in-out",
@@ -1361,7 +1398,7 @@ def _register_no_project_callbacks(
     # Sidebar toggle callback
     @callback(
         Output("sidebar", "style"),
-        Output("main-content", "style"),
+        Output("page-content", "style"),
         Output("sidebar-open", "data"),
         Input("sidebar-toggle", "n_clicks"),
         State("sidebar-open", "data"),
@@ -1401,6 +1438,37 @@ def _register_no_project_callbacks(
                 {"marginLeft": "250px", "transition": "margin-left 0.3s ease-in-out"},
                 True,
             )
+
+    # Theme toggle callback
+    @callback(
+        Output("page-content", "className"),
+        Output("sidebar", "className"),
+        Output("theme-store", "data"),
+        Output("chart-refresh-trigger", "data", allow_duplicate=True),
+        Input("theme-toggle", "value"),
+        State("chart-refresh-trigger", "data"),
+        prevent_initial_call=True,
+    )
+    def toggle_theme(is_dark: bool, refresh_count: int) -> tuple[str, str, str, int]:
+        """Toggle between light and dark theme."""
+        theme = "dark-theme" if is_dark else "light-theme"
+
+        # Update plotter template for charts when project is loaded
+        plotter = get_current_plotter()
+        if plotter:
+            template = "plotly_dark" if is_dark else "plotly_white"
+            plotter.set_template(template)
+            logger.info(f"Switched to {theme} with plot template {template}")
+
+        return f"page-content {theme}", f"sidebar-nav {theme}", theme, refresh_count + 1
+
+    # Helper function to get plotter (defined early for theme callback)
+    def get_current_plotter() -> "StridePlots | None":
+        """Get the current plotter instance."""
+        if _current_project_path and _current_project_path in _loaded_projects:
+            _, _, plotter, _ = _loaded_projects[_current_project_path]
+            return plotter
+        return None
 
     # Project loading callback
     @callback(
@@ -1541,14 +1609,6 @@ def _register_no_project_callbacks(
                 options,
             )
 
-    # Helper function to get plotter
-    def get_current_plotter() -> "StridePlots | None":
-        """Get the current plotter instance."""
-        if _current_project_path and _current_project_path in _loaded_projects:
-            _, _, plotter, _ = _loaded_projects[_current_project_path]
-            return plotter
-        return None
-
     # Register home and scenario callbacks with dynamic data fetching
     # These will use the helper functions to get the current project data
     register_home_callbacks(
@@ -1561,5 +1621,3 @@ def _register_no_project_callbacks(
     )
 
     register_scenario_callbacks(get_current_data_handler, get_current_plotter)
-    
-## END CLAUDE INPUT
