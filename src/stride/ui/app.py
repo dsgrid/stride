@@ -1291,15 +1291,17 @@ def create_app_no_project(
                         [
                             dbc.RadioItems(
                                 id="view-selector",
-                                className="nav-tabs-custom",
+                                className="btn-group",
+                                inputClassName="btn-check",
+                                labelClassName="btn btn-outline-primary",
+                                labelCheckedClassName="active",
                                 options=[{"label": "Home", "value": "compare"}],
                                 value="compare",
-                                inline=True,
                             ),
                         ],
-                        className="nav-container",
+                        className="nav-tabs",
                         style={"display": "none"},
-                        id="nav-container",
+                        id="nav-tabs-container",
                     ),
                     # Content area - show welcome message
                     html.Div(
@@ -1409,8 +1411,9 @@ def _register_no_project_callbacks(
         Output("project-switcher-dropdown", "options"),
         Output("project-switcher-dropdown", "value"),
         Output("home-view", "children"),
-        Output("nav-container", "style"),
+        Output("nav-tabs-container", "style"),
         Output("sidebar-settings-btn", "disabled"),
+        Output("view-selector", "options"),
         Input("load-project-btn", "n_clicks"),
         Input("project-path-input", "n_submit"),
         Input("project-switcher-dropdown", "value"),
@@ -1461,6 +1464,12 @@ def _register_no_project_callbacks(
                     # Create home layout for the loaded project
                     new_home_layout = create_home_layout(new_scenarios, new_years, color_manager)
 
+                    # Build navigation tab options with scenarios
+                    nav_options = [
+                        {"label": "Home", "value": "compare"},
+                        *[{"label": s, "value": s} for s in new_scenarios],
+                    ]
+
                     return (
                         _current_project_path,
                         html.Span(message, className="text-success"),
@@ -1471,6 +1480,7 @@ def _register_no_project_callbacks(
                         new_home_layout,
                         {"display": "block"},  # Show nav container
                         False,  # Enable settings button
+                        nav_options,  # Update view-selector options with scenarios
                     )
             return (
                 no_update,
@@ -1482,6 +1492,7 @@ def _register_no_project_callbacks(
                 no_update,
                 no_update,
                 no_update,
+                no_update,  # view-selector options
             )
 
         raise PreventUpdate
