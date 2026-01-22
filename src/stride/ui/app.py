@@ -1433,12 +1433,50 @@ def _register_no_project_callbacks(
     initial_dropdown_options: list[dict[str, str]],
 ) -> None:
     """Register callbacks for the no-project app mode."""
-    from dash import ctx, no_update
-
-    # Create helper functions
+    # Create helper function for color manager
     get_current_color_manager = _make_color_manager_getter(initial_color_manager)
 
-    # Sidebar toggle callback
+    # Register the sidebar toggle callback
+    _register_sidebar_toggle_callback()
+
+    # Register the theme toggle callback
+    _register_theme_toggle_callback()
+
+    # Register the project loading callback
+    _register_project_load_callback(get_current_color_manager)
+
+    # Register the view toggle callback
+    _register_view_toggle_callback(get_current_color_manager)
+
+    # Register the scenario CSS update callback
+    _register_scenario_css_callback(get_current_color_manager)
+
+    # Register home and scenario callbacks with dynamic data fetching
+    register_home_callbacks(
+        _get_current_data_handler_no_project,
+        _get_current_plotter_no_project,
+        [],  # Initial empty scenarios - will be populated when project loads
+        literal_to_list(Sectors),
+        [],  # Initial empty years - will be populated when project loads
+        get_current_color_manager,
+    )
+
+    register_scenario_callbacks(
+        _get_current_data_handler_no_project,
+        _get_current_plotter_no_project,
+    )
+
+    # Register settings callbacks
+    register_settings_callbacks(
+        _get_current_data_handler_no_project,
+        get_current_color_manager,
+        _on_palette_change_no_project,
+    )
+
+
+def _register_sidebar_toggle_callback() -> None:
+    """Register the sidebar toggle callback."""
+
     @callback(
         Output("sidebar", "style"),
         Output("page-content", "style"),
@@ -1484,7 +1522,10 @@ def _register_no_project_callbacks(
             True,
         )
 
-    # Theme toggle callback
+
+def _register_theme_toggle_callback() -> None:
+    """Register the theme toggle callback."""
+
     @callback(
         Output("page-content", "className"),
         Output("sidebar", "className"),
@@ -1506,7 +1547,13 @@ def _register_no_project_callbacks(
 
         return f"page-content {theme}", f"sidebar-nav {theme}", theme, refresh_count + 1
 
-    # Project loading callback
+
+def _register_project_load_callback(
+    get_current_color_manager: Callable[[], ColorManager | None],
+) -> None:
+    """Register the project loading callback."""
+    from dash import ctx, no_update
+
     @callback(
         Output("current-project-path", "data"),
         Output("project-load-status", "children"),
@@ -1537,112 +1584,183 @@ def _register_no_project_callbacks(
         current_options: list[dict[str, str]],
     ) -> tuple[Any, ...]:
         """Handle project loading."""
-        global _current_project_path
+        return _handle_project_load_impl(
+            load_clicks,
+            n_submit,
+            dropdown_value,
+            path_input,
+            current_path,
+            current_options,
+            get_current_color_manager,
+            ctx,
+            no_update,
+        )
 
-        trigger_id = ctx.triggered_id if ctx.triggered_id else None
-        path_to_load = None
 
-        if trigger_id in ("load-project-btn", "project-path-input") and path_input:
-            path_to_load = path_input
-        elif trigger_id == "project-switcher-dropdown" and dropdown_value:
-            path_to_load = dropdown_value
+def _handle_project_load_impl(
+    load_clicks: int | None,
+    n_submit: int | None,
+    dropdown_value: str | None,
+    path_input: str | None,
+    current_path: str,
+    current_options: list[dict[str, str]],
+    get_current_color_manager: Callable[[], ColorManager | None],
+    ctx: Any,
+    no_update: Any,
+) -> tuple[Any, ...]:
+    """Implementation of project loading logic."""
+    global _current_project_path
 
-        if path_to_load:
-            success, message = load_project(path_to_load)
-            if success:
-                data_handler = _get_current_data_handler_no_project()
-                color_manager = get_current_color_manager()
-                if data_handler and color_manager:
-                    project_name = data_handler.project.config.project_id
-                    new_scenarios = data_handler.scenarios
-                    new_years = data_handler.years
+    trigger_id = ctx.triggered_id if ctx.triggered_id else None
+    path_to_load = None
 
-                    # Add to dropdown if not there
-                    existing_paths = {opt.get("value") for opt in current_options}
-                    new_options: list[dict[str, str]]
-                    if _current_project_path not in existing_paths:
-                        new_options = [
-                            {"label": project_name, "value": _current_project_path},
-                            *current_options,
-                        ]
-                    else:
-                        new_options = current_options
+    if trigger_id in ("load-project-btn", "project-path-input") and path_input:
+        path_to_load = path_input
+    elif trigger_id == "project-switcher-dropdown" and dropdown_value:
+        path_to_load = dropdown_value
 
-                    # Create home layout for the loaded project
-                    new_home_layout = create_home_layout(new_scenarios, new_years, color_manager)
-
-                    # Build navigation tab options with scenarios
-                    nav_options = [
-                        {"label": "Home", "value": "compare"},
-                        *[{"label": s, "value": s} for s in new_scenarios],
-                    ]
-
-                    # Create settings layout for the loaded project
-                    try:
-                        user_palettes_paths = list_user_palettes()
-                        user_palettes = [p.stem for p in user_palettes_paths]
-                    except Exception as e:
-                        logger.warning(f"Could not list user palettes: {e}")
-                        user_palettes = []
-
-                    settings_layout = create_settings_layout(
-                        project_palette_name=project_name,
-                        user_palettes=user_palettes,
-                        current_palette_type="project",
-                        current_palette_name=None,
-                        color_manager=color_manager,
-                    )
-
-                    # Generate scenario CSS
-                    scenario_css = [
-                        html.Script(
-                            f"""
-                            (function() {{
-                                var existingStyle = document.getElementById('scenario-dynamic-css');
-                                if (existingStyle) {{
-                                    existingStyle.remove();
-                                }}
-                                var style = document.createElement('style');
-                                style.id = 'scenario-dynamic-css';
-                                style.textContent = `{color_manager.generate_scenario_css()}`;
-                                document.head.appendChild(style);
-                            }})();
-                            """
-                        )
-                    ]
-
-                    return (
-                        _current_project_path,
-                        html.Span(message, className="text-success"),
-                        project_name,
-                        _current_project_path,
-                        new_options,
-                        _current_project_path,
-                        new_home_layout,
-                        {"display": "block"},  # Show nav container
-                        False,  # Enable settings button
-                        nav_options,  # Update view-selector options with scenarios
-                        settings_layout,  # Settings layout
-                        scenario_css,  # Scenario CSS
-                    )
-            return (
-                no_update,
-                html.Span(message, className="text-danger"),
-                no_update,
-                no_update,
-                no_update,
-                no_update,
-                no_update,
-                no_update,
-                no_update,
-                no_update,  # view-selector options
-                no_update,  # settings-view children
-                no_update,  # scenario-css-container children
+    if path_to_load:
+        success, message = load_project(path_to_load)
+        if success:
+            return _build_successful_load_response(
+                current_options,
+                get_current_color_manager,
+                message,
             )
+        return (
+            no_update,
+            html.Span(message, className="text-danger"),
+            no_update,
+            no_update,
+            no_update,
+            no_update,
+            no_update,
+            no_update,
+            no_update,
+            no_update,
+            no_update,
+            no_update,
+        )
 
-        raise PreventUpdate
+    raise PreventUpdate
 
-    # View toggle callback (handles settings button, back button, home link, and view selector)
+
+def _build_successful_load_response(
+    current_options: list[dict[str, str]],
+    get_current_color_manager: Callable[[], ColorManager | None],
+    message: str,
+) -> tuple[Any, ...]:
+    """Build the response tuple for a successful project load."""
+    from dash import no_update
+
+    data_handler = _get_current_data_handler_no_project()
+    color_manager = get_current_color_manager()
+
+    if not data_handler or not color_manager:
+        return (
+            no_update,
+            html.Span("Failed to initialize project", className="text-danger"),
+            no_update,
+            no_update,
+            no_update,
+            no_update,
+            no_update,
+            no_update,
+            no_update,
+            no_update,
+            no_update,
+            no_update,
+        )
+
+    project_name = data_handler.project.config.project_id
+    new_scenarios = data_handler.scenarios
+    new_years = data_handler.years
+
+    # Add to dropdown if not there
+    existing_paths = {opt.get("value") for opt in current_options}
+    new_options: list[dict[str, str]]
+    if _current_project_path not in existing_paths:
+        new_options = [
+            {"label": project_name, "value": _current_project_path},
+            *current_options,
+        ]
+    else:
+        new_options = current_options
+
+    # Create home layout for the loaded project
+    new_home_layout = create_home_layout(new_scenarios, new_years, color_manager)
+
+    # Build navigation tab options with scenarios
+    nav_options = [
+        {"label": "Home", "value": "compare"},
+        *[{"label": s, "value": s} for s in new_scenarios],
+    ]
+
+    # Create settings layout for the loaded project
+    try:
+        user_palettes_paths = list_user_palettes()
+        user_palettes = [p.stem for p in user_palettes_paths]
+    except Exception as e:
+        logger.warning(f"Could not list user palettes: {e}")
+        user_palettes = []
+
+    settings_layout = create_settings_layout(
+        project_palette_name=project_name,
+        user_palettes=user_palettes,
+        current_palette_type="project",
+        current_palette_name=None,
+        color_manager=color_manager,
+    )
+
+    # Generate scenario CSS
+    scenario_css = _generate_scenario_css_script(color_manager)
+
+    return (
+        _current_project_path,
+        html.Span(message, className="text-success"),
+        project_name,
+        _current_project_path,
+        new_options,
+        _current_project_path,
+        new_home_layout,
+        {"display": "block"},
+        False,
+        nav_options,
+        settings_layout,
+        scenario_css,
+    )
+
+
+def _generate_scenario_css_script(
+    color_manager: ColorManager,
+    temp_edits: dict[str, str] | None = None,
+) -> list[Any]:
+    """Generate the scenario CSS script element."""
+    css_content = color_manager.generate_scenario_css(temp_edits) if temp_edits else color_manager.generate_scenario_css()
+    return [
+        html.Script(
+            f"""
+            (function() {{
+                var existingStyle = document.getElementById('scenario-dynamic-css');
+                if (existingStyle) {{
+                    existingStyle.remove();
+                }}
+                var style = document.createElement('style');
+                style.id = 'scenario-dynamic-css';
+                style.textContent = `{css_content}`;
+                document.head.appendChild(style);
+            }})();
+            """
+        )
+    ]
+
+
+def _register_view_toggle_callback(
+    get_current_color_manager: Callable[[], ColorManager | None],
+) -> None:
+    """Register the view toggle callback."""
+    from dash import ctx, no_update
+
     @callback(
         Output("home-view", "hidden"),
         Output("scenario-view", "hidden"),
@@ -1670,80 +1788,73 @@ def _register_no_project_callbacks(
         project_path: str,
     ) -> tuple[bool, bool, bool, dict[str, str], str, int, Any]:
         """Toggle between home, scenario, and settings views."""
-        trigger_id = ctx.triggered_id if ctx.triggered_id else None
+        return _toggle_views_impl(
+            selected_view,
+            settings_clicks,
+            back_clicks,
+            home_clicks,
+            settings_hidden,
+            current_refresh_count,
+            project_path,
+            get_current_color_manager,
+            ctx,
+            no_update,
+        )
 
-        # Don't do anything if no project is loaded
-        if not project_path and trigger_id not in ("sidebar-settings-btn",):
+
+def _toggle_views_impl(
+    selected_view: str,
+    settings_clicks: int | None,
+    back_clicks: int | None,
+    home_clicks: int | None,
+    settings_hidden: bool,
+    current_refresh_count: int,
+    project_path: str,
+    get_current_color_manager: Callable[[], ColorManager | None],
+    ctx: Any,
+    no_update: Any,
+) -> tuple[bool, bool, bool, dict[str, str], str, int, Any]:
+    """Implementation of view toggle logic."""
+    trigger_id = ctx.triggered_id if ctx.triggered_id else None
+
+    if not project_path and trigger_id not in ("sidebar-settings-btn",):
+        raise PreventUpdate
+
+    if trigger_id == "sidebar-settings-btn":
+        if not project_path:
             raise PreventUpdate
+        return (True, True, False, {"display": "none"}, selected_view, current_refresh_count, no_update)
 
-        if trigger_id == "sidebar-settings-btn":
-            # Show settings, hide everything else
-            if not project_path:
-                # Settings button should be disabled, but just in case
-                raise PreventUpdate
-            return (
-                True,
-                True,
-                False,
-                {"display": "none"},
-                selected_view,
-                current_refresh_count,
-                no_update,
-            )
-        elif trigger_id == "back-to-dashboard-btn" or trigger_id == "home-link":
-            # Return to home view - apply any temporary color edits and refresh charts
-            temp_edits = get_temp_color_edits()
-            if temp_edits:
-                color_manager = get_current_color_manager()
-                if color_manager:
-                    palette = color_manager.get_palette()
-                    for label, color in temp_edits.items():
-                        palette.update(label, color)
-                    logger.info(
-                        f"Applied {len(temp_edits)} temporary color edits when returning to home"
-                    )
+    if trigger_id in ("back-to-dashboard-btn", "home-link"):
+        temp_edits = get_temp_color_edits()
+        if temp_edits:
+            color_manager = get_current_color_manager()
+            if color_manager:
+                palette = color_manager.get_palette()
+                for label, color in temp_edits.items():
+                    palette.update(label, color)
+                logger.info(f"Applied {len(temp_edits)} temporary color edits when returning to home")
 
-            return (
-                False,
-                True,
-                True,
-                {"display": "block"},
-                "compare",
-                current_refresh_count + 1,
-                no_update,
-            )
-        else:
-            # Normal view selection
-            if selected_view == "compare":
-                return (
-                    False,
-                    True,
-                    True,
-                    {"display": "block"},
-                    selected_view,
-                    current_refresh_count,
-                    no_update,
-                )
-            else:
-                # Scenario view - need to create layout
-                data_handler = _get_current_data_handler_no_project()
-                color_manager = get_current_color_manager()
-                if data_handler is None or color_manager is None:
-                    raise PreventUpdate
+        return (False, True, True, {"display": "block"}, "compare", current_refresh_count + 1, no_update)
 
-                years = data_handler.years
-                scenario_layout = create_scenario_layout(years, color_manager)
-                return (
-                    True,
-                    False,
-                    True,
-                    {"display": "block"},
-                    selected_view,
-                    current_refresh_count,
-                    scenario_layout,
-                )
+    if selected_view == "compare":
+        return (False, True, True, {"display": "block"}, selected_view, current_refresh_count, no_update)
 
-    # Callback to update scenario CSS when palette changes
+    # Scenario view - need to create layout
+    data_handler = _get_current_data_handler_no_project()
+    color_manager = get_current_color_manager()
+    if data_handler is None or color_manager is None:
+        raise PreventUpdate
+
+    scenario_layout = create_scenario_layout(data_handler.years, color_manager)
+    return (True, False, True, {"display": "block"}, selected_view, current_refresh_count, scenario_layout)
+
+
+def _register_scenario_css_callback(
+    get_current_color_manager: Callable[[], ColorManager | None],
+) -> None:
+    """Register the scenario CSS update callback."""
+
     @callback(
         Output("scenario-css-container", "children", allow_duplicate=True),
         Input("settings-palette-applied", "data"),
@@ -1764,45 +1875,5 @@ def _register_no_project_callbacks(
         if color_manager is None:
             raise PreventUpdate
 
-        # Get temporary color edits to apply to CSS
         temp_edits = get_temp_color_edits()
-
-        return [
-            html.Script(
-                f"""
-                (function() {{
-                    var existingStyle = document.getElementById('scenario-dynamic-css');
-                    if (existingStyle) {{
-                        existingStyle.remove();
-                    }}
-                    var style = document.createElement('style');
-                    style.id = 'scenario-dynamic-css';
-                    style.textContent = `{color_manager.generate_scenario_css(temp_edits)}`;
-                    document.head.appendChild(style);
-                }})();
-                """
-            )
-        ]
-
-    # Register home and scenario callbacks with dynamic data fetching
-    # These will use the helper functions to get the current project data
-    register_home_callbacks(
-        _get_current_data_handler_no_project,
-        _get_current_plotter_no_project,
-        [],  # Initial empty scenarios - will be populated when project loads
-        literal_to_list(Sectors),
-        [],  # Initial empty years - will be populated when project loads
-        get_current_color_manager,
-    )
-
-    register_scenario_callbacks(
-        _get_current_data_handler_no_project,
-        _get_current_plotter_no_project,
-    )
-
-    # Register settings callbacks
-    register_settings_callbacks(
-        _get_current_data_handler_no_project,
-        get_current_color_manager,
-        _on_palette_change_no_project,
-    )
+        return _generate_scenario_css_script(color_manager, temp_edits)
