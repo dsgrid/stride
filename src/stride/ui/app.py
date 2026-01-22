@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import dash_bootstrap_components as dbc
 from dash import Dash, Input, Output, State, callback, dcc, html
@@ -1367,6 +1367,66 @@ def create_app_no_project(
     return app
 
 
+def _get_current_data_handler_no_project() -> "APIClient | None":
+    """Get the current API client instance for no-project mode."""
+    if _current_project_path and _current_project_path in _loaded_projects:
+        cached_project, _, _, _ = _loaded_projects[_current_project_path]
+        try:
+            return APIClient(cached_project)
+        except Exception:
+            return None
+    return None
+
+
+def _make_color_manager_getter(
+    initial_color_manager: ColorManager,
+) -> "Callable[[], ColorManager | None]":
+    """Create a color manager getter with fallback to initial color manager."""
+
+    def get_current_color_manager() -> "ColorManager | None":
+        """Get the current color manager instance."""
+        if _current_project_path and _current_project_path in _loaded_projects:
+            _, color_manager, _, _ = _loaded_projects[_current_project_path]
+            return color_manager
+        return initial_color_manager
+
+    return get_current_color_manager
+
+
+def _get_current_plotter_no_project() -> "StridePlots | None":
+    """Get the current plotter instance for no-project mode."""
+    if _current_project_path and _current_project_path in _loaded_projects:
+        _, _, plotter, _ = _loaded_projects[_current_project_path]
+        return plotter
+    return None
+
+
+def _on_palette_change_no_project(
+    palette: ColorPalette,
+    palette_type: str,
+    palette_name: str | None,
+) -> None:
+    """Update the color manager when palette changes in no-project mode."""
+    global _loaded_projects, _current_project_path
+
+    if _current_project_path and _current_project_path in _loaded_projects:
+        cached_project, _, _, project_name = _loaded_projects[_current_project_path]
+
+        palette_copy = palette.copy()
+        data_handler = APIClient(cached_project)
+        new_color_manager = create_fresh_color_manager(palette_copy, data_handler.scenarios)
+        new_plotter = StridePlots(new_color_manager, template="plotly_dark")
+
+        _loaded_projects[_current_project_path] = (
+            cached_project,
+            new_color_manager,
+            new_plotter,
+            project_name,
+        )
+
+        logger.info(f"Palette changed to: {palette_type} / {palette_name}")
+
+
 def _register_no_project_callbacks(
     app: Dash,
     initial_color_manager: ColorManager,
@@ -1375,25 +1435,8 @@ def _register_no_project_callbacks(
     """Register callbacks for the no-project app mode."""
     from dash import ctx, no_update
 
-    # Helper function to get current data handler
-    def get_current_data_handler() -> "APIClient | None":
-        """Get the current API client instance."""
-        if _current_project_path and _current_project_path in _loaded_projects:
-            cached_project, _, _, _ = _loaded_projects[_current_project_path]
-            # Return the APIClient singleton (which should be updated to use this project)
-            try:
-                return APIClient(cached_project)
-            except Exception:
-                return None
-        return None
-
-    # Helper function to get current color manager
-    def get_current_color_manager() -> "ColorManager | None":
-        """Get the current color manager instance."""
-        if _current_project_path and _current_project_path in _loaded_projects:
-            _, color_manager, _, _ = _loaded_projects[_current_project_path]
-            return color_manager
-        return initial_color_manager
+    # Create helper functions
+    get_current_color_manager = _make_color_manager_getter(initial_color_manager)
 
     # Sidebar toggle callback
     @callback(
@@ -1404,7 +1447,10 @@ def _register_no_project_callbacks(
         State("sidebar-open", "data"),
         prevent_initial_call=True,
     )
-    def toggle_sidebar(n_clicks: int | None, is_open: bool) -> tuple[dict[str, Any], dict[str, Any], bool]:
+    def toggle_sidebar(
+        n_clicks: int | None,
+        is_open: bool,
+    ) -> tuple[dict[str, Any], dict[str, Any], bool]:
         """Toggle the sidebar visibility."""
         if is_open:
             return (
@@ -1422,22 +1468,21 @@ def _register_no_project_callbacks(
                 {"marginLeft": "0", "transition": "margin-left 0.3s ease-in-out"},
                 False,
             )
-        else:
-            return (
-                {
-                    "position": "fixed",
-                    "top": 0,
-                    "left": 0,
-                    "bottom": 0,
-                    "width": "250px",
-                    "zIndex": 1000,
-                    "transform": "translateX(0)",
-                    "transition": "transform 0.3s ease-in-out",
-                    "overflowY": "auto",
-                },
-                {"marginLeft": "250px", "transition": "margin-left 0.3s ease-in-out"},
-                True,
-            )
+        return (
+            {
+                "position": "fixed",
+                "top": 0,
+                "left": 0,
+                "bottom": 0,
+                "width": "250px",
+                "zIndex": 1000,
+                "transform": "translateX(0)",
+                "transition": "transform 0.3s ease-in-out",
+                "overflowY": "auto",
+            },
+            {"marginLeft": "250px", "transition": "margin-left 0.3s ease-in-out"},
+            True,
+        )
 
     # Theme toggle callback
     @callback(
@@ -1453,51 +1498,13 @@ def _register_no_project_callbacks(
         """Toggle between light and dark theme."""
         theme = "dark-theme" if is_dark else "light-theme"
 
-        # Update plotter template for charts when project is loaded
-        plotter = get_current_plotter()
+        plotter = _get_current_plotter_no_project()
         if plotter:
             template = "plotly_dark" if is_dark else "plotly_white"
             plotter.set_template(template)
             logger.info(f"Switched to {theme} with plot template {template}")
 
         return f"page-content {theme}", f"sidebar-nav {theme}", theme, refresh_count + 1
-
-    # Helper function to get plotter (defined early for theme callback)
-    def get_current_plotter() -> "StridePlots | None":
-        """Get the current plotter instance."""
-        if _current_project_path and _current_project_path in _loaded_projects:
-            _, _, plotter, _ = _loaded_projects[_current_project_path]
-            return plotter
-        return None
-
-    # Helper function for palette changes
-    def on_palette_change(palette: ColorPalette, palette_type: str, palette_name: str | None) -> None:
-        """Update the color manager when palette changes."""
-        global _loaded_projects, _current_project_path
-
-        if _current_project_path and _current_project_path in _loaded_projects:
-            cached_project, _, _, project_name = _loaded_projects[_current_project_path]
-
-            # Create a copy of the palette to avoid modifying the original
-            palette_copy = palette.copy()
-
-            # Get current data handler (singleton)
-            data_handler = APIClient(cached_project)
-
-            # Create fresh color manager with new palette
-            new_color_manager = create_fresh_color_manager(palette_copy, data_handler.scenarios)
-
-            new_plotter = StridePlots(new_color_manager, template="plotly_dark")
-
-            # Update cache (preserve project and project_name)
-            _loaded_projects[_current_project_path] = (
-                cached_project,
-                new_color_manager,
-                new_plotter,
-                project_name,
-            )
-
-            logger.info(f"Palette changed to: {palette_type} / {palette_name}")
 
     # Project loading callback
     @callback(
@@ -1543,7 +1550,7 @@ def _register_no_project_callbacks(
         if path_to_load:
             success, message = load_project(path_to_load)
             if success:
-                data_handler = get_current_data_handler()
+                data_handler = _get_current_data_handler_no_project()
                 color_manager = get_current_color_manager()
                 if data_handler and color_manager:
                     project_name = data_handler.project.config.project_id
@@ -1552,6 +1559,7 @@ def _register_no_project_callbacks(
 
                     # Add to dropdown if not there
                     existing_paths = {opt.get("value") for opt in current_options}
+                    new_options: list[dict[str, str]]
                     if _current_project_path not in existing_paths:
                         new_options = [
                             {"label": project_name, "value": _current_project_path},
@@ -1718,7 +1726,7 @@ def _register_no_project_callbacks(
                 )
             else:
                 # Scenario view - need to create layout
-                data_handler = get_current_data_handler()
+                data_handler = _get_current_data_handler_no_project()
                 color_manager = get_current_color_manager()
                 if data_handler is None or color_manager is None:
                     raise PreventUpdate
@@ -1779,19 +1787,22 @@ def _register_no_project_callbacks(
     # Register home and scenario callbacks with dynamic data fetching
     # These will use the helper functions to get the current project data
     register_home_callbacks(
-        get_current_data_handler,
-        get_current_plotter,
+        _get_current_data_handler_no_project,
+        _get_current_plotter_no_project,
         [],  # Initial empty scenarios - will be populated when project loads
         literal_to_list(Sectors),
         [],  # Initial empty years - will be populated when project loads
         get_current_color_manager,
     )
 
-    register_scenario_callbacks(get_current_data_handler, get_current_plotter)
+    register_scenario_callbacks(
+        _get_current_data_handler_no_project,
+        _get_current_plotter_no_project,
+    )
 
     # Register settings callbacks
     register_settings_callbacks(
-        get_current_data_handler,
+        _get_current_data_handler_no_project,
         get_current_color_manager,
-        on_palette_change,
+        _on_palette_change_no_project,
     )

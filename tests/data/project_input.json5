@@ -1,19 +1,23 @@
 {
-    project_id: "test_project_finland",
+    project_id: "test_project",
     creator: "tester",
     description: "This is a test project.",
-    country: "Finland",
+    country: "country_2",
     start_year: 2025,
-    step_year: 4,
-    end_year: 2045,
-    weather_year: 2013,
+    step_year: 5,
+    end_year: 2050,
+    weather_year: 2018,
     scenarios: [
         {
             name: "baseline",
         },
         {
-            name: "with_ev_projection",
+            name: "ev_projection",
             use_ev_projection: true,
+        },
+        {
+            name: "alternate_gdp",
+            gdp: "alternate_gdp.csv",
         },
     ]
 }
