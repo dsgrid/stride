@@ -1676,12 +1676,15 @@ def _build_successful_load_response(
     new_scenarios = data_handler.scenarios
     new_years = data_handler.years
 
+    # _current_project_path is guaranteed to be set after successful load
+    current_path: str = _current_project_path or ""
+
     # Add to dropdown if not there
     existing_paths = {opt.get("value") for opt in current_options}
     new_options: list[dict[str, str]]
-    if _current_project_path not in existing_paths:
+    if current_path not in existing_paths:
         new_options = [
-            {"label": project_name, "value": _current_project_path},
+            {"label": project_name, "value": current_path},
             *current_options,
         ]
     else:
@@ -1716,12 +1719,12 @@ def _build_successful_load_response(
     scenario_css = _generate_scenario_css_script(color_manager)
 
     return (
-        _current_project_path,
+        current_path,
         html.Span(message, className="text-success"),
         project_name,
-        _current_project_path,
+        current_path,
         new_options,
-        _current_project_path,
+        current_path,
         new_home_layout,
         {"display": "block"},
         False,
