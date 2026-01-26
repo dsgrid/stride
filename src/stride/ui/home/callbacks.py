@@ -400,7 +400,7 @@ def update_home_load_duration(
     data_handler: "APIClient",
     plotter: "StridePlots",
     selected_scenarios: list[str],
-    selected_year: int,
+    selected_year: int | str,
 ) -> go.Figure | dict[str, Any]:
     """
     Update the home load duration curve chart.
@@ -413,8 +413,8 @@ def update_home_load_duration(
         Plotting utilities for creating charts
     selected_scenarios : list[str]
         List of selected scenario names
-    selected_year : int
-        Selected year for load duration curve
+    selected_year : int | str
+        Selected year for load duration curve (UI may pass string)
 
     Returns
     -------

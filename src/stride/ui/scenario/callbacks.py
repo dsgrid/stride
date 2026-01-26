@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, Any, Literal
 
 import plotly.graph_objects as go
@@ -515,7 +515,7 @@ def update_timeseries_plot(
     breakdown: ConsumptionBreakdown | Literal["None"] | None,
     resample: ResampleOptions,
     weather_var: WeatherVar | Literal["None"] | None,
-    selected_years: int | list[int],
+    selected_years: int | str | Sequence[int | str],
 ) -> go.Figure | dict[str, Any]:
     """
     Update the timeseries comparison plot for multiple years.
@@ -534,8 +534,8 @@ def update_timeseries_plot(
         Resampling option ("Daily Mean" or "Weekly Mean")
     weather_var : WeatherVar | "None" | None
         Weather variable for secondary axis (not yet implemented)
-    selected_years : list[int]
-        List of selected years to display
+    selected_years : int | str | Sequence[int | str]
+        List of selected years to display (UI may pass strings)
 
     Returns
     -------
@@ -570,7 +570,7 @@ def update_timeseries_plot(
         # Add weather variable if selected
         if weather_var and weather_var != "None":
             _add_weather_to_timeseries(
-                fig, data_handler, plotter, scenario, weather_var, selected_years, resample
+                fig, data_handler, plotter, scenario, weather_var, selected_years_int, resample
             )
         else:
             # No weather variable - just ensure y-axis starts at zero
@@ -589,7 +589,7 @@ def update_yearly_plot(  # noqa: C901
     breakdown: ConsumptionBreakdown | Literal["None"] | None,
     resample: ResampleOptions,
     weather_var: WeatherVar | Literal["None"] | None,
-    selected_year: int | list[int],
+    selected_year: int | str | Sequence[int | str],
 ) -> go.Figure | dict[str, Any]:
     """
     Update the yearly area plot for a single year.
@@ -608,8 +608,8 @@ def update_yearly_plot(  # noqa: C901
         Resampling option ("Daily Mean", "Weekly Mean", or "Hourly")
     weather_var : WeatherVar | "None" | None
         Weather variable for secondary axis (not yet implemented)
-    selected_year : list[int]
-        Selected year to display (should be single year)
+    selected_year : int | str | Sequence[int | str]
+        Selected year to display (UI may pass string)
 
     Returns
     -------
@@ -1044,7 +1044,7 @@ def _register_timeseries_callbacks(
         breakdown: ConsumptionBreakdown | Literal["None"],
         resample: str,
         weather_var: str | None,
-        selected_years: list[int] | int,
+        selected_years: int | str | Sequence[int | str],
         refresh_trigger: int,
     ) -> go.Figure | dict[str, Any]:
         data_handler = get_data_handler_func()
