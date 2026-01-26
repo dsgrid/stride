@@ -14,7 +14,7 @@ current directory (`./stride`).
     ```{eval-rst}
     .. code-block:: console
     
-        $ stride projects create stride/tests/data/project_input.json5 --use-test-data
+        $ stride projects create stride/tests/data/project_input.json5 --dataset global-test
     ```
 
 Upon successful completion there will be a directory called `test_project` in the current
@@ -37,12 +37,12 @@ as a second scenario with customized GDP data.
           alternate_gdp
     ```
 
-3. List the base datasets that are available in every scenario of each project.
+3. List the data tables that are available in every scenario of each project.
 
     ```{eval-rst}
     .. code-block:: console
-    
-        $ stride datasets list
+
+        $ stride data-tables list
     ```
     
     ```{eval-rst}
@@ -51,13 +51,13 @@ as a second scenario with customized GDP data.
         energy_intensity gdp hdi load_shapes population
     ```
 
-4. Display a portion of a dataset table in the console. This shows the differences
+4. Display a portion of a data table in the console. This shows the differences
 between the baseline and custom GDP tables.
 
     ```{eval-rst}
     .. code-block:: console
-    
-        $ stride datasets show test_project gdp --scenario baseline
+
+        $ stride data-tables show test_project gdp --scenario baseline
     ```
     ```{eval-rst}
     .. code-block:: console
@@ -87,8 +87,8 @@ between the baseline and custom GDP tables.
     
     ```{eval-rst}
     .. code-block:: console
-    
-        $ stride datasets show test_project gdp --scenario alternate_gdp
+
+        $ stride data-tables show test_project gdp --scenario alternate_gdp
     ```
     ```{eval-rst}
     .. code-block:: console

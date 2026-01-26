@@ -300,3 +300,21 @@ def test_cli_download_url_without_subdirectory() -> None:
     result = runner.invoke(cli, ["datasets", "download", "--url", "https://github.com/owner/repo"])
     assert result.exit_code != 0
     assert "--subdirectory is required" in _strip_ansi(result.output)
+
+
+def test_cli_list_countries() -> None:
+    """Test the CLI list-countries command with the test dataset."""
+    runner = CliRunner()
+    result = runner.invoke(cli, ["datasets", "list-countries", "-D", "global-test"])
+    assert result.exit_code == 0
+    assert "country_1" in result.output
+    assert "country_2" in result.output
+    assert "2 total" in result.output
+
+
+def test_cli_list_countries_missing_dataset() -> None:
+    """Test the CLI list-countries command with a non-existent dataset."""
+    runner = CliRunner()
+    result = runner.invoke(cli, ["datasets", "list-countries", "-D", "nonexistent-dataset"])
+    assert result.exit_code == 1
+    assert "Dataset directory not found" in _strip_ansi(result.output)

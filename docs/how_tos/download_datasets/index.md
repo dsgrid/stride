@@ -36,8 +36,7 @@ To download a known dataset to the default location (``~/.stride/data``):
 ```
 
 This single command downloads both the full ``global`` dataset and the smaller ``global-test``
-subset from the same release archive. The test dataset enables the ``--use-test-data`` option
-when creating projects, which is useful for faster iteration during development.
+subset from the same release archive. The test dataset enables faster iteration during development.
 
 ### Specify a Destination Directory
 

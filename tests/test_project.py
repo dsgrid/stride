@@ -9,8 +9,14 @@ from dsgrid.utils.files import dump_json_file, load_json_file
 from pytest import TempPathFactory
 
 from stride import Project
+from stride.dataset_download import get_default_data_directory
 from stride.models import CalculatedTableOverride, ProjectConfig, Scenario
-from stride.project import CONFIG_FILE, _get_base_and_override_names
+from stride.project import (
+    CONFIG_FILE,
+    _get_base_and_override_names,
+    list_valid_countries,
+    validate_country,
+)
 from stride.cli.stride import cli
 
 
@@ -26,16 +32,16 @@ def test_list_scenarios(default_project: Project) -> None:
     assert project.list_scenario_names() == ["baseline", "ev_projection", "alternate_gdp"]
 
 
-def test_show_dataset(default_project: Project) -> None:
+def test_show_data_table(default_project: Project) -> None:
     project = default_project
     runner = CliRunner()
-    result = runner.invoke(cli, ["datasets", "list"])
+    result = runner.invoke(cli, ["data-tables", "list"])
     assert result.exit_code == 0
-    dataset_ids = result.stdout.split()
-    assert dataset_ids
-    for dataset_id in dataset_ids:
+    data_table_ids = result.stdout.split()
+    assert data_table_ids
+    for data_table_id in data_table_ids:
         result = runner.invoke(
-            cli, ["datasets", "show", str(project.path), dataset_id, "-l", "10"]
+            cli, ["data-tables", "show", str(project.path), data_table_id, "-l", "10"]
         )
         assert result.exit_code == 0
 
@@ -343,7 +349,8 @@ def test_override_calculated_table_pre_registration(
         str(project_config_file),
         "-d",
         str(new_base_dir),
-        "--use-test-data",
+        "--dataset",
+        "global-test",
     ]
     runner = CliRunner()
     result = runner.invoke(cli, cmd)
@@ -413,3 +420,57 @@ def test_get_base_and_override_names() -> None:
     assert _get_base_and_override_names("energy_projection_res_load_shapes_override") == expected
     with pytest.raises(InvalidParameter):
         _get_base_and_override_names("load_shapes_override_override")
+
+
+def test_get_valid_countries() -> None:
+    """Test that get_valid_countries returns the expected countries from the test dataset."""
+    dataset_dir = get_default_data_directory() / "global-test"
+    countries = list_valid_countries(dataset_dir)
+    assert "country_1" in countries
+    assert "country_2" in countries
+    assert len(countries) == 2
+
+
+def test_get_valid_countries_missing_file(tmp_path: Path) -> None:
+    """Test that get_valid_countries raises an error if the project.json5 file is missing."""
+    with pytest.raises(InvalidParameter, match="Dataset project file not found"):
+        list_valid_countries(tmp_path)
+
+
+def test_validate_country_valid() -> None:
+    """Test that validate_country succeeds for a valid country."""
+    dataset_dir = get_default_data_directory() / "global-test"
+    validate_country("country_1", dataset_dir)
+    validate_country("country_2", dataset_dir)
+
+
+def test_validate_country_invalid() -> None:
+    """Test that validate_country raises an error for an invalid country."""
+    dataset_dir = get_default_data_directory() / "global-test"
+    with pytest.raises(InvalidParameter, match="Country 'InvalidCountry' is not available"):
+        validate_country("InvalidCountry", dataset_dir)
+
+
+def test_create_project_invalid_country(copy_project_input_data: tuple[Path, Path, Path]) -> None:
+    """Test that project creation fails early with an invalid country."""
+    tmp_path, _, project_config_file = copy_project_input_data
+    config = load_json_file(project_config_file)
+    config["country"] = "NonExistentCountry"
+    dump_json_file(config, project_config_file)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "projects",
+            "create",
+            str(project_config_file),
+            "-d",
+            str(tmp_path),
+            "--dataset",
+            "global-test",
+        ],
+    )
+    assert result.exit_code != 0
+    assert "NonExistentCountry" in result.output
+    assert "not available" in result.output

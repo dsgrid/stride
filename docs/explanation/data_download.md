@@ -81,10 +81,10 @@ When creating a project, you can use the smaller test dataset for faster iterati
 from stride import Project
 
 # Use test data for development
-project = Project.create("my_config.json5", use_test_data=True)
+project = Project.create("my_config.json5", dataset="global-test")
 
 # Use full data for production
-project = Project.create("my_config.json5", use_test_data=False)
+project = Project.create("my_config.json5")
 ```
 
 The test dataset contains the same structure but with reduced data volume, making it suitable for:

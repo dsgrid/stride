@@ -14,7 +14,7 @@ Assumptions:
 ```{eval-rst}
 .. code-block:: console
 
-    $ stride projects create stride/tests/data/project_input.json --use-test-data
+    $ stride projects create stride/tests/data/project_input.json --dataset global-test
 ```
 
 Now the test project is stored at `./test_project`. All commands below will use that
