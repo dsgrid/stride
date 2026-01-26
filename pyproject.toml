@@ -52,7 +52,7 @@ dev = [
     "ruff",
     "furo",
     "myst_parser",
-    "sphinx",
+    "sphinx >=8, <9",  # 9.1.0 has an incompatibility with sphinx-tabs
     "sphinx-click",
     "autodoc_pydantic~=2.0",
     "sphinx-copybutton",
