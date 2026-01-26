@@ -1,4 +1,3 @@
-import csv
 import importlib.resources
 import os
 import shutil
@@ -9,11 +8,12 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Self
 
-from dsgrid.dimension.base_models import DatasetDimensionRequirements
 import duckdb
+from dsgrid.dimension.base_models import DatasetDimensionRequirements, DimensionType
+from dsgrid.config.project_config import ProjectConfig as DSGProjectConfig
 from chronify.exceptions import InvalidOperation, InvalidParameter
 from chronify.utils.path_utils import check_overwrite
-from dsgrid.utils.files import dump_json_file, load_json_file
+from dsgrid.utils.files import dump_json_file
 from duckdb import DuckDBPyConnection, DuckDBPyRelation
 from loguru import logger
 
@@ -797,13 +797,8 @@ def _get_base_and_override_names(table_name: str) -> tuple[str, str]:
     return base_name, override_name
 
 
-def get_valid_countries(dataset_dir: Path) -> list[str]:
-    """Get the list of valid country IDs from a dataset.
-
-    Reads the project.json5 file and finds the geography dimension to extract
-    valid country IDs. The geography dimension can specify countries either
-    via a CSV file (using the 'file' field) or inline records (using the
-    'records' field).
+def list_valid_countries(dataset_dir: Path) -> list[str]:
+    """Return the list of valid country IDs from a dataset.
 
     Parameters
     ----------
@@ -825,38 +820,13 @@ def get_valid_countries(dataset_dir: Path) -> list[str]:
         msg = f"Dataset project file not found: {project_file}"
         raise InvalidParameter(msg)
 
-    project_config = load_json_file(project_file)
-    base_dimensions = project_config.get("dimensions", {}).get("base_dimensions", [])
+    config = DSGProjectConfig.load(project_file)
+    for dim in config.model.dimensions.base_dimensions:
+        if dim.dimension_type == DimensionType.GEOGRAPHY:
+            return [x.id for x in dim.records]
 
-    # Find the geography dimension
-    geography_dim = None
-    for dim in base_dimensions:
-        if dim.get("type") == "geography":
-            geography_dim = dim
-            break
-
-    if geography_dim is None:
-        msg = f"No geography dimension found in {project_file}"
-        raise InvalidParameter(msg)
-
-    # Extract countries from either 'file' or 'records'
-    if "file" in geography_dim:
-        countries_file = dataset_dir / geography_dim["file"]
-        if not countries_file.exists():
-            msg = f"Countries dimension file not found: {countries_file}"
-            raise InvalidParameter(msg)
-
-        countries = []
-        with open(countries_file, newline="", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                countries.append(row["id"])
-        return countries
-    elif "records" in geography_dim:
-        return [record["id"] for record in geography_dim["records"]]
-    else:
-        msg = f"Geography dimension has neither 'file' nor 'records' field in {project_file}"
-        raise InvalidParameter(msg)
+    msg = f"{project_file=} does not define a geography dimension"
+    raise InvalidParameter(msg)
 
 
 def validate_country(country: str, dataset_dir: Path) -> None:
@@ -874,7 +844,7 @@ def validate_country(country: str, dataset_dir: Path) -> None:
     InvalidParameter
         If the country is not found in the dataset.
     """
-    valid_countries = get_valid_countries(dataset_dir)
+    valid_countries = list_valid_countries(dataset_dir)
     if country not in valid_countries:
         msg = (
             f"Country '{country}' is not available in the dataset. "

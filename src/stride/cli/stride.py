@@ -11,7 +11,7 @@ from loguru import logger
 
 from stride import Project
 from stride.models import CalculatedTableOverride
-from stride.project import get_valid_countries
+from stride.project import list_valid_countries
 from stride.dataset_download import (
     DatasetDownloadError,
     download_dataset,
@@ -170,7 +170,7 @@ def list_data_tables() -> None:
 
 @click.command(name="show")
 @click.argument("project-path", type=click.Path(exists=True), callback=path_callback)
-@click.argument("data-table-id", type=str)
+@click.argument("data-table-name", type=str)
 @click.option(
     "-s", "--scenario", type=str, default="baseline", show_default=True, help="Project scenario"
 )
@@ -184,11 +184,11 @@ def list_data_tables() -> None:
 )
 @click.pass_context
 def show_data_table(
-    ctx: click.Context, project_path: Path, scenario: str, data_table_id: str, limit: int
+    ctx: click.Context, project_path: Path, scenario: str, data_table_name: str, limit: int
 ) -> None:
     """Print a limited number of rows of the data table to the console."""
     project = safe_get_project_from_context(ctx, project_path, read_only=True)
-    project.show_data_table(scenario, data_table_id, limit=limit)
+    project.show_data_table(scenario, data_table_name, limit=limit)
 
 
 @click.command(name="list-remote")
@@ -345,7 +345,7 @@ def list_countries(ctx: click.Context, dataset: str) -> None:
         ctx.exit(1)
 
     try:
-        countries = get_valid_countries(dataset_dir)
+        countries = list_valid_countries(dataset_dir)
         print(f"Countries available in the '{dataset}' dataset ({len(countries)} total):\n")
         for country in sorted(countries):
             print(f"  {country}")

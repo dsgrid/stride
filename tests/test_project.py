@@ -14,7 +14,7 @@ from stride.models import CalculatedTableOverride, ProjectConfig, Scenario
 from stride.project import (
     CONFIG_FILE,
     _get_base_and_override_names,
-    get_valid_countries,
+    list_valid_countries,
     validate_country,
 )
 from stride.cli.stride import cli
@@ -425,7 +425,7 @@ def test_get_base_and_override_names() -> None:
 def test_get_valid_countries() -> None:
     """Test that get_valid_countries returns the expected countries from the test dataset."""
     dataset_dir = get_default_data_directory() / "global-test"
-    countries = get_valid_countries(dataset_dir)
+    countries = list_valid_countries(dataset_dir)
     assert "country_1" in countries
     assert "country_2" in countries
     assert len(countries) == 2
@@ -434,7 +434,7 @@ def test_get_valid_countries() -> None:
 def test_get_valid_countries_missing_file(tmp_path: Path) -> None:
     """Test that get_valid_countries raises an error if the project.json5 file is missing."""
     with pytest.raises(InvalidParameter, match="Dataset project file not found"):
-        get_valid_countries(tmp_path)
+        list_valid_countries(tmp_path)
 
 
 def test_validate_country_valid() -> None:
