@@ -11,6 +11,7 @@ from loguru import logger
 
 from stride import Project
 from stride.models import CalculatedTableOverride
+from stride.project import get_valid_countries
 from stride.dataset_download import (
     DatasetDownloadError,
     download_dataset,
@@ -90,15 +91,18 @@ $ stride projects create my_project.json5\n
     help="Overwrite the output directory if it exists.",
 )
 @click.option(
-    "--use-test-data",
-    default=False,
-    show_default=True,
-    is_flag=True,
-    help="Use the smaller test dataset (global-test) instead of the full dataset (global).",
+    "-D",
+    "--dataset",
+    default="global",
+    help="Name of dataset. Examples include 'global' and 'global-test'.",
 )
 @click.pass_context
 def create_project(
-    ctx: click.Context, config_file: Path, directory: Path, overwrite: bool, use_test_data: bool
+    ctx: click.Context,
+    config_file: Path,
+    directory: Path,
+    overwrite: bool,
+    dataset: str,
 ) -> Any:
     """Create a Stride project."""
     res = handle_stride_exception(
@@ -107,7 +111,7 @@ def create_project(
         config_file,
         base_dir=directory,
         overwrite=overwrite,
-        use_test_data=use_test_data,
+        dataset=dataset,
     )
     if res[1] != 0:
         ctx.exit(res[1])
@@ -152,16 +156,21 @@ def datasets() -> None:
     """Dataset commands"""
 
 
+@click.group(name="data-tables")
+def data_tables() -> None:
+    """Data table commands"""
+
+
 @click.command(name="list")
-def list_datasets() -> None:
-    """List the datasets available in any project."""
-    names = Project.list_datasets()
+def list_data_tables() -> None:
+    """List the data tables available in any project."""
+    names = Project.list_data_tables()
     print(" ".join(names))
 
 
 @click.command(name="show")
 @click.argument("project-path", type=click.Path(exists=True), callback=path_callback)
-@click.argument("dataset-id", type=str)
+@click.argument("data-table-id", type=str)
 @click.option(
     "-s", "--scenario", type=str, default="baseline", show_default=True, help="Project scenario"
 )
@@ -174,12 +183,12 @@ def list_datasets() -> None:
     help="Max number of rows in the table to show.",
 )
 @click.pass_context
-def show_dataset(
-    ctx: click.Context, project_path: Path, scenario: str, dataset_id: str, limit: int
+def show_data_table(
+    ctx: click.Context, project_path: Path, scenario: str, data_table_id: str, limit: int
 ) -> None:
-    """Print a limited number of rows of the dataset to the console."""
+    """Print a limited number of rows of the data table to the console."""
     project = safe_get_project_from_context(ctx, project_path, read_only=True)
-    project.show_dataset(scenario, dataset_id, limit=limit)
+    project.show_data_table(scenario, data_table_id, limit=limit)
 
 
 @click.command(name="list-remote")
@@ -302,6 +311,46 @@ def download_dataset_command(
         print(f"Dataset downloaded to: {result}")
     except DatasetDownloadError as e:
         logger.error("Download failed: {}", e)
+        ctx.exit(1)
+
+
+_list_countries_epilog = """
+Examples:\n
+List countries in the full dataset:\n
+$ stride datasets list-countries\n
+\n
+List countries in the test dataset:\n
+$ stride datasets list-countries -D global-test\n
+"""
+
+
+@click.command(name="list-countries", epilog=_list_countries_epilog)
+@click.option(
+    "-D",
+    "--dataset",
+    default="global",
+    show_default=True,
+    help="Name of dataset. Examples include 'global' and 'global-test'.",
+)
+@click.pass_context
+def list_countries(ctx: click.Context, dataset: str) -> None:
+    """List the countries available in a dataset."""
+    dataset_dir = get_default_data_directory() / dataset
+
+    if not dataset_dir.exists():
+        logger.error(
+            f"Dataset directory not found: {dataset_dir}. "
+            f"Please download it first using: stride datasets download {dataset.replace('-test', '')}"
+        )
+        ctx.exit(1)
+
+    try:
+        countries = get_valid_countries(dataset_dir)
+        print(f"Countries available in the '{dataset}' dataset ({len(countries)} total):\n")
+        for country in sorted(countries):
+            print(f"  {country}")
+    except Exception as e:
+        logger.error("Failed to get countries: {}", e)
         ctx.exit(1)
 
 
@@ -1017,16 +1066,18 @@ def safe_get_project_from_context(
 
 cli.add_command(projects)
 cli.add_command(datasets)
+cli.add_command(data_tables)
 cli.add_command(scenarios)
 cli.add_command(calculated_tables)
 cli.add_command(palette)
 cli.add_command(view)
 projects.add_command(create_project)
 projects.add_command(export_energy_projection)
-datasets.add_command(list_datasets)
-datasets.add_command(show_dataset)
 datasets.add_command(list_remote_datasets)
 datasets.add_command(download_dataset_command)
+datasets.add_command(list_countries)
+data_tables.add_command(list_data_tables)
+data_tables.add_command(show_data_table)
 scenarios.add_command(list_scenarios)
 calculated_tables.add_command(list_calculated_tables)
 calculated_tables.add_command(show_calculated_table)

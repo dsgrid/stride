@@ -35,7 +35,8 @@ def default_project(
         str(project_config_file),
         "--directory",
         str(tmp_path),
-        "--use-test-data",
+        "--dataset",
+        "global-test",
     ]
     runner = CliRunner()
     result = runner.invoke(cli, cmd)

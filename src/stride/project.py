@@ -1,3 +1,4 @@
+import csv
 import importlib.resources
 import os
 import shutil
@@ -12,7 +13,7 @@ from dsgrid.dimension.base_models import DatasetDimensionRequirements
 import duckdb
 from chronify.exceptions import InvalidOperation, InvalidParameter
 from chronify.utils.path_utils import check_overwrite
-from dsgrid.utils.files import dump_json_file
+from dsgrid.utils.files import dump_json_file, load_json_file
 from duckdb import DuckDBPyConnection, DuckDBPyRelation
 from loguru import logger
 
@@ -67,8 +68,8 @@ class Project:
         config_file: Path | str,
         base_dir: Path = Path(),
         overwrite: bool = False,
-        use_test_data: bool = False,
         dataset_requirements: DatasetDimensionRequirements | None = None,
+        dataset: str = "global",
     ) -> Self:
         """Create a project from a config file.
 
@@ -81,11 +82,10 @@ class Project:
             The project directory will be `base_dir / project_id`.
         overwrite
             Set to True to overwrite the project directory if it already exists.
-        use_test_data
-            If True, use the smaller test dataset (global-test).
-            If False (default), use the full dataset (global).
         dataset_requirements
             Optional, requirements to use when checking dataset consistency.
+        dataset
+            Name of dataset, if provided. Can be "global" or "global-test".
 
         Examples
         --------
@@ -101,11 +101,13 @@ class Project:
             require_all_dimension_types=False,
         )
         config = ProjectConfig.from_file(config_file)
+        dataset_dir = cls._get_dataset_dir(dataset)
+        validate_country(config.country, dataset_dir)
+
         project_path = base_dir / config.project_id
         check_overwrite(project_path, overwrite)
         project_path.mkdir()
 
-        dataset_dir = cls._get_dataset_dir(use_test_data)
         deploy_to_dsgrid_registry(project_path, dataset_dir, requirements)
 
         unchanged_tables_by_scenario = cls._register_scenario_datasets(
@@ -139,14 +141,13 @@ class Project:
         return cls.load(project_path)
 
     @classmethod
-    def _get_dataset_dir(cls, use_test_data: bool) -> Path:
+    def _get_dataset_dir(cls, dataset: str) -> Path:
         """Get and validate the dataset directory."""
-        dataset_name = "global-test" if use_test_data else "global"
-        dataset_dir = get_default_data_directory() / dataset_name
+        dataset_dir = get_default_data_directory() / dataset
         if not dataset_dir.exists():
             msg = (
                 f"Dataset directory not found: {dataset_dir}. "
-                f"Please download it first using: stride datasets download {dataset_name}"
+                f"Please download it first using: stride datasets download {dataset}"
             )
             raise InvalidParameter(msg)
         return dataset_dir
@@ -162,7 +163,7 @@ class Project:
 
         Returns a mapping of scenario name to list of unchanged table names.
         """
-        datasets = cls.list_datasets()
+        datasets = cls.list_data_tables()
         unchanged_tables_by_scenario: dict[str, list[str]] = {}
         for scenario in config.scenarios:
             if scenario.name != "baseline":
@@ -177,7 +178,7 @@ class Project:
     def _clear_scenario_dataset_paths(self) -> None:
         """Clear dataset paths from scenario configs (no longer needed after loading)."""
         for scenario in self._config.scenarios:
-            for dataset in self.list_datasets():
+            for dataset in self.list_data_tables():
                 setattr(scenario, dataset, None)
 
     def _create_views_for_unchanged_tables(
@@ -502,8 +503,8 @@ class Project:
         return sorted([x.stem for x in dbt_dir.glob("*.sql")])
 
     @staticmethod
-    def list_datasets() -> list[str]:
-        """List the datasets available in any project."""
+    def list_data_tables() -> list[str]:
+        """List the data tables available in any project."""
         return [x for x in Scenario.model_fields if x not in ("name", "use_ev_projection")]
 
     def persist(self) -> None:
@@ -637,9 +638,9 @@ class Project:
             f"SELECT * FROM {scenario}.energy_projection WHERE scenario = ?", params=(scenario,)
         )
 
-    def show_dataset(self, scenario: str, dataset_id: str, limit: int = 20) -> None:
-        """Print a limited number of rows of the dataset to the console."""
-        table = make_dsgrid_data_table_name(scenario, dataset_id)
+    def show_data_table(self, scenario: str, data_table_id: str, limit: int = 20) -> None:
+        """Print a limited number of rows of the data table to the console."""
+        table = make_dsgrid_data_table_name(scenario, data_table_id)
         self._show_table(table, limit=limit)
 
     def _show_table(self, table: str, limit: int = 20) -> None:
@@ -794,3 +795,89 @@ def _get_base_and_override_names(table_name: str) -> tuple[str, str]:
         base_name = table_name
         override_name = f"{table_name}_override"
     return base_name, override_name
+
+
+def get_valid_countries(dataset_dir: Path) -> list[str]:
+    """Get the list of valid country IDs from a dataset.
+
+    Reads the project.json5 file and finds the geography dimension to extract
+    valid country IDs. The geography dimension can specify countries either
+    via a CSV file (using the 'file' field) or inline records (using the
+    'records' field).
+
+    Parameters
+    ----------
+    dataset_dir
+        Path to the dataset directory (e.g., ~/.stride/data/global).
+
+    Returns
+    -------
+    list[str]
+        List of valid country IDs that can be used in project configuration.
+
+    Raises
+    ------
+    InvalidParameter
+        If the project.json5 file or geography dimension is not found.
+    """
+    project_file = dataset_dir / "project.json5"
+    if not project_file.exists():
+        msg = f"Dataset project file not found: {project_file}"
+        raise InvalidParameter(msg)
+
+    project_config = load_json_file(project_file)
+    base_dimensions = project_config.get("dimensions", {}).get("base_dimensions", [])
+
+    # Find the geography dimension
+    geography_dim = None
+    for dim in base_dimensions:
+        if dim.get("type") == "geography":
+            geography_dim = dim
+            break
+
+    if geography_dim is None:
+        msg = f"No geography dimension found in {project_file}"
+        raise InvalidParameter(msg)
+
+    # Extract countries from either 'file' or 'records'
+    if "file" in geography_dim:
+        countries_file = dataset_dir / geography_dim["file"]
+        if not countries_file.exists():
+            msg = f"Countries dimension file not found: {countries_file}"
+            raise InvalidParameter(msg)
+
+        countries = []
+        with open(countries_file, newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                countries.append(row["id"])
+        return countries
+    elif "records" in geography_dim:
+        return [record["id"] for record in geography_dim["records"]]
+    else:
+        msg = f"Geography dimension has neither 'file' nor 'records' field in {project_file}"
+        raise InvalidParameter(msg)
+
+
+def validate_country(country: str, dataset_dir: Path) -> None:
+    """Validate that a country is available in the dataset.
+
+    Parameters
+    ----------
+    country
+        The country ID to validate.
+    dataset_dir
+        Path to the dataset directory.
+
+    Raises
+    ------
+    InvalidParameter
+        If the country is not found in the dataset.
+    """
+    valid_countries = get_valid_countries(dataset_dir)
+    if country not in valid_countries:
+        msg = (
+            f"Country '{country}' is not available in the dataset. "
+            f"Valid countries are: {', '.join(sorted(valid_countries))}"
+        )
+        raise InvalidParameter(msg)
