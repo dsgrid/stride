@@ -543,19 +543,22 @@ def update_timeseries_plot(
         Plotly figure object or error dictionary
     """
 
-    if isinstance(selected_years, int):
+    if isinstance(selected_years, (int, str)):
         selected_years = [selected_years]
 
     if not selected_years or scenario not in data_handler.scenarios:
         return {"data": [], "layout": {"title": "Select years to view data"}}
     try:
+        # Convert years to integers (UI may pass strings)
+        selected_years_int = [int(year) for year in selected_years]
+
         # Convert "None" to None
         breakdown_value = None if breakdown == "None" else breakdown
 
         # Get timeseries data. Need to pass "End Use" Literal Hera
         df = data_handler.get_time_series_comparison(
             scenario=scenario,
-            years=selected_years,
+            years=selected_years_int,
             group_by=breakdown_value,
             resample=resample,
         )
@@ -614,18 +617,21 @@ def update_yearly_plot(  # noqa: C901
         Plotly figure object or error dictionary
     """
 
-    if isinstance(selected_year, int):
+    if isinstance(selected_year, (int, str)):
         selected_year = [selected_year]
 
     if not selected_year or scenario not in data_handler.scenarios:
         return {"data": [], "layout": {"title": "Select a year to view data"}}
     try:
+        # Convert years to integers (UI may pass strings)
+        selected_year_int = [int(year) for year in selected_year]
+
         # Convert "None" to None
         breakdown_value = None if breakdown == "None" else breakdown
         # Get timeseries data for single year
-        year_int = int(selected_year[0])
+        year_int = selected_year_int[0]
         df = data_handler.get_time_series_comparison(
-            scenario=scenario, years=selected_year, group_by=breakdown_value, resample=resample
+            scenario=scenario, years=selected_year_int, group_by=breakdown_value, resample=resample
         )
 
         stack_col = "metric" if breakdown_value == "End Use" else str(breakdown_value)
