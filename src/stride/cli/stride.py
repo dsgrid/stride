@@ -340,18 +340,19 @@ def list_countries(ctx: click.Context, dataset: str) -> None:
     if not dataset_dir.exists():
         logger.error(
             f"Dataset directory not found: {dataset_dir}. "
-            f"Please download it first using: stride datasets download {dataset.replace('-test', '')}"
+            f"Please download it first using: stride datasets download {dataset.removesuffix('-test')}"
         )
         ctx.exit(1)
 
-    try:
-        countries = list_valid_countries(dataset_dir)
-        print(f"Countries available in the '{dataset}' dataset ({len(countries)} total):\n")
-        for country in sorted(countries):
-            print(f"  {country}")
-    except Exception as e:
-        logger.error("Failed to get countries: {}", e)
-        ctx.exit(1)
+    res = handle_stride_exception(ctx, list_valid_countries, dataset_dir)
+    if res[1] != 0:
+        ctx.exit(res[1])
+
+    countries = res[0]
+    countries = list_valid_countries(dataset_dir)
+    print(f"Countries available in the '{dataset}' dataset ({len(countries)} total):\n")
+    for country in sorted(countries):
+        print(f"  {country}")
 
 
 def _parse_github_url(url: str) -> str:
