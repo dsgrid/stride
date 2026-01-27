@@ -993,9 +993,6 @@ def create_app(  # noqa: C901
 
     return app
 
-## CLAUDE INPUT
-
-
 def create_app_no_project(
     user_palette: ColorPalette | None = None,
 ) -> Dash:
