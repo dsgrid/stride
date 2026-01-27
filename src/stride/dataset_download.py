@@ -1,5 +1,6 @@
 """Download stride datasets from remote repositories."""
 
+import os
 import shutil
 import subprocess
 import tempfile
@@ -221,11 +222,17 @@ def download_dataset(
 def get_default_data_directory() -> Path:
     """Get the default directory for storing downloaded datasets.
 
+    Checks the STRIDE_DATA_DIR environment variable first, falling back
+    to ~/.stride/data if not set.
+
     Returns
     -------
     Path
-        Default data directory (~/.stride/data)
+        Default data directory (STRIDE_DATA_DIR or ~/.stride/data)
     """
+    env_dir = os.getenv("STRIDE_DATA_DIR")
+    if env_dir:
+        return Path(env_dir)
     return Path.home() / ".stride" / "data"
 
 

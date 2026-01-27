@@ -70,6 +70,7 @@ class Project:
         overwrite: bool = False,
         dataset_requirements: DatasetDimensionRequirements | None = None,
         dataset: str = "global",
+        data_dir: Path | None = None,
     ) -> Self:
         """Create a project from a config file.
 
@@ -86,6 +87,8 @@ class Project:
             Optional, requirements to use when checking dataset consistency.
         dataset
             Name of dataset, if provided. Can be "global" or "global-test".
+        data_dir
+            Directory containing datasets. Defaults to STRIDE_DATA_DIR env var or ~/.stride/data.
 
         Examples
         --------
@@ -101,7 +104,7 @@ class Project:
             require_all_dimension_types=False,
         )
         config = ProjectConfig.from_file(config_file)
-        dataset_dir = cls._get_dataset_dir(dataset)
+        dataset_dir = cls._get_dataset_dir(dataset, data_dir)
         validate_country(config.country, dataset_dir)
 
         project_path = base_dir / config.project_id
@@ -141,9 +144,18 @@ class Project:
         return cls.load(project_path)
 
     @classmethod
-    def _get_dataset_dir(cls, dataset: str) -> Path:
-        """Get and validate the dataset directory."""
-        dataset_dir = get_default_data_directory() / dataset
+    def _get_dataset_dir(cls, dataset: str, data_dir: Path | None = None) -> Path:
+        """Get and validate the dataset directory.
+
+        Parameters
+        ----------
+        dataset
+            Name of dataset (e.g., "global" or "global-test").
+        data_dir
+            Directory containing datasets. Defaults to STRIDE_DATA_DIR env var or ~/.stride/data.
+        """
+        base_dir = data_dir if data_dir is not None else get_default_data_directory()
+        dataset_dir = base_dir / dataset
         if not dataset_dir.exists():
             msg = (
                 f"Dataset directory not found: {dataset_dir}. "

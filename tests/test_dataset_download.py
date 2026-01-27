@@ -1,5 +1,6 @@
 """Tests for dataset downloading functionality."""
 
+import os
 import re
 import tempfile
 import zipfile
@@ -23,6 +24,7 @@ from stride.dataset_download import (
     _check_gh_cli_available,
     download_dataset,
     download_dataset_from_repo,
+    get_default_data_directory,
     get_latest_release_tag,
     list_known_datasets,
     KNOWN_DATASETS,
@@ -316,5 +318,54 @@ def test_cli_list_countries_missing_dataset() -> None:
     """Test the CLI list-countries command with a non-existent dataset."""
     runner = CliRunner()
     result = runner.invoke(cli, ["datasets", "list-countries", "-D", "nonexistent-dataset"])
+    assert result.exit_code == 1
+    assert "Dataset directory not found" in _strip_ansi(result.output)
+
+
+def test_get_default_data_directory_default() -> None:
+    """Test that get_default_data_directory returns ~/.stride/data by default."""
+    # Ensure STRIDE_DATA_DIR is not set
+    env_backup = os.environ.pop("STRIDE_DATA_DIR", None)
+    try:
+        result = get_default_data_directory()
+        assert result == Path.home() / ".stride" / "data"
+    finally:
+        if env_backup is not None:
+            os.environ["STRIDE_DATA_DIR"] = env_backup
+
+
+def test_get_default_data_directory_env_var() -> None:
+    """Test that get_default_data_directory respects STRIDE_DATA_DIR env var."""
+    env_backup = os.environ.get("STRIDE_DATA_DIR")
+    try:
+        os.environ["STRIDE_DATA_DIR"] = "/custom/data/path"
+        result = get_default_data_directory()
+        assert result == Path("/custom/data/path")
+    finally:
+        if env_backup is not None:
+            os.environ["STRIDE_DATA_DIR"] = env_backup
+        else:
+            os.environ.pop("STRIDE_DATA_DIR", None)
+
+
+def test_cli_list_countries_with_data_dir() -> None:
+    """Test the CLI list-countries command with --data-dir option."""
+    runner = CliRunner()
+    # Use the default data directory path explicitly via --data-dir
+    data_dir = get_default_data_directory()
+    result = runner.invoke(
+        cli, ["datasets", "list-countries", "-D", "global-test", "--data-dir", str(data_dir)]
+    )
+    assert result.exit_code == 0
+    assert "country_1" in result.output
+    assert "country_2" in result.output
+
+
+def test_cli_list_countries_with_invalid_data_dir() -> None:
+    """Test the CLI list-countries command with invalid --data-dir."""
+    runner = CliRunner()
+    result = runner.invoke(
+        cli, ["datasets", "list-countries", "-D", "global-test", "--data-dir", "/nonexistent/path"]
+    )
     assert result.exit_code == 1
     assert "Dataset directory not found" in _strip_ansi(result.output)
