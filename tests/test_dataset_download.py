@@ -172,7 +172,7 @@ def test_download_dataset_from_repo(
         result = download_dataset_from_repo(
             repo="owner/repo",
             subdirectory="mydata",
-            destination=destination,
+            data_dir=destination,
         )
 
         # Compare resolved paths to handle symlinks (e.g., /var -> /private/var on macOS)
@@ -217,7 +217,7 @@ def test_download_dataset_with_test_subdirectory(
         result = download_dataset_from_repo(
             repo="owner/repo",
             subdirectory="mydata",
-            destination=destination,
+            data_dir=destination,
             test_subdirectory="mydata-test",
         )
 
@@ -274,7 +274,7 @@ def test_download_dataset_destination_exists(
             download_dataset_from_repo(
                 repo="owner/repo",
                 subdirectory="mydata",
-                destination=destination,
+                data_dir=destination,
             )
 
 

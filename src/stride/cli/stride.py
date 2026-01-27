@@ -305,14 +305,14 @@ def download_dataset_command(
             result = download_dataset_from_repo(
                 repo=repo,
                 subdirectory=subdirectory,
-                destination=data_dir,
+                data_dir=data_dir,
                 version=version,
             )
         elif name is not None:
             # Known dataset
             result = download_dataset(
                 name=name,
-                destination=data_dir,
+                data_dir=data_dir,
                 version=version,
             )
         else:
