@@ -174,3 +174,5 @@ cython_debug/
 test_project
 __dsgrid_scratch__
 journal*.json5
+dev_project
+dev_project.json5
