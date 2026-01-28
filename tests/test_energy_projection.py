@@ -44,7 +44,12 @@ def test_energy_projection_by_scenario(default_project: Project) -> None:
     project = default_project
     expected = project.get_energy_projection().filter("scenario = 'baseline'").to_df()
     actual = project.get_energy_projection(scenario="baseline").to_df()
-    assert_frame_equal(actual[expected.columns], expected)
+    # Sort both dataframes to ensure consistent ordering before comparison
+    expected_sorted = expected.sort_values(by=list(expected.columns)).reset_index(drop=True)
+    actual_sorted = (
+        actual[expected.columns].sort_values(by=list(expected.columns)).reset_index(drop=True)
+    )
+    assert_frame_equal(actual_sorted, expected_sorted)
 
 
 def test_energy_projection_ev(default_project: Project) -> None:
@@ -826,17 +831,23 @@ def compute_temperature_multipliers(
         SELECT
             geography
             ,timestamp
-            ,value AS bait
-            ,EXTRACT(YEAR FROM timestamp) AS weather_year
-            ,EXTRACT(MONTH FROM timestamp) AS month
-            ,EXTRACT(DAY FROM timestamp) AS day
+            ,MAX(CASE WHEN metric = 'Temperature' THEN value END) AS temperature
+            ,MAX(CASE WHEN metric = 'Solar_Radiation' THEN value END) AS solar_radiation
+            ,MAX(CASE WHEN metric = 'Wind_Speed' THEN value END) AS wind_speed
+            ,MAX(CASE WHEN metric = 'Dew_Point' THEN value END) AS dew_point
+            ,MAX(CASE WHEN metric = 'Humidity' THEN value END) AS humidity
+            ,MAX(CASE WHEN metric = 'BAIT' THEN value END) AS bait
+            ,EXTRACT(YEAR FROM DATE_TRUNC('day', timestamp)) AS weather_year
+            ,EXTRACT(MONTH FROM DATE_TRUNC('day', timestamp)) AS month
+            ,EXTRACT(DAY FROM DATE_TRUNC('day', timestamp)) AS day
             ,CASE
-                WHEN DAYOFWEEK(timestamp) IN (6, 7) THEN 'weekend'
+                WHEN DAYOFWEEK(DATE_TRUNC('day', timestamp)) IN (6, 7) THEN 'weekend'
                 ELSE 'weekday'
             END AS day_type
         FROM dsgrid_data.{scenario}__weather_bait__1_0_0
         WHERE geography = '{country}'
             AND EXTRACT(YEAR FROM timestamp) = {weather_year}
+        GROUP BY geography, timestamp
     """
     )
 
