@@ -407,7 +407,7 @@ def calculated_tables() -> None:
 
 
 @click.command(name="view")
-@click.argument("project-path", type=click.Path(exists=True), callback=path_callback)
+@click.argument("project-path", type=click.Path(exists=True), callback=path_callback, required=False)
 @click.option(
     "--host",
     default="127.0.0.1",
@@ -443,24 +443,26 @@ def calculated_tables() -> None:
 @click.pass_context
 def view(
     ctx: click.Context,
-    project_path: Path,
+    project_path: Path | None,
     host: str,
     port: int,
     debug: bool,
     user_palette: str | None,
     no_default_palette: bool,
 ) -> None:
-    """Start the STRIDE dashboard UI for the specified project.
+    """Start the STRIDE dashboard UI.
+
+    If PROJECT_PATH is provided, opens the UI with that project loaded.
+    If no project is provided, opens the UI without a project where you can
+    load one using the sidebar.
 
     By default, if a default user palette is set, it will override the project palette.
     Use --no-default-palette to disable this behavior, or --user-palette to specify
     a different user palette to use.
     """
     from stride.api import APIClient
-    from stride.ui.app import create_app
+    from stride.ui.app import create_app, create_app_no_project
     from stride.ui.tui import get_default_user_palette, load_user_palette
-
-    project = safe_get_project_from_context(ctx, project_path)
 
     # Determine which palette to use
     palette_override = None
@@ -482,13 +484,19 @@ def view(
             logger.error(f"User palette '{palette_name}' not found")
             ctx.exit(1)
 
-    data_handler = APIClient(project=project)
+    if project_path is None:
+        # Start UI without a project loaded
+        print("Starting STRIDE UI without a project. Use the sidebar to load a project.")
+        app = create_app_no_project(user_palette=palette_override)
+    else:
+        project = safe_get_project_from_context(ctx, project_path)
+        data_handler = APIClient(project=project)
 
-    # Let create_app build available_projects from recent projects
-    app = create_app(
-        data_handler=data_handler,
-        user_palette=palette_override,
-    )
+        # Let create_app build available_projects from recent projects
+        app = create_app(
+            data_handler=data_handler,
+            user_palette=palette_override,
+        )
     # Run in single threaded mode to avoid data races.
     app.run(host=host, port=port, debug=debug, threaded=False)
 
