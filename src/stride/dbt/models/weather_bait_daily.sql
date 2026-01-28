@@ -4,11 +4,16 @@
     )
 }}
 
--- Extract date components and day type from weather BAIT data
+-- Pivot weather data from long format (metric column) to wide format and extract date components
 SELECT
     geography,
     timestamp,
-    value AS bait,
+    MAX(CASE WHEN metric = 'Temperature' THEN value END) AS temperature,
+    MAX(CASE WHEN metric = 'Solar_Radiation' THEN value END) AS solar_radiation,
+    MAX(CASE WHEN metric = 'Wind_Speed' THEN value END) AS wind_speed,
+    MAX(CASE WHEN metric = 'Dew_Point' THEN value END) AS dew_point,
+    MAX(CASE WHEN metric = 'Humidity' THEN value END) AS humidity,
+    MAX(CASE WHEN metric = 'BAIT' THEN value END) AS bait,
     -- Extract date components for grouping
     EXTRACT(YEAR FROM timestamp) AS weather_year,
     EXTRACT(MONTH FROM timestamp) AS month,
@@ -21,3 +26,4 @@ SELECT
 FROM {{ source('scenario', 'weather_bait') }}
 WHERE geography = '{{ var("country") }}'
     AND EXTRACT(YEAR FROM timestamp) = {{ var("weather_year") }}
+GROUP BY geography, timestamp

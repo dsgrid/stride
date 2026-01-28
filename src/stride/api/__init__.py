@@ -969,6 +969,11 @@ class APIClient:
             "BAIT": "bait",
             "HDD": "hdd",
             "CDD": "cdd",
+            "Temperature": "temperature",
+            "Solar_Radiation": "solar_radiation",
+            "Wind_Speed": "wind_speed",
+            "Dew_Point": "dew_point",
+            "Humidity": "humidity",
         }
 
         if wvar not in wvar_column_map:

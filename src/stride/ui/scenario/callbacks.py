@@ -36,6 +36,11 @@ def get_weather_label(weather_var: str) -> str:
         "BAIT": "BAIT (deg C)",
         "HDD": "HDD (deg C)",
         "CDD": "CDD (deg C)",
+        "Temperature": "Temperature (deg C)",
+        "Solar_Radiation": "Solar Radiation (W/m²)",
+        "Wind_Speed": "Wind Speed (m/s)",
+        "Dew_Point": "Dew Point (deg C)",
+        "Humidity": "Humidity (g/kg)",
     }
     return weather_labels.get(weather_var, weather_var)
 
