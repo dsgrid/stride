@@ -131,7 +131,6 @@ def test_get_annual_peak_demand_with_breakdown(api_client: APIClient) -> None:
 
 def test_get_secondary_metric(api_client: APIClient) -> None:
     """Test secondary metric method executes."""
-    pytest.skip("Secondary metric functionality not implemented yet")
     valid_scenario = api_client.scenarios[0]
     df = api_client.get_secondary_metric(valid_scenario, "GDP")
     assert isinstance(df, pd.DataFrame)
@@ -206,10 +205,9 @@ def test_get_scenario_summary(api_client: APIClient) -> None:
 
 def test_get_weather_metric(api_client: APIClient) -> None:
     """Test weather metric method executes."""
-    pytest.skip("Weather Metric not implemented yet.")
     valid_scenario = api_client.scenarios[0]
     valid_year = api_client.years[0]
-    df = api_client.get_weather_metric(valid_scenario, valid_year, "Temperature")
+    df = api_client.get_weather_metric(valid_scenario, valid_year, "Temperature", "Hourly")
     assert isinstance(df, pd.DataFrame)
     # May be empty if weather data doesn't exist
     if not df.empty:

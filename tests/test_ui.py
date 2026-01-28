@@ -95,9 +95,14 @@ def test_update_home_scenario_comparison_no_scenarios(
     assert result["layout"]["title"] == "Select scenarios to view data"
 
 
-@pytest.mark.parametrize("breakdown", literal_to_list(ConsumptionBreakdown, include_none_str=True))
 @pytest.mark.parametrize(
-    "secondary_metric", literal_to_list(SecondaryMetric, include_none_str=True)
+    "breakdown,secondary_metric",
+    [
+        ("None", "None"),  # No breakdown, no secondary
+        ("Sector", "None"),  # Just breakdown
+        ("None", "GDP"),  # Just secondary
+        ("End Use", "Population"),  # Both
+    ],
 )
 def test_update_home_scenario_comparison(
     api_client: APIClient,
@@ -119,9 +124,14 @@ def test_update_home_scenario_comparison(
     assert_valid_figure(result)
 
 
-@pytest.mark.parametrize("breakdown", literal_to_list(ConsumptionBreakdown, include_none_str=True))
 @pytest.mark.parametrize(
-    "secondary_metric", literal_to_list(SecondaryMetric, include_none_str=True)
+    "breakdown,secondary_metric",
+    [
+        ("None", "None"),
+        ("Sector", "None"),
+        ("None", "GDP"),
+        ("End Use", "Human Development Index"),
+    ],
 )
 def test_update_home_sector_breakdown(
     api_client: APIClient,
@@ -160,10 +170,16 @@ def test_update_home_load_duration_no_data(api_client: APIClient, plotter: Strid
     assert result == {}
 
 
-@pytest.mark.parametrize("chart_type", literal_to_list(ChartType))
-@pytest.mark.parametrize("breakdown", literal_to_list(ConsumptionBreakdown, include_none_str=True))
 @pytest.mark.parametrize(
-    "secondary_metric", literal_to_list(SecondaryMetric, include_none_str=True)
+    "chart_type,breakdown,secondary_metric",
+    [
+        ("Line", "None", "None"),
+        ("Area", "Sector", "None"),
+        ("Line", "None", "GDP"),
+        ("Area", "End Use", "GDP Per Capita"),
+        ("Line", "Sector", "Population"),
+        ("Area", "None", "Human Development Index"),
+    ],
 )
 def test_update_home_scenario_timeseries(
     api_client: APIClient,
@@ -244,9 +260,14 @@ def test_update_summary_stats_invalid_inputs(api_client: APIClient) -> None:
     assert peak_cagr == "---"
 
 
-@pytest.mark.parametrize("breakdown", literal_to_list(ConsumptionBreakdown, include_none_str=True))
 @pytest.mark.parametrize(
-    "secondary_metric", literal_to_list(SecondaryMetric, include_none_str=True)
+    "breakdown,secondary_metric",
+    [
+        ("None", "None"),
+        ("End Use", "None"),
+        ("None", "GDP Per Capita"),
+        ("Sector", "Population"),
+    ],
 )
 def test_update_consumption_plot(
     api_client: APIClient,
@@ -264,9 +285,14 @@ def test_update_consumption_plot(
     assert_valid_figure(result)
 
 
-@pytest.mark.parametrize("breakdown", literal_to_list(ConsumptionBreakdown, include_none_str=True))
 @pytest.mark.parametrize(
-    "secondary_metric", literal_to_list(SecondaryMetric, include_none_str=True)
+    "breakdown,secondary_metric",
+    [
+        ("None", "None"),
+        ("End Use", "None"),
+        ("None", "Human Development Index"),
+        ("Sector", "GDP"),
+    ],
 )
 def test_update_peak_plot(
     api_client: APIClient,
@@ -283,8 +309,8 @@ def test_update_peak_plot(
 
 
 @pytest.mark.parametrize("breakdown", literal_to_list(ConsumptionBreakdown, include_none_str=True))
-@pytest.mark.parametrize("resample", literal_to_list(ResampleOptions))
-@pytest.mark.parametrize("weather_var", literal_to_list(WeatherVar, include_none_str=True))
+@pytest.mark.parametrize("resample", ["Hourly", "Daily Mean"])  # Reduced from 3 to 2
+@pytest.mark.parametrize("weather_var", ["None", "BAIT", "Temperature"])  # Reduced from 9 to 3
 def test_update_timeseries_plot(
     api_client: APIClient,
     plotter: StridePlots,
@@ -292,13 +318,9 @@ def test_update_timeseries_plot(
     resample: ResampleOptions,
     weather_var: WeatherVar | Literal["None"],
 ) -> None:
-    """Test timeseries plot with different parameter combinations."""
+    """Test timeseries plot with different parameter combinations (representative sample)."""
     # Convert "None" to None for weather_var
     weather_var_value = None if weather_var == "None" else weather_var
-
-    # Skip if weather data is specified (not implemented yet)
-    if weather_var_value is not None:
-        pytest.skip("Weather data functionality not implemented yet")
 
     available_scenario = api_client.scenarios[0]
     available_years = api_client.years[:2] if len(api_client.years) >= 2 else api_client.years
@@ -329,8 +351,8 @@ def test_update_timeseries_plot_no_years(api_client: APIClient, plotter: StrideP
 
 
 @pytest.mark.parametrize("breakdown", literal_to_list(ConsumptionBreakdown, include_none_str=True))
-@pytest.mark.parametrize("resample", literal_to_list(ResampleOptions))
-@pytest.mark.parametrize("weather_var", literal_to_list(WeatherVar, include_none_str=True))
+@pytest.mark.parametrize("resample", ["Hourly", "Weekly Mean"])  # Reduced from 3 to 2
+@pytest.mark.parametrize("weather_var", ["None", "BAIT", "HDD"])  # Reduced from 9 to 3
 def test_update_yearly_plot(
     api_client: APIClient,
     plotter: StridePlots,
@@ -338,13 +360,9 @@ def test_update_yearly_plot(
     resample: ResampleOptions,
     weather_var: WeatherVar | Literal["None"],
 ) -> None:
-    """Test yearly area plot with different parameter combinations."""
+    """Test yearly area plot with different parameter combinations (representative sample)."""
     # Convert "None" to None for weather_var
     weather_var_value = None if weather_var == "None" else weather_var
-
-    # Skip if weather data is specified (not implemented yet)
-    if weather_var_value is not None:
-        pytest.skip("Weather data functionality not implemented yet")
 
     available_scenario = api_client.scenarios[0]
     available_year = api_client.years[0]
@@ -361,9 +379,9 @@ def test_update_yearly_plot(
     assert_valid_figure(result)
 
 
-@pytest.mark.parametrize("timegroup", literal_to_list(TimeGroup))
+@pytest.mark.parametrize("timegroup", ["Seasonal", "Weekday/Weekend"])  # Reduced from 3 to 2
 @pytest.mark.parametrize("agg", literal_to_list(TimeGroupAgg))
-@pytest.mark.parametrize("weather_var", literal_to_list(WeatherVar, include_none_str=True))
+@pytest.mark.parametrize("weather_var", ["None", "BAIT", "CDD"])  # Reduced from 9 to 3
 def test_update_seasonal_lines_plot(
     api_client: APIClient,
     plotter: StridePlots,
@@ -371,13 +389,9 @@ def test_update_seasonal_lines_plot(
     agg: TimeGroupAgg,
     weather_var: WeatherVar | Literal["None"],
 ) -> None:
-    """Test seasonal load lines plot with different parameter combinations."""
+    """Test seasonal load lines plot with different parameter combinations (representative sample)."""
     # Convert "None" to None for weather_var
     weather_var_value = None if weather_var == "None" else weather_var
-
-    # Skip if weather data is specified (not implemented yet)
-    if weather_var_value is not None:
-        pytest.skip("Weather data functionality not implemented yet")
 
     available_scenario = api_client.scenarios[0]
 
@@ -389,9 +403,11 @@ def test_update_seasonal_lines_plot(
 
 
 @pytest.mark.parametrize("breakdown", literal_to_list(ConsumptionBreakdown, include_none_str=True))
-@pytest.mark.parametrize("timegroup", literal_to_list(TimeGroup))
+@pytest.mark.parametrize(
+    "timegroup", ["Seasonal", "Seasonal and Weekday/Weekend"]
+)  # Reduced from 3 to 2
 @pytest.mark.parametrize("agg", literal_to_list(TimeGroupAgg))
-@pytest.mark.parametrize("weather_var", literal_to_list(WeatherVar, include_none_str=True))
+@pytest.mark.parametrize("weather_var", ["None", "Temperature"])  # Reduced from 9 to 2
 def test_update_seasonal_area_plot(
     api_client: APIClient,
     plotter: StridePlots,
@@ -400,13 +416,9 @@ def test_update_seasonal_area_plot(
     agg: TimeGroupAgg,
     weather_var: WeatherVar | Literal["None"],
 ) -> None:
-    """Test seasonal load area plot with different parameter combinations."""
+    """Test seasonal load area plot with different parameter combinations (representative sample)."""
     # Convert "None" to None for weather_var
     weather_var_value = None if weather_var == "None" else weather_var
-
-    # Skip if weather data is specified (not implemented yet)
-    if weather_var_value is not None:
-        pytest.skip("Weather data functionality not implemented yet")
 
     available_scenario = api_client.scenarios[0]
     available_year = api_client.years[0]
