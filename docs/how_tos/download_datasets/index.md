@@ -26,7 +26,7 @@ which is automatically downloaded alongside the main dataset.
 
 ## Download a Known Dataset
 
-To download a known dataset to the default location (``~/.stride/data``):
+To download a known dataset to the default location (``~/.stride/data`` or ``STRIDE_DATA_DIR``):
 
 ```{eval-rst}
 
@@ -38,15 +38,25 @@ To download a known dataset to the default location (``~/.stride/data``):
 This single command downloads both the full ``global`` dataset and the smaller ``global-test``
 subset from the same release archive. The test dataset enables faster iteration during development.
 
-### Specify a Destination Directory
+### Specify a Data Directory
 
-Use the ``-d`` or ``--destination`` option to download to a specific location:
+Use the ``-d`` or ``--data-dir`` option to download to a specific location:
 
 ```{eval-rst}
 
 .. code-block:: console
 
    $ stride datasets download global -d ./my_data
+```
+
+Alternatively, set the ``STRIDE_DATA_DIR`` environment variable for a persistent default:
+
+```{eval-rst}
+
+.. code-block:: console
+
+   $ export STRIDE_DATA_DIR=/path/to/data
+   $ stride datasets download global
 ```
 
 ### Specify a Version

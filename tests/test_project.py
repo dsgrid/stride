@@ -474,3 +474,52 @@ def test_create_project_invalid_country(copy_project_input_data: tuple[Path, Pat
     assert result.exit_code != 0
     assert "NonExistentCountry" in result.output
     assert "not available" in result.output
+
+
+def test_create_project_with_data_dir(copy_project_input_data: tuple[Path, Path, Path]) -> None:
+    """Test that project creation works with --data-dir option."""
+    tmp_path, _, project_config_file = copy_project_input_data
+
+    runner = CliRunner()
+    # Use the default data directory path explicitly via --data-dir
+    data_dir = get_default_data_directory()
+    result = runner.invoke(
+        cli,
+        [
+            "projects",
+            "create",
+            str(project_config_file),
+            "-d",
+            str(tmp_path),
+            "--dataset",
+            "global-test",
+            "--data-dir",
+            str(data_dir),
+        ],
+    )
+    assert result.exit_code == 0
+
+
+def test_create_project_with_invalid_data_dir(
+    copy_project_input_data: tuple[Path, Path, Path],
+) -> None:
+    """Test that project creation fails with invalid --data-dir."""
+    tmp_path, _, project_config_file = copy_project_input_data
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "projects",
+            "create",
+            str(project_config_file),
+            "-d",
+            str(tmp_path),
+            "--dataset",
+            "global-test",
+            "--data-dir",
+            "/nonexistent/path",
+        ],
+    )
+    assert result.exit_code != 0
+    assert "Dataset directory not found" in result.output

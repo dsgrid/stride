@@ -96,6 +96,13 @@ $ stride projects create my_project.json5\n
     default="global",
     help="Name of dataset. Examples include 'global' and 'global-test'.",
 )
+@click.option(
+    "--data-dir",
+    type=click.Path(),
+    default=None,
+    help="Directory containing datasets. Defaults to STRIDE_DATA_DIR env var or ~/.stride/data.",
+    callback=path_callback,
+)
 @click.pass_context
 def create_project(
     ctx: click.Context,
@@ -103,6 +110,7 @@ def create_project(
     directory: Path,
     overwrite: bool,
     dataset: str,
+    data_dir: Path | None,
 ) -> Any:
     """Create a Stride project."""
     res = handle_stride_exception(
@@ -112,6 +120,7 @@ def create_project(
         base_dir=directory,
         overwrite=overwrite,
         dataset=dataset,
+        data_dir=data_dir,
     )
     if res[1] != 0:
         ctx.exit(res[1])
@@ -228,13 +237,17 @@ Download a known dataset to the default location (~/.stride/data):\n
 $ stride datasets download global\n
 \n
 Download to a specific directory:\n
-$ stride datasets download global --destination ./my_data\n
+$ stride datasets download global --data-dir ./my_data\n
 \n
 Download a specific version:\n
 $ stride datasets download global --version v0.1.0.beta.1\n
 \n
 Download from a custom repository:\n
 $ stride datasets download --url https://github.com/user/repo --subdirectory data\n
+\n
+Use STRIDE_DATA_DIR environment variable to set a persistent default:\n
+$ export STRIDE_DATA_DIR=/path/to/data\n
+$ stride datasets download global\n
 """
 
 
@@ -242,10 +255,10 @@ $ stride datasets download --url https://github.com/user/repo --subdirectory dat
 @click.argument("name", type=str, required=False)
 @click.option(
     "-d",
-    "--destination",
+    "--data-dir",
     type=click.Path(),
     default=None,
-    help=f"Directory where the dataset will be placed. Defaults to {get_default_data_directory()}.",
+    help="Directory where the dataset will be placed. Defaults to STRIDE_DATA_DIR env var or ~/.stride/data.",
     callback=path_callback,
 )
 @click.option(
@@ -271,7 +284,7 @@ $ stride datasets download --url https://github.com/user/repo --subdirectory dat
 def download_dataset_command(
     ctx: click.Context,
     name: str | None,
-    destination: Path | None,
+    data_dir: Path | None,
     version: str | None,
     url: str | None,
     subdirectory: str | None,
@@ -292,14 +305,14 @@ def download_dataset_command(
             result = download_dataset_from_repo(
                 repo=repo,
                 subdirectory=subdirectory,
-                destination=destination,
+                data_dir=data_dir,
                 version=version,
             )
         elif name is not None:
             # Known dataset
             result = download_dataset(
                 name=name,
-                destination=destination,
+                data_dir=data_dir,
                 version=version,
             )
         else:
@@ -321,6 +334,9 @@ $ stride datasets list-countries\n
 \n
 List countries in the test dataset:\n
 $ stride datasets list-countries -D global-test\n
+\n
+List countries using a custom data directory:\n
+$ stride datasets list-countries --data-dir /path/to/data\n
 """
 
 
@@ -332,10 +348,18 @@ $ stride datasets list-countries -D global-test\n
     show_default=True,
     help="Name of dataset. Examples include 'global' and 'global-test'.",
 )
+@click.option(
+    "--data-dir",
+    type=click.Path(),
+    default=None,
+    help="Directory containing datasets. Defaults to STRIDE_DATA_DIR env var or ~/.stride/data.",
+    callback=path_callback,
+)
 @click.pass_context
-def list_countries(ctx: click.Context, dataset: str) -> None:
+def list_countries(ctx: click.Context, dataset: str, data_dir: Path | None) -> None:
     """List the countries available in a dataset."""
-    dataset_dir = get_default_data_directory() / dataset
+    base_dir = data_dir if data_dir is not None else get_default_data_directory()
+    dataset_dir = base_dir / dataset
 
     if not dataset_dir.exists():
         logger.error(

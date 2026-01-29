@@ -1,5 +1,6 @@
 """Download stride datasets from remote repositories."""
 
+import os
 import shutil
 import subprocess
 import tempfile
@@ -179,7 +180,7 @@ def get_latest_release_tag(repo: str, token: str | None = None) -> str:
 
 def download_dataset(
     name: str,
-    destination: Path | None = None,
+    data_dir: Path | None = None,
     version: str | None = None,
 ) -> Path:
     """Download a known dataset.
@@ -188,8 +189,9 @@ def download_dataset(
     ----------
     name : str
         Name of a known dataset (e.g., "global")
-    destination : Path | None
-        Directory where the dataset will be placed. Defaults to current directory.
+    data_dir : Path | None
+        Directory where the dataset will be placed. Defaults to STRIDE_DATA_DIR
+        env var or ~/.stride/data.
     version : str | None
         Release version/tag to download. Defaults to the latest release.
 
@@ -212,7 +214,7 @@ def download_dataset(
     return download_dataset_from_repo(
         repo=dataset.repo,
         subdirectory=dataset.subdirectory,
-        destination=destination,
+        data_dir=data_dir,
         version=version,
         test_subdirectory=dataset.test_subdirectory,
     )
@@ -221,11 +223,17 @@ def download_dataset(
 def get_default_data_directory() -> Path:
     """Get the default directory for storing downloaded datasets.
 
+    Checks the STRIDE_DATA_DIR environment variable first, falling back
+    to ~/.stride/data if not set.
+
     Returns
     -------
     Path
-        Default data directory (~/.stride/data)
+        Default data directory (STRIDE_DATA_DIR or ~/.stride/data)
     """
+    env_dir = os.getenv("STRIDE_DATA_DIR")
+    if env_dir:
+        return Path(env_dir)
     return Path.home() / ".stride" / "data"
 
 
@@ -441,7 +449,7 @@ def _move_to_destination(source_path: Path, destination: Path, subdirectory: str
 def download_dataset_from_repo(
     repo: str,
     subdirectory: str,
-    destination: Path | None = None,
+    data_dir: Path | None = None,
     version: str | None = None,
     test_subdirectory: str | None = None,
 ) -> Path:
@@ -453,8 +461,9 @@ def download_dataset_from_repo(
         Repository in the format "owner/repo"
     subdirectory : str
         Subdirectory within the repository containing the dataset
-    destination : Path | None
-        Directory where the dataset will be placed. Defaults to ~/.stride/data.
+    data_dir : Path | None
+        Directory where the dataset will be placed. Defaults to STRIDE_DATA_DIR
+        env var or ~/.stride/data.
     version : str | None
         Release version/tag to download. Defaults to the latest release.
     test_subdirectory : str | None
@@ -474,8 +483,8 @@ def download_dataset_from_repo(
     # Check upfront that gh CLI is available (required for downloading)
     _check_gh_cli_available()
 
-    destination = destination or get_default_data_directory()
-    destination = destination.resolve()
+    data_dir = data_dir or get_default_data_directory()
+    data_dir = data_dir.resolve()
 
     # Get GitHub token for private repo access
     token = _get_github_token()
@@ -498,12 +507,12 @@ def download_dataset_from_repo(
 
         # Extract main dataset
         source_path = _find_source_in_archive(extract_path, subdirectory)
-        result = _move_to_destination(source_path, destination, subdirectory)
+        result = _move_to_destination(source_path, data_dir, subdirectory)
 
         # Extract test dataset if specified
         if test_subdirectory:
             test_source_path = _find_source_in_archive(extract_path, test_subdirectory)
-            _move_to_destination(test_source_path, destination, test_subdirectory)
+            _move_to_destination(test_source_path, data_dir, test_subdirectory)
             logger.info("Also extracted test dataset: {}", test_subdirectory)
 
         return result

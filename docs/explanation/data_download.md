@@ -59,7 +59,11 @@ stride datasets download --url dsgrid/my-custom-data --subdirectory my-subset
 
 ## Storage Location
 
-Downloaded datasets are stored in:
+Downloaded datasets are stored in the data directory, which is determined by (in order of precedence):
+
+1. The `--data-dir` CLI option
+2. The `STRIDE_DATA_DIR` environment variable
+3. The default location: `~/.stride/data/`
 
 ```
 ~/.stride/data/
@@ -71,6 +75,23 @@ Downloaded datasets are stored in:
 │   └── ...
 └── global-test/
     └── ...
+```
+
+### Custom Data Directory
+
+To use a custom data directory persistently, set the `STRIDE_DATA_DIR` environment variable:
+
+```bash
+export STRIDE_DATA_DIR=/path/to/my/data
+stride datasets download global
+stride projects create my_config.json5
+```
+
+Or specify it per-command with the `--data-dir` option:
+
+```bash
+stride datasets download global --data-dir /path/to/my/data
+stride projects create my_config.json5 --data-dir /path/to/my/data
 ```
 
 ## Using Test Data
@@ -116,4 +137,4 @@ Common download issues:
 
 - **Dataset not found** - Ensure the dataset name matches a known dataset or provide a valid `--url`
 - **Authentication required** - Install and authenticate the GitHub CLI with `gh auth login`
-- **Destination exists** - Use `--overwrite` to replace an existing dataset
+- **Destination exists** - Remove the existing dataset directory before downloading again
