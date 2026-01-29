@@ -77,14 +77,31 @@ Downloaded datasets are stored in:
 
 When creating a project, you can use the smaller test dataset for faster iteration:
 
-```python
-from stride import Project
+```{eval-rst}
 
-# Use test data for development
-project = Project.create("my_config.json5", dataset="global-test")
+.. tabs::
 
-# Use full data for production
-project = Project.create("my_config.json5")
+  .. tab:: CLI
+
+     .. code-block:: console
+
+        # Use test data for development
+        $ stride projects create my_config.json5 --dataset global-test
+
+        # Use full data for production
+        $ stride projects create my_config.json5
+
+  .. tab:: Python
+
+     .. code-block:: python
+
+        from stride import Project
+
+        # Use test data for development
+        project = Project.create("my_config.json5", dataset="global-test")
+
+        # Use full data for production
+        project = Project.create("my_config.json5")
 ```
 
 The test dataset contains the same structure but with reduced data volume, making it suitable for:

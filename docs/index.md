@@ -1,8 +1,8 @@
 # STRIDE documentation
 
-STRIDE (Smart Trending and Resource Insights for Demand Estimation) is a Python tool for assembling annual hourly electricity demand projections at the country-level suitable for grid planning. STRIDE is designed to enable quick assemblage of first-order load forecasts that can then be refined, guided by visual QA/QC of results. The first order load forecasts are based on country-level data describing normalized electricity use, electricity use correlates (e.g., population, human development index, gross domestic product), weather, and load shapes. Alternative scenarios and forecast refinements can be made by layering in user-supplied data at any point in the calculation workflow and/or opting to use more complex forecasting models for certain subsectors/end uses.
+STRIDE (Smart Trending and Resource Insights for Demand Estimation) is a Python tool for assembling annual hourly electricity demand projections suitable for grid planning at the country-level. STRIDE is designed to enable quick assembly of first-order load forecasts that can then be refined, guided by visual QA/QC of results. The first order load forecasts are based on country-level data describing normalized electricity use trends, electricity use correlates (e.g., population, human development index, gross domestic product), weather, and load shapes. Alternative scenarios and forecast refinements can be made by layering in user-supplied data at any point in the calculation workflow and/or opting to use more complex forecasting models for certain subsectors/end uses.
 
-When the current prototype phase is complete, STRIDE will support load forecasting for 148 countries and will allow users to select a more detailed forecasting methodology for light-duty passenger electric vehicles.
+STRIDE currently supports load forecasting for 148 countries and allows users to select a more detailed forecasting methodology for light-duty passenger electric vehicles.
 
 ## How to use this guide
 
@@ -16,6 +16,7 @@ When the current prototype phase is complete, STRIDE will support load forecasti
 .. toctree::
     :maxdepth: 2
     :caption: Contents:
+    :hidden:
 
     explanation/index
     how_tos/index
@@ -28,3 +29,7 @@ When the current prototype phase is complete, STRIDE will support load forecasti
 - {ref}`genindex`
 - {ref}`modindex`
 - {ref}`search`
+
+## Contact Us
+
+If you have any comments or questions about STRIDE, please reach out to us at [dsgrid.info@nlr.gov](mailto:dsgrid.info@nlr.gov).
