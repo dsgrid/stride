@@ -36,7 +36,7 @@ or ``mamba``.
          $ .venv\Scripts\Activate.ps1
     ```
 
-Whenever you are done using stride, you can deactivate the environment by running ``deactivate``.
+    Whenever you are done using stride, you can deactivate the environment by running ``deactivate``.
 
 4. Install the Python package `stride`.
 

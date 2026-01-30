@@ -10,11 +10,11 @@ to download pre-configured datasets as well as custom datasets from GitHub.
 - For public repositories: No additional tools required (uses Python's built-in urllib)
 - For private repositories: GitHub CLI (`gh`) installed and authenticated
 
-## Repositories Known to STRIDE
+## Datasets known to stride
 
-Currently STRIDE only knows about the public repository [stride-data](https://github.com/dsgrid/stride-data).
+Currently stride only knows about datasets in the public repository [stride-data](https://github.com/dsgrid/stride-data).
 
-### List Available Datasets
+### List available datasets
 
 To see the known datasets available for download along with their available versions:
 
@@ -29,7 +29,7 @@ This will display each dataset's name, repository, subdirectory, description, an
 versions. Datasets may also have an associated test dataset (shown as ``test_subdirectory``)
 which is automatically downloaded alongside the main dataset.
 
-### Download a Dataset
+### Download a dataset
 
 To download a dataset to the default location (``~/.stride/data`` or ``STRIDE_DATA_DIR``):
 
@@ -43,7 +43,7 @@ To download a dataset to the default location (``~/.stride/data`` or ``STRIDE_DA
 This single command downloads both the full ``global`` dataset and the smaller ``global-test``
 subset from the same release archive. The test dataset enables faster iteration during development.
 
-#### Specify a Data Directory
+#### Specify a data directory
 
 Use the ``-d`` or ``--data-dir`` option to download to a specific location:
 
@@ -64,7 +64,7 @@ Alternatively, set the ``STRIDE_DATA_DIR`` environment variable for a persistent
    $ stride datasets download global
 ```
 
-#### Specify a Version
+#### Specify a version
 
 By default, the latest release is downloaded. To download a specific version:
 
@@ -74,35 +74,6 @@ By default, the latest release is downloaded. To download a specific version:
 
    $ stride datasets download global -v v0.2.0
 ```
-
-### Alternative: Clone the Repository Directly
-
-If you don't have the GitHub CLI (``gh``) installed, you can clone the stride-data repository
-directly using git:
-
-```{eval-rst}
-
-.. code-block:: console
-
-   $ git clone https://github.com/dsgrid/stride-data.git
-   $ mkdir -p ~/.stride/data
-   $ cp -r stride-data/global ~/.stride/data/
-   $ cp -r stride-data/global-test ~/.stride/data/
-```
-
-Alternatively, you can set the ``STRIDE_DATA_DIR`` environment variable to point to the cloned
-repository location:
-
-```{eval-rst}
-
-.. code-block:: console
-
-   $ git clone https://github.com/dsgrid/stride-data.git
-   $ export STRIDE_DATA_DIR=/path/to/stride-data
-```
-
-This approach is useful if you want to keep the dataset in a custom location or if you're
-working in an environment where ``gh`` is not available.
 
 ## Download from a Custom Repository
 
@@ -142,6 +113,35 @@ If not authenticated, run:
 
    $ gh auth login
 ```
+
+### Alternative: Clone the repository directly
+
+If you don't have the GitHub CLI (``gh``) installed, you can clone the stride-data repository
+directly using git:
+
+```{eval-rst}
+
+.. code-block:: console
+
+   $ git clone https://github.com/dsgrid/stride-data.git
+   $ mkdir -p ~/.stride/data
+   $ cp -r stride-data/global ~/.stride/data/
+   $ cp -r stride-data/global-test ~/.stride/data/
+```
+
+Alternatively, you can set the ``STRIDE_DATA_DIR`` environment variable to point to the cloned
+repository location:
+
+```{eval-rst}
+
+.. code-block:: console
+
+   $ git clone https://github.com/dsgrid/stride-data.git
+   $ export STRIDE_DATA_DIR=/path/to/stride-data
+```
+
+This approach is useful if you want to keep the dataset in a custom location or if you're
+working in an environment where ``gh`` is not available.
 
 ## Learn More
 
