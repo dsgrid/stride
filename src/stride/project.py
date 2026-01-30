@@ -678,9 +678,7 @@ class Project:
                 params.extend(model_years)
 
             if "weather_year" in columns:
-                # weather_year may be stored as string or int depending on the table
-                conditions.append("(weather_year = ? OR weather_year = ?)")
-                params.append(str(self._config.weather_year))
+                conditions.append("weather_year = ?")
                 params.append(self._config.weather_year)
 
             if conditions:
