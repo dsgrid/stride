@@ -837,7 +837,7 @@ def list_valid_model_years(dataset_dir: Path) -> list[str]:
         if dim.dimension_type == DimensionType.MODEL_YEAR:
             return [x.id for x in dim.records]
 
-    msg = f"{project_file=} does not define a model_year dimension"
+    msg = f"{project_file} does not define a model_year dimension"
     raise InvalidParameter(msg)
 
 
@@ -869,7 +869,7 @@ def list_valid_weather_years(dataset_dir: Path) -> list[str]:
         if dim.dimension_type == DimensionType.WEATHER_YEAR:
             return [x.id for x in dim.records]
 
-    msg = f"{project_file=} does not define a weather_year dimension"
+    msg = f"{project_file} does not define a weather_year dimension"
     raise InvalidParameter(msg)
 
 
@@ -901,7 +901,7 @@ def list_valid_countries(dataset_dir: Path) -> list[str]:
         if dim.dimension_type == DimensionType.GEOGRAPHY:
             return [x.id for x in dim.records]
 
-    msg = f"{project_file=} does not define a geography dimension"
+    msg = f"{project_file} does not define a geography dimension"
     raise InvalidParameter(msg)
 
 
@@ -920,11 +920,17 @@ def generate_project_template(country: str, project_id: str) -> str:
     str
         JSON5-formatted project configuration template.
     """
+    import json
+
+    # Escape values to prevent JSON5 injection
+    safe_project_id = json.dumps(project_id)[1:-1]  # Remove surrounding quotes
+    safe_country = json.dumps(country)[1:-1]  # Remove surrounding quotes
+
     template = f"""{{
-    project_id: "{project_id}",
+    project_id: "{safe_project_id}",
     creator: "your_name",
-    description: "{country} projections.",
-    country: "{country}",
+    description: "{safe_country} projections.",
+    country: "{safe_country}",
     start_year: 2025,
     step_year: 5,
     end_year: 2050,

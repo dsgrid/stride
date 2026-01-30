@@ -739,8 +739,10 @@ def test_list_model_years_command() -> None:
     )
     assert result.exit_code == 0
     assert "Model years available" in result.output
-    # Check that some years are listed
-    assert "20" in result.output  # Model years typically contain "20" (e.g., 2025, 2030)
+    # Check that some known model years from the dataset are listed
+    dataset_dir = get_default_data_directory() / "global-test"
+    model_years = list_valid_model_years(dataset_dir)
+    assert any(year in result.output for year in model_years)
 
 
 def test_list_model_years_command_invalid_dataset() -> None:
