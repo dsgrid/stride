@@ -274,36 +274,3 @@ def test_multipliers_sum_to_num_days(default_project: Project) -> None:
     assert sums[
         "cooling_ok"
     ].all(), f"Cooling multipliers don't sum to num_days:\n{sums[~sums['cooling_ok']]}"
-
-
-def test_sql_defaults_match_python_constants(default_project: Project) -> None:
-    """Verify that dbt model defaults match Python constants.
-
-    This ensures consistency between SQL default values and Python ModelParameters defaults.
-    Note: This test validates the actual behavior, not the SQL source code.
-    """
-    # Create a test scenario with all default parameters
-    # The default_project already uses defaults, so we can check the multipliers
-    con = default_project.con
-
-    # Query to check if smoothing is enabled by default
-    # If smoothing is working, we should see some adjusted values in shoulder months
-    result = con.sql(
-        """
-        SELECT COUNT(*) as count
-        FROM baseline.temperature_multipliers
-        WHERE (total_hdd > 0 AND hdd = 0 AND heating_multiplier > 0)
-           OR (total_cdd > 0 AND cdd = 0 AND cooling_multiplier > 0)
-        """
-    ).fetchone()
-
-    # If smoothing is enabled by default (DEFAULT_ENABLE_SHOULDER_MONTH_SMOOTHING = True),
-    # we should see some days with zero degree days but positive multipliers
-    if DEFAULT_ENABLE_SHOULDER_MONTH_SMOOTHING:
-        # There should be at least some smoothed values in shoulder months
-        # (this is a weak test, but validates the feature is active)
-        assert result[0] >= 0, "Expected smoothing to be enabled by default"
-
-    # Note: We can't directly test the smoothing factor value from SQL output
-    # since it's only used in the calculation logic, not stored as a column
-    # The validation that the factor is correct comes from the other tests
