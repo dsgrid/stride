@@ -651,15 +651,54 @@ class Project:
         )
 
     def show_data_table(self, scenario: str, data_table_id: str, limit: int = 20) -> None:
-        """Print a limited number of rows of the data table to the console."""
-        table = make_dsgrid_data_table_name(scenario, data_table_id)
-        self._show_table(table, limit=limit)
+        """Print a limited number of rows of the data table to the console.
 
-    def _show_table(self, table: str, limit: int = 20) -> None:
-        rel = self._con.sql(f"SELECT * FROM {table} LIMIT ?", params=(limit,))
+        Data is filtered by the project's configuration:
+        - geography column filtered by project's country
+        - model_year column filtered by project's model years
+        - weather_year column filtered by project's weather year
+        """
+        table = make_dsgrid_data_table_name(scenario, data_table_id)
+        self._show_table(table, limit=limit, filter_by_project=True)
+
+    def _show_table(self, table: str, limit: int = 20, filter_by_project: bool = False) -> None:
+        if filter_by_project:
+            columns = self._get_table_columns(table)
+            conditions = []
+            params: list[Any] = []
+
+            if "geography" in columns:
+                conditions.append("geography = ?")
+                params.append(self._config.country)
+
+            if "model_year" in columns:
+                model_years = self._config.list_model_years()
+                placeholders = ", ".join("?" for _ in model_years)
+                conditions.append(f"model_year IN ({placeholders})")
+                params.extend(model_years)
+
+            if "weather_year" in columns:
+                conditions.append("weather_year = ?")
+                params.append(self._config.weather_year)
+
+            if conditions:
+                where_clause = " AND ".join(conditions)
+                params.append(limit)
+                rel = self._con.sql(
+                    f"SELECT * FROM {table} WHERE {where_clause} LIMIT ?",
+                    params=params,
+                )
+            else:
+                rel = self._con.sql(f"SELECT * FROM {table} LIMIT ?", params=(limit,))
+        else:
+            rel = self._con.sql(f"SELECT * FROM {table} LIMIT ?", params=(limit,))
         # DuckDB doesn't seem to provide a way to change the number of rows displayed.
         # If this is an issue, we could redirect to Pandas and customize the output.
         print(rel)
+
+    def _get_table_columns(self, table: str) -> list[str]:
+        """Get the list of column names for a table."""
+        return [x[0] for x in self._con.sql(f"DESCRIBE {table}").fetchall()]
 
     def get_table_overrides(self) -> dict[str, list[str]]:
         """Return a dictionary of tables being overridden for each scenario."""

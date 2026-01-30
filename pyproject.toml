@@ -83,6 +83,7 @@ module = [
   "plotly.*",
   "dash.*",
   "dash_bootstrap_components.*",
+  "pyarrow",
 ]
 
 [[tool.mypy.overrides]]

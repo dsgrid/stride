@@ -4,15 +4,14 @@ from getpass import getuser
 from pathlib import Path
 from typing import Any
 
-from stride.models import Scenario
-
+import duckdb
+import pyarrow as pa
 from chronify.exceptions import InvalidParameter
 from dsgrid.dimension.base_models import DatasetDimensionRequirements
 from dsgrid.config.mapping_tables import MappingTableModel
 from dsgrid.config.registration_models import DimensionType
 from dsgrid.query.models import DimensionReferenceModel, make_dataset_query
 from dsgrid.utils.files import load_json_file
-import duckdb
 from dsgrid.query.query_submitter import (
     DatasetQuerySubmitter,
 )
@@ -20,6 +19,8 @@ from dsgrid.registry.bulk_register import bulk_register
 from dsgrid.registry.common import DataStoreType, DatabaseConnection
 from dsgrid.registry.registry_manager import RegistryManager
 from loguru import logger
+
+from stride.models import Scenario
 
 
 def deploy_to_dsgrid_registry(
@@ -332,17 +333,17 @@ def _query_and_create_table(
     )
     # Use Arrow transfer instead of toPandas() for better performance
     arrow_table = df.relation.arrow()  # noqa: F841
-    # Convert model_year from string to integer if needed
-    if "model_year" in arrow_table.schema.names:
-        import pyarrow as pa  # type: ignore[import-untyped]
 
-        field_index = arrow_table.schema.get_field_index("model_year")
-        if pa.types.is_string(arrow_table.schema.field(field_index).type):
-            arrow_table = arrow_table.set_column(
-                field_index,
-                "model_year",
-                arrow_table.column("model_year").cast(pa.int64()),
-            )
+    # Convert year columns from string to integer if needed
+    for year_col in ("model_year", "weather_year"):
+        if year_col in arrow_table.schema.names:
+            field_index = arrow_table.schema.get_field_index(year_col)
+            if pa.types.is_string(arrow_table.schema.field(field_index).type):
+                arrow_table = arrow_table.set_column(
+                    field_index,
+                    year_col,
+                    arrow_table.column(year_col).cast(pa.int64()),
+                )
     con.execute(f"CREATE OR REPLACE TABLE {table_name} AS SELECT * FROM arrow_table")
     logger.info("Created table {} from mapped dataset.", table_name)
 

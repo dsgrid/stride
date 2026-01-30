@@ -49,6 +49,55 @@ def test_show_data_table(default_project: Project) -> None:
         assert result.exit_code == 0
 
 
+def test_show_data_table_filters_by_project_config(default_project: Project) -> None:
+    """Test that data-tables show filters by the project's configuration.
+
+    The test project uses country_1, model years 2025-2050 (step 5), and weather_year 2018.
+    Data should be filtered to only show matching records.
+    """
+    project = default_project
+    runner = CliRunner()
+
+    # Verify project configuration
+    assert project.config.country == "country_1"
+    assert project.config.start_year == 2025
+    assert project.config.end_year == 2050
+    assert project.config.step_year == 5
+    assert project.config.weather_year == 2018
+    model_years = project.config.list_model_years()
+    assert model_years == [2025, 2030, 2035, 2040, 2045, 2050]
+
+    # Test GDP table - should filter by country and model_year
+    result = runner.invoke(cli, ["data-tables", "show", str(project.path), "gdp", "-l", "100"])
+    assert result.exit_code == 0
+    # country_1 should appear (project's country)
+    assert "country_1" in result.stdout
+    # country_2 should NOT appear (filtered out)
+    assert "country_2" not in result.stdout
+    # Only project's model years should appear
+    for year in model_years:
+        assert str(year) in result.stdout
+    # Years outside the range should not appear (e.g., 1990, 2000, 2010)
+    assert "1990" not in result.stdout
+    assert "2000" not in result.stdout
+    assert "2010" not in result.stdout
+
+    # Test weather_bait table - should filter by country and weather_year
+    result = runner.invoke(
+        cli, ["data-tables", "show", str(project.path), "weather_bait", "-l", "100"]
+    )
+    assert result.exit_code == 0
+    # country_1 should appear (project's country)
+    assert "country_1" in result.stdout
+    # country_2 should NOT appear (filtered out)
+    assert "country_2" not in result.stdout
+    # Only project's weather_year (2018) should appear
+    assert "2018" in result.stdout
+    # Other weather years should not appear
+    assert "1980" not in result.stdout
+    assert "2020" not in result.stdout
+
+
 def test_show_calculated_table(default_project: Project) -> None:
     project = default_project
     runner = CliRunner()
