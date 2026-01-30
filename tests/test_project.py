@@ -49,6 +49,25 @@ def test_show_data_table(default_project: Project) -> None:
         assert result.exit_code == 0
 
 
+def test_show_data_table_filters_by_country(default_project: Project) -> None:
+    """Test that data-tables show filters by the project's country.
+
+    The test project uses country_1, so gdp data should only show country_1,
+    not country_2 (which also exists in the global-test dataset).
+    """
+    project = default_project
+    runner = CliRunner()
+    # The test project is configured for country_1
+    assert project.config.country == "country_1"
+    # Show gdp data - should only show country_1 data
+    result = runner.invoke(cli, ["data-tables", "show", str(project.path), "gdp", "-l", "100"])
+    assert result.exit_code == 0
+    # country_1 should appear in the output (it's the project's country)
+    assert "country_1" in result.stdout
+    # country_2 should NOT appear - the data should be filtered by project country
+    assert "country_2" not in result.stdout
+
+
 def test_show_calculated_table(default_project: Project) -> None:
     project = default_project
     runner = CliRunner()

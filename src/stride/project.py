@@ -651,15 +651,29 @@ class Project:
         )
 
     def show_data_table(self, scenario: str, data_table_id: str, limit: int = 20) -> None:
-        """Print a limited number of rows of the data table to the console."""
-        table = make_dsgrid_data_table_name(scenario, data_table_id)
-        self._show_table(table, limit=limit)
+        """Print a limited number of rows of the data table to the console.
 
-    def _show_table(self, table: str, limit: int = 20) -> None:
-        rel = self._con.sql(f"SELECT * FROM {table} LIMIT ?", params=(limit,))
+        Data is filtered by the project's country if the table has a geography column.
+        """
+        table = make_dsgrid_data_table_name(scenario, data_table_id)
+        self._show_table(table, limit=limit, filter_by_country=True)
+
+    def _show_table(self, table: str, limit: int = 20, filter_by_country: bool = False) -> None:
+        if filter_by_country and self._table_has_geography_column(table):
+            rel = self._con.sql(
+                f"SELECT * FROM {table} WHERE geography = ? LIMIT ?",
+                params=(self._config.country, limit),
+            )
+        else:
+            rel = self._con.sql(f"SELECT * FROM {table} LIMIT ?", params=(limit,))
         # DuckDB doesn't seem to provide a way to change the number of rows displayed.
         # If this is an issue, we could redirect to Pandas and customize the output.
         print(rel)
+
+    def _table_has_geography_column(self, table: str) -> bool:
+        """Check if a table has a geography column."""
+        columns = [x[0] for x in self._con.sql(f"DESCRIBE {table}").fetchall()]
+        return "geography" in columns
 
     def get_table_overrides(self) -> dict[str, list[str]]:
         """Return a dictionary of tables being overridden for each scenario."""
