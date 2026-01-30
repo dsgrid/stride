@@ -116,6 +116,20 @@ class ModelParameters(DSGBaseModel):  # type: ignore
         description="Temperature threshold (°C) above which cooling degree days are calculated. "
         "Used for temperature adjustment of cooling end uses in load shapes.",
     )
+    enable_shoulder_month_smoothing: bool = Field(
+        default=True,
+        description="Enable smoothing of temperature multipliers in shoulder months. "
+        "When True, days with zero degree days in months with mixed heating/cooling are assigned "
+        "small values to prevent unrealistic load spikes. When False, uses traditional calculation.",
+    )
+    shoulder_month_smoothing_factor: float = Field(
+        default=5.0,
+        description="Divisor applied to minimum non-zero degree days to smooth shoulder month transitions. "
+        "In months with mixed heating/cooling activity, zero-degree-day days are assigned "
+        "min_degree_days / shoulder_month_smoothing_factor to prevent unrealistic load spikes. "
+        "Smaller values create smoother transitions. Typical values: 2.0 (aggressive), 5.0 (moderate), 10.0 (gentle). "
+        "Only used when enable_shoulder_month_smoothing is True.",
+    )
 
 
 class ProjectConfig(DSGBaseModel):  # type: ignore
