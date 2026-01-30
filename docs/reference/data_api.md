@@ -1,8 +1,8 @@
-# stride Data API
-This page displays the data API methods available in stride for computing energy demand
-calculations.
+(data-api)=
+# Data API
 
-## Data API
+This page displays the data API methods available for accessing, filtering, and aggregating the stride energy projection table.
+
 ```{eval-rst}
 .. autoclass:: stride.api.APIClient
    :members:

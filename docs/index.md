@@ -6,11 +6,11 @@ STRIDE currently supports load forecasting for 148 countries and allows users to
 
 ## How to use this guide
 
-- Refer to {ref}`core-concepts` for details on STRIDE's data pipeline and architecture.
-- Refer to {ref}`getting-started` for installation and configuration details.
-- Refer to {ref}`how-tos` for step-by-step instructions for common activities.
-- Refer to {ref}`tutorials` for examples of creating a project and viewing energy projections.
-- Refer to {ref}`reference` for API documentation and CLI reference documentation.
+- {ref}`getting-started`: Install STRIDE and browse typical workflow steps.
+- {ref}`core-concepts`: Learn about STRIDE's data pipeline and architecture.
+- {ref}`how-tos`: Step-by-step instructions for common activities.
+- {ref}`tutorials`: Examples of creating projects, exploring outputs, and debugging issues.
+- {ref}`reference`: Python API and command line interface (CLI) documentation.
 
 ```{eval-rst}
 .. toctree::

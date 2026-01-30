@@ -1,3 +1,4 @@
+(manage-calculated-tables)=
 # Manage calculated tables
 
 Stride calculates several intermediate tables in order to create the final energy projection table.

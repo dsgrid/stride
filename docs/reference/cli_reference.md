@@ -1,3 +1,4 @@
+(cli-reference)=
 # CLI reference
 
 The auto-generated output from Click for the stride CLI is shown below.
