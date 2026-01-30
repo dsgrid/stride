@@ -7,23 +7,24 @@
 -- Calculate temperature adjustment multipliers for each day
 -- These multipliers adjust load shapes based on daily temperature variations
 
-WITH min_degree_days AS (
-    -- Calculate minimum non-zero degree days for each group
-    -- Used to smooth shoulder month transitions by assigning small values to zero-degree-day days
+WITH max_degree_days AS (
+    -- Calculate maximum degree days for each group
+    -- Used to smooth shoulder month transitions by setting a minimum threshold
     SELECT
         geography,
         weather_year,
         month,
         day_type,
-        MIN(CASE WHEN hdd > 0 THEN hdd ELSE NULL END) AS min_hdd,
-        MIN(CASE WHEN cdd > 0 THEN cdd ELSE NULL END) AS min_cdd
+        MAX(hdd) AS max_hdd,
+        MAX(cdd) AS max_cdd
     FROM {{ ref('weather_degree_days') }}
     GROUP BY geography, weather_year, month, day_type
 ),
 
 adjusted_degree_days AS (
-    -- Adjust zero degree days in shoulder months to smooth transitions
-    -- In months with some heating/cooling, replace zero values with a fraction of the minimum
+    -- Adjust low degree days in shoulder months to smooth transitions
+    -- In months with some heating/cooling, apply a minimum threshold (max / factor)
+    -- This affects both zero values and small non-zero values below the threshold
     -- Only applies if enable_shoulder_month_smoothing is True
     SELECT
         dd.geography,
@@ -38,20 +39,24 @@ adjusted_degree_days AS (
         gs.num_days,
         gs.total_hdd,
         gs.total_cdd,
-        mdd.min_hdd,
-        mdd.min_cdd,
-        -- Adjusted HDD: replace zeros with min_hdd / factor in shoulder months (if enabled)
+        mdd.max_hdd,
+        mdd.max_cdd,
+        -- Adjusted HDD: apply minimum threshold (max_hdd / factor) in shoulder months (if enabled)
+        -- Default factor is defined in stride.models.DEFAULT_SHOULDER_MONTH_SMOOTHING_FACTOR
         CASE
-            WHEN {{ var('enable_shoulder_month_smoothing', true) }} 
-                 AND gs.total_hdd > 0 AND dd.hdd = 0 AND mdd.min_hdd IS NOT NULL 
-            THEN mdd.min_hdd / {{ var('shoulder_month_smoothing_factor', 5.0) }}
+            WHEN {{ var('enable_shoulder_month_smoothing', true) }}
+                 AND gs.total_hdd > 0 AND mdd.max_hdd IS NOT NULL
+                 AND dd.hdd < (mdd.max_hdd / {{ var('shoulder_month_smoothing_factor', 10.0) }})
+            THEN mdd.max_hdd / {{ var('shoulder_month_smoothing_factor', 10.0) }}
             ELSE dd.hdd
         END AS adjusted_hdd,
-        -- Adjusted CDD: replace zeros with min_cdd / factor in shoulder months (if enabled)
+        -- Adjusted CDD: apply minimum threshold (max_cdd / factor) in shoulder months (if enabled)
+        -- Default factor is defined in stride.models.DEFAULT_SHOULDER_MONTH_SMOOTHING_FACTOR
         CASE
-            WHEN {{ var('enable_shoulder_month_smoothing', true) }} 
-                 AND gs.total_cdd > 0 AND dd.cdd = 0 AND mdd.min_cdd IS NOT NULL 
-            THEN mdd.min_cdd / {{ var('shoulder_month_smoothing_factor', 5.0) }}
+            WHEN {{ var('enable_shoulder_month_smoothing', true) }}
+                 AND gs.total_cdd > 0 AND mdd.max_cdd IS NOT NULL
+                 AND dd.cdd < (mdd.max_cdd / {{ var('shoulder_month_smoothing_factor', 10.0) }})
+            THEN mdd.max_cdd / {{ var('shoulder_month_smoothing_factor', 10.0) }}
             ELSE dd.cdd
         END AS adjusted_cdd
     FROM {{ ref('weather_degree_days') }} dd
@@ -60,7 +65,7 @@ adjusted_degree_days AS (
         AND dd.month = gs.month
         AND dd.day_type = gs.day_type
         AND dd.geography = gs.geography
-    LEFT JOIN min_degree_days mdd
+    LEFT JOIN max_degree_days mdd
         ON dd.weather_year = mdd.weather_year
         AND dd.month = mdd.month
         AND dd.day_type = mdd.day_type
@@ -91,6 +96,8 @@ SELECT
     ad.bait,
     ad.original_hdd AS hdd,
     ad.original_cdd AS cdd,
+    ad.adjusted_hdd,
+    ad.adjusted_cdd,
     ad.num_days,
     ad.total_hdd,
     ad.total_cdd,
