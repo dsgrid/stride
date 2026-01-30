@@ -89,32 +89,50 @@ def test_check_gh_cli_not_available(mock_which: Any) -> None:
         _check_gh_cli_available()
 
 
+@patch("stride.dataset_download.urllib.request.urlopen")
 @patch("stride.dataset_download.shutil.which")
-def test_download_dataset_gh_cli_not_available(mock_which: Any) -> None:
-    """Test that downloading fails early with a clear message when gh CLI is missing."""
+def test_download_without_gh_cli_uses_urllib(mock_which: Any, mock_urlopen: Any) -> None:
+    """Test that downloading works without gh CLI by falling back to urllib."""
+    import json
+
+    # Simulate gh CLI not being available
     mock_which.return_value = None
 
-    with pytest.raises(DatasetDownloadError, match="GitHub CLI.*not installed"):
+    # Mock the GitHub API response for releases
+    mock_response = MagicMock()
+    mock_response.read.return_value = json.dumps([{"tag_name": "v1.0.0"}]).encode()
+    mock_response.__enter__ = MagicMock(return_value=mock_response)
+    mock_response.__exit__ = MagicMock(return_value=False)
+    mock_urlopen.return_value = mock_response
+
+    # This should not fail immediately due to missing gh CLI - it falls back to urllib.
+    # The download proceeds (gets release version via urllib) but fails later when
+    # trying to extract the invalid archive data from our mock.
+    with pytest.raises(DatasetDownloadError, match="Failed to (download|extract)"):
         download_dataset_from_repo(
             repo="owner/repo",
             subdirectory="mydata",
         )
 
 
+@patch("stride.dataset_download.shutil.which")
 @patch("stride.dataset_download.subprocess.run")
-def test_get_latest_release_tag(mock_run: Any) -> None:
+def test_get_latest_release_tag(mock_run: Any, mock_which: Any) -> None:
     """Test getting the latest release tag."""
+    mock_which.return_value = "/usr/bin/gh"  # Simulate gh CLI being installed
     mock_run.return_value = MagicMock(stdout="v1.0.0\nv0.9.0\n", returncode=0)
 
     tag = get_latest_release_tag("owner/repo")
     assert tag == "v1.0.0"
 
 
+@patch("stride.dataset_download.shutil.which")
 @patch("stride.dataset_download.subprocess.run")
-def test_get_latest_release_tag_no_releases(mock_run: Any) -> None:
+def test_get_latest_release_tag_no_releases(mock_run: Any, mock_which: Any) -> None:
     """Test getting latest release when there are no releases."""
     import subprocess
 
+    mock_which.return_value = "/usr/bin/gh"  # Simulate gh CLI being installed
     mock_run.side_effect = subprocess.CalledProcessError(returncode=1, cmd="gh", stderr="404")
 
     with pytest.raises(DatasetDownloadError, match="No releases found"):

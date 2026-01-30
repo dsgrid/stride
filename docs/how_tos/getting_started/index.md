@@ -14,22 +14,26 @@ or ``mamba``.
     
     .. code-block:: console
     
-       $ python -m venv stride-env
+       $ python -m venv .venv
     ```
 
 3. Activate the virtual environment.
 
     ```{eval-rst}
-    
+
     .. tabs::
-    
+
       .. code-tab:: console UNIX
-     
-         $ source stride-env/bin/activate
-    
-      .. code-tab:: console Windows
-    
-         $ .\stride-env\Scripts\activate
+
+         $ source .venv/bin/activate
+
+      .. code-tab:: console Windows Command Prompt
+
+         $ .venv\Scripts\activate
+
+      .. code-tab:: console Windows PowerShell
+
+         $ .venv\Scripts\Activate.ps1
     ```
 
 Whenever you are done using stride, you can deactivate the environment by running ``deactivate``.

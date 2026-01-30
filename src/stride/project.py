@@ -105,7 +105,7 @@ class Project:
         )
         config = ProjectConfig.from_file(config_file)
         dataset_dir = cls._get_dataset_dir(dataset, data_dir)
-        validate_country(config.country, dataset_dir)
+        config.country = validate_country(config.country, dataset_dir)
 
         project_path = base_dir / config.project_id
         check_overwrite(project_path, overwrite)
@@ -809,6 +809,70 @@ def _get_base_and_override_names(table_name: str) -> tuple[str, str]:
     return base_name, override_name
 
 
+def list_valid_model_years(dataset_dir: Path) -> list[str]:
+    """Return the list of valid model year IDs from a dataset.
+
+    Parameters
+    ----------
+    dataset_dir
+        Path to the dataset directory (e.g., ~/.stride/data/global).
+
+    Returns
+    -------
+    list[str]
+        List of valid model year IDs that can be used in project configuration.
+
+    Raises
+    ------
+    InvalidParameter
+        If the project.json5 file or model_year dimension is not found.
+    """
+    project_file = dataset_dir / "project.json5"
+    if not project_file.exists():
+        msg = f"Dataset project file not found: {project_file}"
+        raise InvalidParameter(msg)
+
+    config = DSGProjectConfig.load(project_file)
+    for dim in config.model.dimensions.base_dimensions:
+        if dim.dimension_type == DimensionType.MODEL_YEAR:
+            return [x.id for x in dim.records]
+
+    msg = f"{project_file} does not define a model_year dimension"
+    raise InvalidParameter(msg)
+
+
+def list_valid_weather_years(dataset_dir: Path) -> list[str]:
+    """Return the list of valid weather year IDs from a dataset.
+
+    Parameters
+    ----------
+    dataset_dir
+        Path to the dataset directory (e.g., ~/.stride/data/global).
+
+    Returns
+    -------
+    list[str]
+        List of valid weather year IDs that can be used in project configuration.
+
+    Raises
+    ------
+    InvalidParameter
+        If the project.json5 file or weather_year dimension is not found.
+    """
+    project_file = dataset_dir / "project.json5"
+    if not project_file.exists():
+        msg = f"Dataset project file not found: {project_file}"
+        raise InvalidParameter(msg)
+
+    config = DSGProjectConfig.load(project_file)
+    for dim in config.model.dimensions.base_dimensions:
+        if dim.dimension_type == DimensionType.WEATHER_YEAR:
+            return [x.id for x in dim.records]
+
+    msg = f"{project_file} does not define a weather_year dimension"
+    raise InvalidParameter(msg)
+
+
 def list_valid_countries(dataset_dir: Path) -> list[str]:
     """Return the list of valid country IDs from a dataset.
 
@@ -837,19 +901,68 @@ def list_valid_countries(dataset_dir: Path) -> list[str]:
         if dim.dimension_type == DimensionType.GEOGRAPHY:
             return [x.id for x in dim.records]
 
-    msg = f"{project_file=} does not define a geography dimension"
+    msg = f"{project_file} does not define a geography dimension"
     raise InvalidParameter(msg)
 
 
-def validate_country(country: str, dataset_dir: Path) -> None:
-    """Validate that a country is available in the dataset.
+def generate_project_template(country: str, project_id: str) -> str:
+    """Generate a project configuration template as a JSON5 string.
 
     Parameters
     ----------
     country
-        The country ID to validate.
+        Country name for the project.
+    project_id
+        Unique identifier for the project.
+
+    Returns
+    -------
+    str
+        JSON5-formatted project configuration template.
+    """
+    import json
+
+    # Escape values to prevent JSON5 injection
+    safe_project_id = json.dumps(project_id)[1:-1]  # Remove surrounding quotes
+    safe_country = json.dumps(country)[1:-1]  # Remove surrounding quotes
+
+    template = f"""{{
+    project_id: "{safe_project_id}",
+    creator: "your_name",
+    description: "{safe_country} projections.",
+    country: "{safe_country}",
+    start_year: 2025,
+    step_year: 5,
+    end_year: 2050,
+    weather_year: 2020,
+    scenarios: [
+        {{
+            name: "baseline",
+        }},
+        {{
+            name: "ev_projection",
+            use_ev_projection: true,
+        }},
+    ]
+}}
+"""
+    return template
+
+
+def validate_country(country: str, dataset_dir: Path) -> str:
+    """Validate that a country is available in the dataset (case-insensitive).
+
+    Parameters
+    ----------
+    country
+        The country ID to validate (case-insensitive).
     dataset_dir
         Path to the dataset directory.
+
+    Returns
+    -------
+    str
+        The correctly-cased country ID from the dataset.
 
     Raises
     ------
@@ -857,9 +970,12 @@ def validate_country(country: str, dataset_dir: Path) -> None:
         If the country is not found in the dataset.
     """
     valid_countries = list_valid_countries(dataset_dir)
-    if country not in valid_countries:
+    # Create case-insensitive mapping
+    country_map = {c.lower(): c for c in valid_countries}
+    if country.lower() not in country_map:
         msg = (
             f"Country '{country}' is not available in the dataset. "
             f"Valid countries are: {', '.join(sorted(valid_countries))}"
         )
         raise InvalidParameter(msg)
+    return country_map[country.lower()]
