@@ -50,7 +50,8 @@ List available weather years:
     ```
 
     This creates a JSON5 configuration file with default settings. You can edit this file to
-    customize the project ID, description, model years, and scenarios.
+    customize the project ID, description, model years, scenarios, and model parameters
+    (such as heating/cooling thresholds and shoulder month smoothing).
 
 2. Create the project from the configuration file.
 
@@ -266,4 +267,5 @@ And then opening the displayed address in a web browser:
 - {ref}`cli-reference`
 - {ref}`data-api`
 - {ref}`dbt-projet`
+- {ref}`weather-year-modeling`
 - {ref}`manage-calculated-tables`

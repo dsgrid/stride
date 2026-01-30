@@ -21,4 +21,5 @@ data_download
 data_validation
 customizing_checks
 dbt_computation
+weather_year_modeling
 ```
