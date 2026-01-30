@@ -1,5 +1,5 @@
 (download-datasets)=
-# Download Datasets
+# Download datasets
 
 STRIDE provides a CLI command to download datasets from remote repositories. This guide shows how
 to download pre-configured datasets as well as custom datasets from GitHub.
@@ -7,10 +7,14 @@ to download pre-configured datasets as well as custom datasets from GitHub.
 ## Prerequisites
 
 - STRIDE installed and available in your environment
-- For private repositories: GitHub CLI (`gh`) installed and authenticated
 - For public repositories: No additional tools required (uses Python's built-in urllib)
+- For private repositories: GitHub CLI (`gh`) installed and authenticated
 
-## List Available Datasets
+## Repositories Known to STRIDE
+
+Currently STRIDE only knows about the public repository [stride-data](https://github.com/dsgrid/stride-data).
+
+### List Available Datasets
 
 To see the known datasets available for download along with their available versions:
 
@@ -25,9 +29,9 @@ This will display each dataset's name, repository, subdirectory, description, an
 versions. Datasets may also have an associated test dataset (shown as ``test_subdirectory``)
 which is automatically downloaded alongside the main dataset.
 
-## Download a Known Dataset
+### Download a Dataset
 
-To download a known dataset to the default location (``~/.stride/data`` or ``STRIDE_DATA_DIR``):
+To download a dataset to the default location (``~/.stride/data`` or ``STRIDE_DATA_DIR``):
 
 ```{eval-rst}
 
@@ -39,7 +43,7 @@ To download a known dataset to the default location (``~/.stride/data`` or ``STR
 This single command downloads both the full ``global`` dataset and the smaller ``global-test``
 subset from the same release archive. The test dataset enables faster iteration during development.
 
-### Specify a Data Directory
+#### Specify a Data Directory
 
 Use the ``-d`` or ``--data-dir`` option to download to a specific location:
 
@@ -60,7 +64,7 @@ Alternatively, set the ``STRIDE_DATA_DIR`` environment variable for a persistent
    $ stride datasets download global
 ```
 
-### Specify a Version
+#### Specify a Version
 
 By default, the latest release is downloaded. To download a specific version:
 
@@ -71,46 +75,7 @@ By default, the latest release is downloaded. To download a specific version:
    $ stride datasets download global -v v0.2.0
 ```
 
-## Download from a Custom Repository
-
-To download a dataset from any GitHub repository, use the ``--url`` and ``--subdirectory`` options:
-
-```{eval-rst}
-
-.. code-block:: console
-
-   $ stride datasets download --url https://github.com/owner/repo --subdirectory data
-```
-
-```{eval-rst}
-.. note::
-   The ``--subdirectory`` option is required when using ``--url``.
-```
-
-## Private Repository Authentication
-
-For public repositories like ``dsgrid/stride-data``, no authentication is required. STRIDE will
-download using Python's built-in urllib library.
-
-For private repositories, STRIDE uses your GitHub CLI authentication. Ensure you are logged in:
-
-```{eval-rst}
-
-.. code-block:: console
-
-   $ gh auth status
-```
-
-If not authenticated, run:
-
-```{eval-rst}
-
-.. code-block:: console
-
-   $ gh auth login
-```
-
-## Alternative: Clone the Repository Directly
+### Alternative: Clone the Repository Directly
 
 If you don't have the GitHub CLI (``gh``) installed, you can clone the stride-data repository
 directly using git:
@@ -138,3 +103,46 @@ repository location:
 
 This approach is useful if you want to keep the dataset in a custom location or if you're
 working in an environment where ``gh`` is not available.
+
+## Download from a Custom Repository
+
+To download a dataset from any GitHub repository, use the ``--url`` and ``--subdirectory`` options:
+
+```{eval-rst}
+
+.. code-block:: console
+
+   $ stride datasets download --url https://github.com/owner/repo --subdirectory data
+```
+
+```{eval-rst}
+.. note::
+   The ``--subdirectory`` option is required when using ``--url``.
+```
+
+### Private Repository Authentication
+
+For public repositories like ``dsgrid/stride-data``, no authentication is required. STRIDE will
+download using Python's built-in urllib library.
+
+For private repositories, STRIDE uses your GitHub CLI authentication. Ensure you are logged in:
+
+```{eval-rst}
+
+.. code-block:: console
+
+   $ gh auth status
+```
+
+If not authenticated, run:
+
+```{eval-rst}
+
+.. code-block:: console
+
+   $ gh auth login
+```
+
+## Learn More
+
+- {ref}`cli-reference`
