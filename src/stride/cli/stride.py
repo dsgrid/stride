@@ -11,7 +11,7 @@ from loguru import logger
 
 from stride import Project
 from stride.models import CalculatedTableOverride
-from stride.project import list_valid_countries
+from stride.project import list_valid_countries, list_valid_model_years, list_valid_weather_years
 from stride.dataset_download import (
     DatasetDownloadError,
     download_dataset,
@@ -22,7 +22,7 @@ from stride.dataset_download import (
     _get_github_token,
 )
 
-LOGURU_LEVELS = ["TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"]
+LOGURU_LEVELS = ["TRACE", "DEBUG", "INFO", "WARNING", "ERROR"]
 
 
 @click.group("stride")
@@ -66,6 +66,69 @@ def projects() -> None:
     """Project commands"""
 
 
+_init_epilog = """
+Examples:\n
+Create a template for Germany:\n
+$ stride projects init --country Germany\n
+\n
+Create a template with a custom filename:\n
+$ stride projects init --country Chile -o chile_project.json5\n
+"""
+
+
+@click.command(name="init", epilog=_init_epilog)
+@click.option(
+    "-c",
+    "--country",
+    default="Germany",
+    show_default=True,
+    help="Country name for the project.",
+)
+@click.option(
+    "-o",
+    "--output",
+    default="project.json5",
+    show_default=True,
+    help="Output filename for the template.",
+    type=click.Path(),
+    callback=path_callback,
+)
+@click.option(
+    "--project-id",
+    default=None,
+    help="Project ID. Defaults to '{country}_project'.",
+)
+@click.option(
+    "--overwrite",
+    default=False,
+    show_default=True,
+    is_flag=True,
+    help="Overwrite the output file if it exists.",
+)
+@click.pass_context
+def init_project(
+    ctx: click.Context,
+    country: str,
+    output: Path,
+    project_id: str | None,
+    overwrite: bool,
+) -> None:
+    """Create a template project configuration file.
+
+    This generates a JSON5 file that can be used with 'stride projects create'.
+    """
+    from stride.project import generate_project_template
+
+    if output.exists() and not overwrite:
+        logger.error(f"Output file already exists: {output}. Use --overwrite to replace it.")
+        ctx.exit(1)
+
+    project_id = project_id or f"{country.lower()}_project"
+    content = generate_project_template(country=country, project_id=project_id)
+    output.write_text(content)
+    print(f"Created project template: {output}")
+
+
 _create_epilog = """
 Examples:\n
 $ stride projects create my_project.json5\n
@@ -100,7 +163,9 @@ $ stride projects create my_project.json5\n
     "--data-dir",
     type=click.Path(),
     default=None,
-    help="Directory containing datasets. Defaults to STRIDE_DATA_DIR env var or ~/.stride/data.",
+    envvar="STRIDE_DATA_DIR",
+    show_envvar=True,
+    help="Directory containing datasets. [default: ~/.stride/data]",
     callback=path_callback,
 )
 @click.pass_context
@@ -258,7 +323,9 @@ $ stride datasets download global\n
     "--data-dir",
     type=click.Path(),
     default=None,
-    help="Directory where the dataset will be placed. Defaults to STRIDE_DATA_DIR env var or ~/.stride/data.",
+    envvar="STRIDE_DATA_DIR",
+    show_envvar=True,
+    help="Directory where the dataset will be placed. [default: ~/.stride/data]",
     callback=path_callback,
 )
 @click.option(
@@ -352,7 +419,9 @@ $ stride datasets list-countries --data-dir /path/to/data\n
     "--data-dir",
     type=click.Path(),
     default=None,
-    help="Directory containing datasets. Defaults to STRIDE_DATA_DIR env var or ~/.stride/data.",
+    envvar="STRIDE_DATA_DIR",
+    show_envvar=True,
+    help="Directory containing datasets. [default: ~/.stride/data]",
     callback=path_callback,
 )
 @click.pass_context
@@ -364,7 +433,8 @@ def list_countries(ctx: click.Context, dataset: str, data_dir: Path | None) -> N
     if not dataset_dir.exists():
         logger.error(
             f"Dataset directory not found: {dataset_dir}. "
-            f"Please download it first using: stride datasets download {dataset.removesuffix('-test')}"
+            f"Please download it first using: stride datasets download {dataset.removesuffix('-test')}. "
+            f"Or set STRIDE_DATA_DIR to point to your data directory."
         )
         ctx.exit(1)
 
@@ -377,6 +447,106 @@ def list_countries(ctx: click.Context, dataset: str, data_dir: Path | None) -> N
     print(f"Countries available in the '{dataset}' dataset ({len(countries)} total):\n")
     for country in sorted(countries):
         print(f"  {country}")
+
+
+_list_model_years_epilog = """
+Examples:\n
+List model years in the full dataset:\n
+$ stride datasets list-model-years\n
+\n
+List model years in the test dataset:\n
+$ stride datasets list-model-years -D global-test\n
+"""
+
+
+@click.command(name="list-model-years", epilog=_list_model_years_epilog)
+@click.option(
+    "-D",
+    "--dataset",
+    default="global",
+    show_default=True,
+    help="Name of dataset. Examples include 'global' and 'global-test'.",
+)
+@click.option(
+    "--data-dir",
+    type=click.Path(),
+    default=None,
+    envvar="STRIDE_DATA_DIR",
+    show_envvar=True,
+    help="Directory containing datasets. [default: ~/.stride/data]",
+    callback=path_callback,
+)
+@click.pass_context
+def list_model_years(ctx: click.Context, dataset: str, data_dir: Path | None) -> None:
+    """List the model years available in a dataset."""
+    base_dir = data_dir if data_dir is not None else get_default_data_directory()
+    dataset_dir = base_dir / dataset
+
+    if not dataset_dir.exists():
+        logger.error(
+            f"Dataset directory not found: {dataset_dir}. "
+            f"Please download it first using: stride datasets download {dataset.removesuffix('-test')}"
+        )
+        ctx.exit(1)
+
+    res = handle_stride_exception(ctx, list_valid_model_years, dataset_dir)
+    if res[1] != 0:
+        ctx.exit(res[1])
+
+    model_years = res[0]
+    print(f"Model years available in the '{dataset}' dataset ({len(model_years)} total):\n")
+    for year in sorted(model_years):
+        print(f"  {year}")
+
+
+_list_weather_years_epilog = """
+Examples:\n
+List weather years in the full dataset:\n
+$ stride datasets list-weather-years\n
+\n
+List weather years in the test dataset:\n
+$ stride datasets list-weather-years -D global-test\n
+"""
+
+
+@click.command(name="list-weather-years", epilog=_list_weather_years_epilog)
+@click.option(
+    "-D",
+    "--dataset",
+    default="global",
+    show_default=True,
+    help="Name of dataset. Examples include 'global' and 'global-test'.",
+)
+@click.option(
+    "--data-dir",
+    type=click.Path(),
+    default=None,
+    envvar="STRIDE_DATA_DIR",
+    show_envvar=True,
+    help="Directory containing datasets. [default: ~/.stride/data]",
+    callback=path_callback,
+)
+@click.pass_context
+def list_weather_years(ctx: click.Context, dataset: str, data_dir: Path | None) -> None:
+    """List the weather years available in a dataset."""
+    base_dir = data_dir if data_dir is not None else get_default_data_directory()
+    dataset_dir = base_dir / dataset
+
+    if not dataset_dir.exists():
+        logger.error(
+            f"Dataset directory not found: {dataset_dir}. "
+            f"Please download it first using: stride datasets download {dataset.removesuffix('-test')}"
+        )
+        ctx.exit(1)
+
+    res = handle_stride_exception(ctx, list_valid_weather_years, dataset_dir)
+    if res[1] != 0:
+        ctx.exit(res[1])
+
+    weather_years = res[0]
+    print(f"Weather years available in the '{dataset}' dataset ({len(weather_years)} total):\n")
+    for year in sorted(weather_years):
+        print(f"  {year}")
 
 
 def _parse_github_url(url: str) -> str:
@@ -431,7 +601,9 @@ def calculated_tables() -> None:
 
 
 @click.command(name="view")
-@click.argument("project-path", type=click.Path(exists=True), callback=path_callback, required=False)
+@click.argument(
+    "project-path", type=click.Path(exists=True), callback=path_callback, required=False
+)
 @click.option(
     "--host",
     default="127.0.0.1",
@@ -1104,11 +1276,14 @@ cli.add_command(scenarios)
 cli.add_command(calculated_tables)
 cli.add_command(palette)
 cli.add_command(view)
+projects.add_command(init_project)
 projects.add_command(create_project)
 projects.add_command(export_energy_projection)
 datasets.add_command(list_remote_datasets)
 datasets.add_command(download_dataset_command)
 datasets.add_command(list_countries)
+datasets.add_command(list_model_years)
+datasets.add_command(list_weather_years)
 data_tables.add_command(list_data_tables)
 data_tables.add_command(show_data_table)
 scenarios.add_command(list_scenarios)

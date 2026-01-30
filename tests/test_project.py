@@ -14,7 +14,10 @@ from stride.models import CalculatedTableOverride, ProjectConfig, Scenario
 from stride.project import (
     CONFIG_FILE,
     _get_base_and_override_names,
+    generate_project_template,
     list_valid_countries,
+    list_valid_model_years,
+    list_valid_weather_years,
     validate_country,
 )
 from stride.cli.stride import cli
@@ -476,8 +479,40 @@ def test_create_project_invalid_country(copy_project_input_data: tuple[Path, Pat
     assert "not available" in result.output
 
 
+def test_create_project_case_insensitive_country(
+    copy_project_input_data: tuple[Path, Path, Path],
+) -> None:
+    """Test that project creation works with case-mismatched country name."""
+    tmp_path, _, project_config_file = copy_project_input_data
+    config = load_json_file(project_config_file)
+    # Use uppercase country name (dataset has "country_1")
+    config["country"] = "COUNTRY_1"
+    dump_json_file(config, project_config_file)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "projects",
+            "create",
+            str(project_config_file),
+            "-d",
+            str(tmp_path),
+            "--dataset",
+            "global-test",
+        ],
+    )
+    assert result.exit_code == 0, f"Project creation failed: {result.output}"
+    # Verify the project was created with the correctly-cased country name
+    project_dir = tmp_path / config["project_id"]
+    assert project_dir.exists()
+    created_config = load_json_file(project_dir / "project.json5")
+    # The country should be normalized to the dataset's casing
+    assert created_config["country"] == "country_1"
+
+
 def test_create_project_with_data_dir(copy_project_input_data: tuple[Path, Path, Path]) -> None:
-    """Test that project creation works with --data-dir option."""
+    """Test that project creation works with --data-dir option and uses the specified directory."""
     tmp_path, _, project_config_file = copy_project_input_data
 
     runner = CliRunner()
@@ -498,6 +533,13 @@ def test_create_project_with_data_dir(copy_project_input_data: tuple[Path, Path,
         ],
     )
     assert result.exit_code == 0
+    # Verify the custom data directory was actually used by checking log output
+    # The log message "Registered dsgrid project and datasets from {path}" confirms the path
+    expected_dataset_path = data_dir / "global-test"
+    assert str(expected_dataset_path) in result.output, (
+        f"Expected dataset path '{expected_dataset_path}' not found in output. "
+        f"Output was: {result.output}"
+    )
 
 
 def test_create_project_with_invalid_data_dir(
@@ -523,3 +565,341 @@ def test_create_project_with_invalid_data_dir(
     )
     assert result.exit_code != 0
     assert "Dataset directory not found" in result.output
+
+
+def test_projects_init_command(tmp_path: Path) -> None:
+    """Test that 'stride projects init' creates a project template."""
+    output_file = tmp_path / "my_project.json5"
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "projects",
+            "init",
+            "--country",
+            "Germany",
+            "-o",
+            str(output_file),
+        ],
+    )
+    assert result.exit_code == 0
+    assert output_file.exists()
+    content = output_file.read_text()
+    assert "germany_project" in content
+    assert 'country: "Germany"' in content
+    assert "start_year: 2025" in content
+    assert "end_year: 2050" in content
+    assert '"baseline"' in content
+    assert '"ev_projection"' in content
+    assert "use_ev_projection: true" in content
+
+
+def test_projects_init_command_custom_project_id(tmp_path: Path) -> None:
+    """Test 'stride projects init' with custom project ID."""
+    output_file = tmp_path / "custom.json5"
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "projects",
+            "init",
+            "--country",
+            "Chile",
+            "--project-id",
+            "my_custom_id",
+            "-o",
+            str(output_file),
+        ],
+    )
+    assert result.exit_code == 0
+    content = output_file.read_text()
+    assert "my_custom_id" in content
+    assert 'country: "Chile"' in content
+
+
+def test_projects_init_command_no_overwrite(tmp_path: Path) -> None:
+    """Test that 'stride projects init' fails without --overwrite if file exists."""
+    output_file = tmp_path / "existing.json5"
+    output_file.write_text("{}")
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "projects",
+            "init",
+            "--country",
+            "Germany",
+            "-o",
+            str(output_file),
+        ],
+    )
+    assert result.exit_code != 0
+    assert "already exists" in result.output
+
+
+def test_projects_init_command_with_overwrite(tmp_path: Path) -> None:
+    """Test that 'stride projects init' works with --overwrite."""
+    output_file = tmp_path / "existing.json5"
+    output_file.write_text("{}")
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "projects",
+            "init",
+            "--country",
+            "Germany",
+            "-o",
+            str(output_file),
+            "--overwrite",
+        ],
+    )
+    assert result.exit_code == 0
+    content = output_file.read_text()
+    assert "germany_project" in content
+
+
+def test_generate_project_template() -> None:
+    """Test generate_project_template function."""
+    content = generate_project_template(country="TestCountry", project_id="test_id")
+    assert "test_id" in content
+    assert 'country: "TestCountry"' in content
+    assert "start_year" in content
+    assert "end_year" in content
+    assert "weather_year" in content
+    assert "baseline" in content
+    assert "ev_projection" in content
+    assert "use_ev_projection: true" in content
+
+
+def test_validate_country_case_insensitive() -> None:
+    """Test that validate_country works case-insensitively and returns correct case."""
+    dataset_dir = get_default_data_directory() / "global-test"
+    # Test lowercase input returns correctly-cased output
+    result = validate_country("country_1", dataset_dir)
+    assert result == "country_1"
+    # Test uppercase input (assuming dataset has country_1)
+    result = validate_country("COUNTRY_1", dataset_dir)
+    assert result == "country_1"
+    # Test mixed case
+    result = validate_country("Country_1", dataset_dir)
+    assert result == "country_1"
+
+
+def test_validate_country_returns_correct_case() -> None:
+    """Test that validate_country returns the case from the dataset."""
+    dataset_dir = get_default_data_directory() / "global-test"
+    # The function should return the exact casing from the dataset
+    result = validate_country("country_2", dataset_dir)
+    assert result == "country_2"
+
+
+def test_list_valid_model_years() -> None:
+    """Test that list_valid_model_years returns model years from the dataset."""
+    dataset_dir = get_default_data_directory() / "global-test"
+    model_years = list_valid_model_years(dataset_dir)
+    assert isinstance(model_years, list)
+    assert len(model_years) > 0
+    # Model years should be strings (IDs)
+    for year in model_years:
+        assert isinstance(year, str)
+
+
+def test_list_valid_model_years_missing_file(tmp_path: Path) -> None:
+    """Test that list_valid_model_years raises error for missing project.json5."""
+    with pytest.raises(InvalidParameter, match="Dataset project file not found"):
+        list_valid_model_years(tmp_path)
+
+
+def test_list_valid_weather_years() -> None:
+    """Test that list_valid_weather_years returns weather years from the dataset."""
+    dataset_dir = get_default_data_directory() / "global-test"
+    weather_years = list_valid_weather_years(dataset_dir)
+    assert isinstance(weather_years, list)
+    assert len(weather_years) > 0
+    # Weather years should be strings (IDs)
+    for year in weather_years:
+        assert isinstance(year, str)
+
+
+def test_list_valid_weather_years_missing_file(tmp_path: Path) -> None:
+    """Test that list_valid_weather_years raises error for missing project.json5."""
+    with pytest.raises(InvalidParameter, match="Dataset project file not found"):
+        list_valid_weather_years(tmp_path)
+
+
+def test_list_model_years_command() -> None:
+    """Test the 'stride datasets list-model-years' CLI command."""
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        ["datasets", "list-model-years", "-D", "global-test"],
+    )
+    assert result.exit_code == 0
+    assert "Model years available" in result.output
+    # Check that some years are listed
+    assert "20" in result.output  # Model years typically contain "20" (e.g., 2025, 2030)
+
+
+def test_list_model_years_command_invalid_dataset() -> None:
+    """Test that list-model-years fails gracefully for nonexistent dataset."""
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        ["datasets", "list-model-years", "-D", "nonexistent-dataset"],
+    )
+    assert result.exit_code != 0
+    assert "Dataset directory not found" in result.output
+
+
+def test_list_weather_years_command() -> None:
+    """Test the 'stride datasets list-weather-years' CLI command."""
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        ["datasets", "list-weather-years", "-D", "global-test"],
+    )
+    assert result.exit_code == 0
+    assert "Weather years available" in result.output
+
+
+def test_list_weather_years_command_invalid_dataset() -> None:
+    """Test that list-weather-years fails gracefully for nonexistent dataset."""
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        ["datasets", "list-weather-years", "-D", "nonexistent-dataset"],
+    )
+    assert result.exit_code != 0
+    assert "Dataset directory not found" in result.output
+
+
+def test_list_countries_command() -> None:
+    """Test the 'stride datasets list-countries' CLI command."""
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        ["datasets", "list-countries", "-D", "global-test"],
+    )
+    assert result.exit_code == 0
+    assert "Countries available" in result.output
+    assert "country_1" in result.output
+    assert "country_2" in result.output
+
+
+def test_list_countries_command_invalid_dataset() -> None:
+    """Test that list-countries fails gracefully for nonexistent dataset."""
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        ["datasets", "list-countries", "-D", "nonexistent-dataset"],
+    )
+    assert result.exit_code != 0
+    assert "Dataset directory not found" in result.output
+
+
+def test_list_model_years_command_with_data_dir(tmp_path: Path) -> None:
+    """Test list-model-years with custom --data-dir option."""
+    runner = CliRunner()
+    # Using a nonexistent path should fail
+    result = runner.invoke(
+        cli,
+        ["datasets", "list-model-years", "--data-dir", str(tmp_path)],
+    )
+    assert result.exit_code != 0
+
+    # Using the default data directory should succeed
+    data_dir = get_default_data_directory()
+    result = runner.invoke(
+        cli,
+        ["datasets", "list-model-years", "-D", "global-test", "--data-dir", str(data_dir)],
+    )
+    assert result.exit_code == 0
+
+
+def test_list_weather_years_command_with_data_dir(tmp_path: Path) -> None:
+    """Test list-weather-years with custom --data-dir option."""
+    runner = CliRunner()
+    # Using a nonexistent path should fail
+    result = runner.invoke(
+        cli,
+        ["datasets", "list-weather-years", "--data-dir", str(tmp_path)],
+    )
+    assert result.exit_code != 0
+
+    # Using the default data directory should succeed
+    data_dir = get_default_data_directory()
+    result = runner.invoke(
+        cli,
+        ["datasets", "list-weather-years", "-D", "global-test", "--data-dir", str(data_dir)],
+    )
+    assert result.exit_code == 0
+
+
+def test_stride_data_dir_env_var() -> None:
+    """Test that STRIDE_DATA_DIR environment variable is respected by CLI commands."""
+    runner = CliRunner()
+    data_dir = get_default_data_directory()
+
+    # Test list-countries with STRIDE_DATA_DIR env var
+    result = runner.invoke(
+        cli,
+        ["datasets", "list-countries", "-D", "global-test"],
+        env={"STRIDE_DATA_DIR": str(data_dir)},
+    )
+    assert result.exit_code == 0
+    assert "country_1" in result.output
+
+    # Test that invalid STRIDE_DATA_DIR causes failure
+    result = runner.invoke(
+        cli,
+        ["datasets", "list-countries", "-D", "global-test"],
+        env={"STRIDE_DATA_DIR": "/nonexistent/path"},
+    )
+    assert result.exit_code != 0
+    assert "Dataset directory not found" in result.output
+
+
+def test_stride_data_dir_env_var_override() -> None:
+    """Test that --data-dir option overrides STRIDE_DATA_DIR env var."""
+    runner = CliRunner()
+    data_dir = get_default_data_directory()
+
+    # --data-dir should override STRIDE_DATA_DIR
+    result = runner.invoke(
+        cli,
+        ["datasets", "list-countries", "-D", "global-test", "--data-dir", str(data_dir)],
+        env={"STRIDE_DATA_DIR": "/nonexistent/path"},
+    )
+    assert result.exit_code == 0
+    assert "country_1" in result.output
+
+
+def test_create_project_with_env_var(copy_project_input_data: tuple[Path, Path, Path]) -> None:
+    """Test that project creation uses STRIDE_DATA_DIR env var."""
+    tmp_path, _, project_config_file = copy_project_input_data
+
+    runner = CliRunner()
+    data_dir = get_default_data_directory()
+    result = runner.invoke(
+        cli,
+        [
+            "projects",
+            "create",
+            str(project_config_file),
+            "-d",
+            str(tmp_path),
+            "--dataset",
+            "global-test",
+        ],
+        env={"STRIDE_DATA_DIR": str(data_dir)},
+    )
+    assert result.exit_code == 0
+    # Verify the env var data directory was actually used by checking log output
+    expected_dataset_path = data_dir / "global-test"
+    assert str(expected_dataset_path) in result.output, (
+        f"Expected dataset path '{expected_dataset_path}' not found in output. "
+        f"Output was: {result.output}"
+    )

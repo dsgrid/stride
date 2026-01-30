@@ -89,12 +89,26 @@ def test_check_gh_cli_not_available(mock_which: Any) -> None:
         _check_gh_cli_available()
 
 
+@patch("stride.dataset_download.urllib.request.urlopen")
 @patch("stride.dataset_download.shutil.which")
-def test_download_dataset_gh_cli_not_available(mock_which: Any) -> None:
-    """Test that downloading fails early with a clear message when gh CLI is missing."""
+def test_download_without_gh_cli_uses_urllib(mock_which: Any, mock_urlopen: Any) -> None:
+    """Test that downloading works without gh CLI by falling back to urllib."""
+    import json
+
+    # Simulate gh CLI not being available
     mock_which.return_value = None
 
-    with pytest.raises(DatasetDownloadError, match="GitHub CLI.*not installed"):
+    # Mock the GitHub API response for releases
+    mock_response = MagicMock()
+    mock_response.read.return_value = json.dumps([{"tag_name": "v1.0.0"}]).encode()
+    mock_response.__enter__ = MagicMock(return_value=mock_response)
+    mock_response.__exit__ = MagicMock(return_value=False)
+    mock_urlopen.return_value = mock_response
+
+    # This should not fail immediately due to missing gh CLI - it falls back to urllib.
+    # The download proceeds (gets release version via urllib) but fails later when
+    # trying to extract the invalid archive data from our mock.
+    with pytest.raises(DatasetDownloadError, match="Failed to (download|extract)"):
         download_dataset_from_repo(
             repo="owner/repo",
             subdirectory="mydata",

@@ -104,24 +104,22 @@ def get_release_tags(repo: str, token: str | None = None) -> list[str]:
     import json
 
     # Try using gh CLI first (handles auth automatically for private repos)
-    try:
-        result = subprocess.run(
-            ["gh", "api", f"repos/{repo}/releases", "--jq", ".[].tag_name"],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        tags = result.stdout.strip().split("\n")
-        return [tag for tag in tags if tag]  # Filter empty strings
-    except subprocess.CalledProcessError as e:
-        if "404" in e.stderr:
-            msg = f"No releases found for repository {repo}"
-            raise DatasetDownloadError(msg) from e
-        msg = f"Failed to get releases for {repo}: {e.stderr}"
-        raise DatasetDownloadError(msg) from e
-    except FileNotFoundError:
-        # gh CLI not available, fall back to direct API call
-        pass
+    if shutil.which("gh") is not None:
+        try:
+            result = subprocess.run(
+                ["gh", "api", f"repos/{repo}/releases", "--jq", ".[].tag_name"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            tags = result.stdout.strip().split("\n")
+            return [tag for tag in tags if tag]  # Filter empty strings
+        except subprocess.CalledProcessError as e:
+            if "404" in e.stderr:
+                msg = f"No releases found for repository {repo}"
+                raise DatasetDownloadError(msg) from e
+            # For other errors, fall back to urllib
+            logger.debug("GitHub CLI failed, falling back to urllib: {}", e.stderr)
 
     # Fallback to direct API call (works for public repos)
     url = f"https://api.github.com/repos/{repo}/releases"
@@ -317,7 +315,7 @@ def _download_archive_with_urllib(archive_url: str, archive_path: Path, token: s
 
 
 def _download_archive(repo: str, version: str, archive_path: Path, token: str | None) -> None:
-    """Download release archive using GitHub CLI.
+    """Download release archive, trying GitHub CLI first then falling back to urllib.
 
     Parameters
     ----------
@@ -328,7 +326,7 @@ def _download_archive(repo: str, version: str, archive_path: Path, token: str | 
     archive_path : Path
         Path where the archive will be saved
     token : str | None
-        GitHub token for authentication (not used, kept for compatibility)
+        GitHub token for authentication (used for urllib fallback)
 
     Raises
     ------
@@ -338,16 +336,18 @@ def _download_archive(repo: str, version: str, archive_path: Path, token: str | 
     archive_url = f"https://github.com/{repo}/archive/refs/tags/{version}.zip"
     logger.info("Downloading from {}", archive_url)
 
-    try:
-        _download_archive_with_gh(repo, version, archive_path)
-    except FileNotFoundError as e:
-        msg = (
-            "GitHub CLI (gh) is not installed or not found in PATH. "
-            "Please install it from https://cli.github.com/ and ensure it's in your PATH. "
-            "After installation, authenticate with 'gh auth login'."
-        )
-        raise DatasetDownloadError(msg) from e
+    # Try GitHub CLI first (better for private repos and has nice progress output)
+    if shutil.which("gh") is not None:
+        try:
+            _download_archive_with_gh(repo, version, archive_path)
+            logger.info("Downloaded archive to {}", archive_path)
+            return
+        except DatasetDownloadError:
+            logger.debug("GitHub CLI download failed, falling back to urllib")
 
+    # Fall back to urllib (works for public repos without gh CLI)
+    logger.info("Downloading using urllib (no GitHub CLI required for public repos)")
+    _download_archive_with_urllib(archive_url, archive_path, token)
     logger.info("Downloaded archive to {}", archive_path)
 
 
@@ -480,9 +480,6 @@ def download_dataset_from_repo(
     DatasetDownloadError
         If the dataset cannot be downloaded
     """
-    # Check upfront that gh CLI is available (required for downloading)
-    _check_gh_cli_available()
-
     data_dir = data_dir or get_default_data_directory()
     data_dir = data_dir.resolve()
 
