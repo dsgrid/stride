@@ -1,4 +1,4 @@
-(data-api)=
+(data-api-reference)=
 # Data API
 
 This page displays the data API methods available for accessing, filtering, and aggregating the stride energy projection table.
