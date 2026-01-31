@@ -103,18 +103,40 @@ class CalculatedTableOverride(DSGBaseModel):  # type: ignore
     )
 
 
+# Default model parameter values
+# These constants ensure consistency across Python code and should match dbt model defaults
+DEFAULT_HEATING_THRESHOLD = 18.0
+DEFAULT_COOLING_THRESHOLD = 18.0
+DEFAULT_ENABLE_SHOULDER_MONTH_SMOOTHING = True
+DEFAULT_SHOULDER_MONTH_SMOOTHING_FACTOR = 10.0
+
+
 class ModelParameters(DSGBaseModel):  # type: ignore
     """Advanced model parameters for energy projections."""
 
     heating_threshold: float = Field(
-        default=18.0,
+        default=DEFAULT_HEATING_THRESHOLD,
         description="Temperature threshold (°C) below which heating degree days are calculated. "
         "Used for temperature adjustment of heating end uses in load shapes.",
     )
     cooling_threshold: float = Field(
-        default=18.0,
+        default=DEFAULT_COOLING_THRESHOLD,
         description="Temperature threshold (°C) above which cooling degree days are calculated. "
         "Used for temperature adjustment of cooling end uses in load shapes.",
+    )
+    enable_shoulder_month_smoothing: bool = Field(
+        default=DEFAULT_ENABLE_SHOULDER_MONTH_SMOOTHING,
+        description="Enable smoothing of temperature multipliers in shoulder months. "
+        "When True, days with zero degree days in months with mixed heating/cooling are assigned "
+        "small values to prevent unrealistic load spikes. When False, uses traditional calculation.",
+    )
+    shoulder_month_smoothing_factor: float = Field(
+        default=DEFAULT_SHOULDER_MONTH_SMOOTHING_FACTOR,
+        description="Divisor applied to maximum degree days to set minimum threshold for smoothing. "
+        "In months with mixed heating/cooling activity, degree days below (max / factor) are "
+        "raised to this minimum threshold to prevent unrealistic load concentration. "
+        "Smaller values create smoother transitions. Typical values: 5.0 (aggressive), 10.0 (moderate), 20.0 (gentle). "
+        "Only used when enable_shoulder_month_smoothing is True.",
     )
 
 

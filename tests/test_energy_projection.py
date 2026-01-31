@@ -878,9 +878,63 @@ def compute_temperature_multipliers(
     """
     )
 
-    # Compute multipliers (matching temperature_multipliers.sql)
+    # Compute multipliers (matching temperature_multipliers.sql with shoulder month smoothing)
     return con.sql(
         """
+        WITH max_degree_days AS (
+            -- Calculate max degree days in each group for smoothing
+            SELECT
+                dd.geography
+                ,dd.month
+                ,dd.day_type
+                ,MAX(dd.hdd) AS max_hdd
+                ,MAX(dd.cdd) AS max_cdd
+            FROM weather_degree_days dd
+            JOIN weather_grouped gs
+                ON dd.geography = gs.geography
+                AND dd.weather_year = gs.weather_year
+                AND dd.month = gs.month
+                AND dd.day_type = gs.day_type
+            WHERE gs.total_hdd > 0 OR gs.total_cdd > 0
+            GROUP BY dd.geography, dd.month, dd.day_type
+        ),
+        adjusted_degree_days AS (
+            -- Apply shoulder month smoothing (default factor 10.0, enabled by default)
+            SELECT
+                dd.*
+                ,CASE
+                    WHEN gs.total_hdd > 0 AND dd.hdd < (md.max_hdd / 10.0)
+                        THEN md.max_hdd / 10.0
+                    ELSE dd.hdd
+                END AS adjusted_hdd
+                ,CASE
+                    WHEN gs.total_cdd > 0 AND dd.cdd < (md.max_cdd / 10.0)
+                        THEN md.max_cdd / 10.0
+                    ELSE dd.cdd
+                END AS adjusted_cdd
+            FROM weather_degree_days dd
+            JOIN weather_grouped gs
+                ON dd.geography = gs.geography
+                AND dd.weather_year = gs.weather_year
+                AND dd.month = gs.month
+                AND dd.day_type = gs.day_type
+            LEFT JOIN max_degree_days md
+                ON dd.geography = md.geography
+                AND dd.month = md.month
+                AND dd.day_type = md.day_type
+        ),
+        adjusted_totals AS (
+            -- Recalculate totals with adjusted values
+            SELECT
+                geography
+                ,weather_year
+                ,month
+                ,day_type
+                ,SUM(adjusted_hdd) AS adjusted_total_hdd
+                ,SUM(adjusted_cdd) AS adjusted_total_cdd
+            FROM adjusted_degree_days
+            GROUP BY geography, weather_year, month, day_type
+        )
         SELECT
             dd.geography
             ,dd.timestamp
@@ -894,21 +948,30 @@ def compute_temperature_multipliers(
             ,gs.num_days
             ,gs.total_hdd
             ,gs.total_cdd
+            ,dd.adjusted_hdd
+            ,dd.adjusted_cdd
+            ,at.adjusted_total_hdd
+            ,at.adjusted_total_cdd
             ,CASE
-                WHEN gs.total_hdd = 0 OR gs.total_hdd IS NULL THEN 1.0
-                ELSE (dd.hdd / gs.total_hdd) * gs.num_days
+                WHEN at.adjusted_total_hdd = 0 OR at.adjusted_total_hdd IS NULL THEN 1.0
+                ELSE (dd.adjusted_hdd / at.adjusted_total_hdd) * gs.num_days
             END AS heating_multiplier
             ,CASE
-                WHEN gs.total_cdd = 0 OR gs.total_cdd IS NULL THEN 1.0
-                ELSE (dd.cdd / gs.total_cdd) * gs.num_days
+                WHEN at.adjusted_total_cdd = 0 OR at.adjusted_total_cdd IS NULL THEN 1.0
+                ELSE (dd.adjusted_cdd / at.adjusted_total_cdd) * gs.num_days
             END AS cooling_multiplier
             ,1.0 AS other_multiplier
-        FROM weather_degree_days dd
+        FROM adjusted_degree_days dd
         JOIN weather_grouped gs
             ON dd.geography = gs.geography
             AND dd.weather_year = gs.weather_year
             AND dd.month = gs.month
             AND dd.day_type = gs.day_type
+        JOIN adjusted_totals at
+            ON dd.geography = at.geography
+            AND dd.weather_year = at.weather_year
+            AND dd.month = at.month
+            AND dd.day_type = at.day_type
     """
     )
 

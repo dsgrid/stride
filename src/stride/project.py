@@ -534,6 +534,15 @@ class Project:
             If True, use compute results based on the table overrides specified in the project
             config.
         """
+        logger.info(
+            "Computing energy projection with model parameters: "
+            "heating_threshold={}, cooling_threshold={}, "
+            "enable_shoulder_month_smoothing={}, shoulder_month_smoothing_factor={}",
+            self._config.model_parameters.heating_threshold,
+            self._config.model_parameters.cooling_threshold,
+            self._config.model_parameters.enable_shoulder_month_smoothing,
+            self._config.model_parameters.shoulder_month_smoothing_factor,
+        )
         orig = os.getcwd()
         model_years = ",".join((str(x) for x in self._config.list_model_years()))
         table_overrides = self.get_table_overrides() if use_table_overrides else {}
@@ -549,6 +558,8 @@ class Project:
                 f'"weather_year": {self._config.weather_year}, '
                 f'"heating_threshold": {self._config.model_parameters.heating_threshold}, '
                 f'"cooling_threshold": {self._config.model_parameters.cooling_threshold}, '
+                f'"enable_shoulder_month_smoothing": {str(self._config.model_parameters.enable_shoulder_month_smoothing).lower()}, '
+                f'"shoulder_month_smoothing_factor": {self._config.model_parameters.shoulder_month_smoothing_factor}, '
                 f'"use_ev_projection": {use_ev_str}'
                 f"{override_str}}}"
             )
@@ -559,7 +570,18 @@ class Project:
             self._con.close()
             try:
                 os.chdir(self._path / DBT_DIR)
-                logger.info("Run scenario={} dbt models with '{}'", scenario.name, " ".join(cmd))
+                smoothing_status = (
+                    f"enabled (factor={self._config.model_parameters.shoulder_month_smoothing_factor})"
+                    if self._config.model_parameters.enable_shoulder_month_smoothing
+                    else "disabled"
+                )
+                logger.info(
+                    "Running scenario={} with weather_year={}, shoulder_month_smoothing={}",
+                    scenario.name,
+                    self._config.weather_year,
+                    smoothing_status,
+                )
+                logger.debug("dbt command: '{}'", " ".join(cmd))
                 start = time.time()
                 subprocess.run(cmd, check=True)
                 duration = time.time() - start
@@ -584,6 +606,33 @@ class Project:
                 scenario.name,
                 row_count,
             )
+
+            # Log temperature multiplier statistics
+            multiplier_stats = self._con.sql(
+                f"""
+                SELECT
+                    MIN(heating_multiplier) AS min_heating,
+                    MAX(heating_multiplier) AS max_heating,
+                    MIN(cooling_multiplier) AS min_cooling,
+                    MAX(cooling_multiplier) AS max_cooling,
+                    MIN(other_multiplier) AS min_other,
+                    MAX(other_multiplier) AS max_other
+                FROM {scenario.name}.temperature_multipliers
+                """
+            ).fetchone()
+
+            if multiplier_stats:
+                logger.info(
+                    "Temperature multiplier ranges for scenario={}: "
+                    "heating=[{:.3f}, {:.3f}], cooling=[{:.3f}, {:.3f}], other=[{:.3f}, {:.3f}]",
+                    scenario.name,
+                    multiplier_stats[0],
+                    multiplier_stats[1],
+                    multiplier_stats[2],
+                    multiplier_stats[3],
+                    multiplier_stats[4],
+                    multiplier_stats[5],
+                )
 
             columns = "timestamp, model_year, scenario, sector, geography, metric, value"
             if i == 0:
