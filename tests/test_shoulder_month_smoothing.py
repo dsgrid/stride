@@ -2,6 +2,7 @@
 
 import duckdb
 import pandas as pd
+from pathlib import Path
 from stride import Project
 from stride.models import (
     DEFAULT_ENABLE_SHOULDER_MONTH_SMOOTHING,
@@ -133,7 +134,7 @@ def test_shoulder_month_smoothing_prevents_spikes(default_project: Project) -> N
         _verify_cooling_smoothing(multipliers, month)
 
 
-def test_shoulder_month_smoothing_configuration(tmp_path) -> None:
+def test_shoulder_month_smoothing_configuration(tmp_path: Path) -> None:
     """Test that shoulder month smoothing parameters can be configured in ProjectConfig."""
     from stride.models import ModelParameters, ProjectConfig
 
