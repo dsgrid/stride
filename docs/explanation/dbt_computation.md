@@ -176,3 +176,4 @@ For advanced customization, you can edit the SQL models directly:
 
 - {ref}`data-validation` - How input data is validated before dbt runs
 - {ref}`customizing-checks` - Configuring validation behavior
+- {ref}`dbt-projet` - Tutorial on browsing the dbt portion of a stride project

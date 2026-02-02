@@ -141,4 +141,4 @@ For development workflows, consider disabling checks to speed up iteration, then
 ## Related Topics
 
 - {ref}`data-validation` - Overview of the validation process
-- {ref}`data-download` - How to download datasets
+- {ref}`create-project-tutorial` - Tutorial on creating a stride project
