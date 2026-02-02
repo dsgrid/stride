@@ -1,5 +1,5 @@
 (weather-year-modeling)=
-# Weather year modeling
+# Weather Year Modeling
 
 STRIDE uses detailed weather data to adjust electricity load shapes for temperature variations throughout the year. This page explains how weather data are processed and applied to create realistic hourly load profiles.
 

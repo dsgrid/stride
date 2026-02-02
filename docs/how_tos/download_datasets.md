@@ -1,5 +1,5 @@
 (download-datasets)=
-# Download datasets
+# Download Datasets
 
 ## Prerequisites
 

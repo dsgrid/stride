@@ -1,5 +1,5 @@
 (dbt-projet)=
-# DBT project
+# Browse the dbt project
 Stride uses [dbt](https://github.com/dbt-labs/dbt-core) to build its energy projection tables.
 This tutorial will teach you how to run `dbt` commands in a project directory.
 

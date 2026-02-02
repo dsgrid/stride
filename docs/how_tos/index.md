@@ -10,7 +10,7 @@
     download_datasets
     override_calculated_tables
     export_results
-    customize_palette
     launch_dashboard
+    customize_palette
     compare_scenarios
 ```
