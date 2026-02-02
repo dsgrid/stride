@@ -16,14 +16,40 @@ STRIDE supports the following dataset validation checks:
 
 The simplest way to customize checks is through environment variables:
 
-```bash
-# Disable time consistency checks (faster project creation)
-export STRIDE_CHECK_TIME_CONSISTENCY=false
-stride project create my_config.json5
+```{eval-rst}
+    
+    .. tabs::
 
-# Enable dimension association checks (more thorough validation)
-export STRIDE_CHECK_DIMENSION_ASSOCIATIONS=true
-stride project create my_config.json5
+      .. code-tab:: bash Mac/Linux
+
+         # Disable time consistency checks (faster project creation)
+         export STRIDE_CHECK_TIME_CONSISTENCY=false
+         stride project create my_config.json5
+
+         # Enable dimension association checks (more thorough validation)
+         export STRIDE_CHECK_DIMENSION_ASSOCIATIONS=true
+         stride project create my_config.json5
+
+      .. code-tab:: bash Windows Command Prompt
+
+         # Disable time consistency checks (faster project creation)
+         set STRIDE_CHECK_TIME_CONSISTENCY=false
+         stride project create my_config.json5
+
+         # Enable dimension association checks (more thorough validation)
+         set STRIDE_CHECK_DIMENSION_ASSOCIATIONS=true
+         stride project create my_config.json5
+
+      .. code-tab:: powershell Windows PowerShell
+
+         # Disable time consistency checks (faster project creation)
+         $Env:STRIDE_CHECK_TIME_CONSISTENCY = "false"
+         stride project create my_config.json5
+
+         # Enable dimension association checks (more thorough validation)
+         $Env:STRIDE_CHECK_DIMENSION_ASSOCIATIONS = "true"
+         stride project create my_config.json5
+
 ```
 
 Valid values for boolean environment variables:
@@ -115,4 +141,4 @@ For development workflows, consider disabling checks to speed up iteration, then
 ## Related Topics
 
 - {ref}`data-validation` - Overview of the validation process
-- {ref}`data-download` - How to download datasets
+- {ref}`create-project-tutorial` - Tutorial on creating a stride project

@@ -77,4 +77,4 @@ or ``mamba``.
 4. {ref}`visually-inspect`
 5. {ref}`Modify a project <manage-calculated-tables>`
 6. {ref}`Export data <export-dataset>`
-7. {ref}`Access data programmatically <data-api>`
+7. {ref}`Access data programmatically <data-api-tutorial>`

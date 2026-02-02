@@ -1,5 +1,5 @@
 (weather-year-modeling)=
-# Weather year modeling
+# Weather Year Modeling
 
 STRIDE uses detailed weather data to adjust electricity load shapes for temperature variations throughout the year. This page explains how weather data are processed and applied to create realistic hourly load profiles.
 
@@ -282,3 +282,6 @@ INFO: Temperature multiplier ranges for scenario=baseline:
 ## Related Topics
 
 - {ref}`dbt-computation` - Overall dbt transformation pipeline
+- {ref}`create-project-tutorial` - Tutorial on creating a stride project
+- {ref}`dbt-projet` - Tutorial on browsing the dbt portion of a stride project
+- {ref}`data-api-tutorial` - Tutorial on accessing and processing result data using Python

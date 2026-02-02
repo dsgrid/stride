@@ -1,4 +1,4 @@
-# Debugging stride
+# Debug stride source code
 This tutorial is for users and developers that want to debug the stride source code with the
 Python debugger. It includes instructions for a UI-based workflow with `VSCode` native debugging
 with `pdb`.

@@ -81,10 +81,27 @@ Downloaded datasets are stored in the data directory, which is determined by (in
 
 To use a custom data directory persistently, set the `STRIDE_DATA_DIR` environment variable:
 
-```bash
-export STRIDE_DATA_DIR=/path/to/my/data
-stride datasets download global
-stride projects create my_config.json5
+```{eval-rst}
+    
+    .. tabs::
+
+      .. code-tab:: bash Mac/Linux
+
+         export STRIDE_DATA_DIR=/path/to/my/data
+         stride datasets download global
+         stride projects create my_config.json5
+
+      .. code-tab:: bash Windows Command Prompt
+
+         set STRIDE_DATA_DIR=/path/to/my/data
+         stride datasets download global
+         stride projects create my_config.json5
+
+      .. code-tab:: powershell Windows PowerShell
+
+         $env:STRIDE_DATA_DIR = "/path/to/my/data"
+         stride datasets download global
+         stride projects create my_config.json5
 ```
 
 Or specify it per-command with the `--data-dir` option:
