@@ -49,9 +49,19 @@ Or set the environment variable:
 
 ```{eval-rst}
 
-.. code-block:: console
+  .. tabs::
 
-   $ export STRIDE_DATA_DIR=/path/to/data
+    .. code-tab:: bash Mac/Linux
+
+       $ export STRIDE_DATA_DIR=/path/to/data
+
+    .. code-tab:: bash Windows Command Prompt
+
+       $ set STRIDE_DATA_DIR=/path/to/data
+
+    .. code-tab:: powershell Windows PowerShell
+
+       $ $Env:STRIDE_DATA_DIR = "/path/to/data"
 ```
 
 ## Download from a custom repository
@@ -85,10 +95,22 @@ If ``gh`` is not available:
 
 ```{eval-rst}
 
-.. code-block:: console
+  .. tabs::
 
-   $ git clone https://github.com/dsgrid/stride-data.git
-   $ export STRIDE_DATA_DIR=/path/to/stride-data
+    .. code-tab:: bash Mac/Linux
+
+       $ git clone https://github.com/dsgrid/stride-data.git
+       $ export STRIDE_DATA_DIR=/path/to/stride-data
+
+    .. code-tab:: bash Windows Command Prompt
+
+       $ git clone https://github.com/dsgrid/stride-data.git
+       $ set STRIDE_DATA_DIR=/path/to/stride-data
+
+    .. code-tab:: powershell Windows PowerShell
+
+       $ git clone https://github.com/dsgrid/stride-data.git
+       $ $Env:STRIDE_DATA_DIR = "/path/to/stride-data"
 ```
 
 Or copy to the default location:

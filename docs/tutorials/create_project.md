@@ -235,7 +235,7 @@ an EV projection scenario.
         $ stride projects export-energy-projection country_1_project
     ```
 
-    To programmatically access specific views of the data, see the {ref}`data-api`.
+    To programmatically access specific views of the data, see the {ref}`data-api-tutorial`.
 
 (visually-inspect)=
 ## Visually inspect project data
@@ -265,7 +265,7 @@ And then opening the displayed address in a web browser:
 ## Learn More
 
 - {ref}`cli-reference`
-- {ref}`data-api`
+- {ref}`data-api-tutorial`
 - {ref}`dbt-projet`
 - {ref}`weather-year-modeling`
 - {ref}`manage-calculated-tables`
