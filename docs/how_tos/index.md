@@ -9,8 +9,8 @@
     getting_started/index
     download_datasets
     override_calculated_tables
-    export_results
     launch_dashboard
-    customize_palette
+    customize_palette    
     compare_scenarios
+    export_results    
 ```

@@ -1,22 +1,23 @@
 (compare-scenarios)=
 # Compare Scenarios
 
-Query and compare results across scenarios programmatically.
+Programmatically query and compare results across scenarios.
 
 ## Load the Project
 
 ```python
 from stride import Project
+from stride.api import APIClient
 
-with Project.load("my_project") as project:
-    api = project.api
+project = Project.load("my_project")
+client = APIClient(project)
 ```
 
 ## Query Multiple Scenarios
 
 ```python
-baseline = api.get_total_consumption(scenario="baseline")
-high_growth = api.get_total_consumption(scenario="high_growth")
+baseline = client.get_total_consumption(scenario="baseline")
+high_growth = client.get_total_consumption(scenario="high_growth")
 ```
 
 ## Calculate Differences
@@ -32,7 +33,7 @@ comparison = pd.merge(
 comparison["difference"] = (
     comparison["value_high_growth"] - comparison["value_baseline"]
 )
-comparison["pct_change"] = (
+comparison["pct_difference"] = (
     comparison["difference"] / comparison["value_baseline"] * 100
 )
 ```
@@ -42,7 +43,7 @@ comparison["pct_change"] = (
 ```python
 import plotly.express as px
 
-fig = px.bar(
+fig = px.scatter(
     comparison,
     x="model_year",
     y="pct_change",
@@ -52,4 +53,7 @@ fig = px.bar(
 fig.show()
 ```
 
-See the {ref}`data-api-tutorial` for more examples.
+## See also
+
+- {ref}`data-api-tutorial` for more examples.
+- {ref}`launch-dashboard` for the visualization UI.
