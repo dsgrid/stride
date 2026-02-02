@@ -2,15 +2,13 @@
 
 # Process results with Python
 
-This tutorial demonstrates how to use the STRIDE Data API to query and analyze
+This tutorial demonstrates how to use the stride {ref}`data-api-reference` to query and analyze
 energy projection data programmatically.
-
-For complete API documentation, see the {ref}`data-api-reference`.
 
 ## Prerequisites
 
-- A STRIDE project created using `stride projects create`
-- Python environment with STRIDE installed
+- A stride project created using `stride projects create`
+- Python environment with stride installed
 
 ## Load a project
 
@@ -29,7 +27,7 @@ client = APIClient(project)
 
 ## Explore available data
 
-The API client provides methods to discover what data is available:
+The API client provides methods to discover what data are available:
 
 ```python
 # Get available scenarios
@@ -213,7 +211,7 @@ weather = client.get_weather_metric(
 )
 print(weather.head())
 
-# Heating and cooling degree days
+# Heating degree days (cooling degree days are similar)
 hdd = client.get_weather_metric(
     scenario="baseline",
     year=2030,
@@ -331,7 +329,7 @@ with pd.ExcelWriter("stride_results.xlsx") as writer:
 
 ## Complete example
 
-Here's a complete script that generates a summary report:
+Here's a script that prints a summary report to console:
 
 ```python
 from stride.project import Project
@@ -362,3 +360,7 @@ with Project.load("my_project_path") as project:
             print(f"  {year}: {cons_val/1e9:.2f} TWh, Peak: {peak_val/1e6:.2f} GW")
         print()
 ```
+
+## Learn More
+
+- {ref}`data-api-reference` - Complete API documentation
