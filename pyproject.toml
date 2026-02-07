@@ -3,17 +3,16 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "stride"
-version = "0.0.1"
-description = ""
+name = "stride-load-forecast"
+dynamic = ["version"]
+description = "Python tool for assembling annual hourly electricity demand projections suitable for grid planning at the country-level."
 readme = "README.md"
 requires-python = ">=3.11, <3.14"
-license = "BSD-3-Clause"
+license = { file = "LICENSE" }
 keywords = []
 authors = [
     { name = "Daniel Thom", email = "daniel.thom@nrel.gov" },
     { name = "Elaine Hale", email = "elaine.hale@nrel.gov" },
-    { name = "Zack Jensen", email = "zack.jensen@nrel.gov" },
     { name = "Micah Webb", email = "micah.webb@nrel.gov" },
 ]
 classifiers = [
