@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "stride-load-forecast"
-dynamic = ["version"]
+version = "1.0.0"
 description = "Python tool for assembling annual hourly electricity demand projections suitable for grid planning at the country-level."
 readme = "README.md"
 requires-python = ">=3.11, <3.14"
