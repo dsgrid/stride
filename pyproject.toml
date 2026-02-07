@@ -67,6 +67,9 @@ Source = "https://github.com/dsgrid/stride"
 [project.scripts]
 stride = "stride.cli.stride:cli"
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/stride"]
+
 [tool.mypy]
 files = [
   "src",
