@@ -49,7 +49,7 @@ jobs:
       if: ${{ matrix.os == env.DEFAULT_OS && matrix.python-version == env.DEFAULT_PYTHON  }}
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        name: chronify-tests
+        name: codecov-umbrella
         fail_ci_if_error: false
         verbose: true
   mypy:
