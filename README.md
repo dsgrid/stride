@@ -1,4 +1,8 @@
 # STRIDE
+[![PyPI](https://img.shields.io/pypi/v/stride-load-forecast.svg)](https://pypi.org/project/stride-load-forecast/)
+[![Documentation](https://img.shields.io/badge/docs-ready-blue.svg)](https://dsgrid.github.io/stride/)
+[![codecov](https://codecov.io/gh/dsgrid/stride/branch/main/graph/badge.svg)](https://app.codecov.io/github/dsgrid/stride)
+
 
 STRIDE (Smart Trending and Resource Insights for Demand Estimation) is a Python tool for assembling annual hourly electricity demand projections at the country-level suitable for grid planning. STRIDE is designed to enable quick assemblage of first-order load forecasts that can then be refined, guided by visual QA/QC of results. The first order load forecasts are based on country-level data describing normalized electricity use, electricity use correlates (e.g., population, human development index, gross domestic product), weather, and load shapes. Alternative scenarios and forecast refinements can be made by layering in user-supplied data at any point in the calculation workflow and/or opting to use more complex forecasting models for certain subsectors/end uses.
 
