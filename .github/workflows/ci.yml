@@ -45,11 +45,11 @@ jobs:
       run: |
         pytest -v --cov --cov-report=xml
     - name: codecov
-      uses: codecov/codecov-action@v4.2.0
-      if: ${{ matrix.os == env.DEFAULT_OS && matrix.python-version == env.DEFAULT_PYTHON  }}
+      uses: codecov/codecov-action@v5
+      if: ${{ matrix.os == env.DEFAULT_OS && matrix.python-version == env.DEFAULT_PYTHON }}
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        name: codecov-umbrella
+        slug: dsgrid/stride
         fail_ci_if_error: false
         verbose: true
   mypy:
