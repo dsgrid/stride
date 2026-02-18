@@ -1,0 +1,1313 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="prev" title="stride Project API" href="project_api.html">
+
+    <!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
+        <title>CLI reference - Stride Documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/autodoc_pydantic.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">Stride Documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  
+  <span class="sidebar-brand-text">Stride Documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../explanation/index.html">Core Concepts</a><input aria-label="Toggle navigation of Core Concepts" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../explanation/data_download.html">Data Download</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../explanation/data_validation.html">Data Validation with dsgrid</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../explanation/customizing_checks.html">Customizing Dataset Checks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../explanation/dbt_computation.html">dbt Computation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../explanation/weather_year_modeling.html">Weather Year Modeling</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../how_tos/index.html">How Tos</a><input aria-label="Toggle navigation of How Tos" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../how_tos/getting_started/index.html">Getting Started</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how_tos/download_datasets.html">Download Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how_tos/override_calculated_tables.html">Override Calculated Tables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how_tos/launch_dashboard.html">Launch the Dashboard</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how_tos/customize_palette.html">Customize the Color Palette</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how_tos/compare_scenarios.html">Compare Scenarios</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how_tos/export_results.html">Export Results</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../tutorials/index.html">Tutorials</a><input aria-label="Toggle navigation of Tutorials" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/create_project.html">Create a project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/dbt_project.html">Browse the dbt project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/manage_calculated_tables.html">Manage calculated tables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/data_api_tutorial.html">Process results with Python</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/debugging_stride.html">Debug stride source code</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Reference</a><input aria-label="Toggle navigation of Reference" checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="data_api.html">Data API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="project_api.html">stride Project API</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">CLI reference</a></li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../_sources/reference/cli_reference.md.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="cli-reference">
+<span id="id1"></span><h1>CLI reference<a class="headerlink" href="#cli-reference" title="Link to this heading">¶</a></h1>
+<p>The auto-generated output from Click for the stride command line interface (CLI) is shown below.</p>
+<section id="stride">
+<h2>stride<a class="headerlink" href="#stride" title="Link to this heading">¶</a></h2>
+<p>Stride comands</p>
+<p class="rubric">Usage</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>stride<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span><span class="w"> </span>COMMAND<span class="w"> </span><span class="o">[</span>ARGS<span class="o">]</span>...
+</pre></div>
+</div>
+<p class="rubric">Options</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-c">
+<span id="cmdoption-stride-console-level"></span><span class="sig-name descname"><span class="pre">-c</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--console-level</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;console_level&gt;</span></span><a class="headerlink" href="#cmdoption-stride-c" title="Link to this definition">¶</a></dt>
+<dd><p>Console log level</p>
+<dl class="field-list simple">
+<dt class="field-odd">Default<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">'INFO'</span></code></p>
+</dd>
+<dt class="field-even">Options<span class="colon">:</span></dt>
+<dd class="field-even"><p>TRACE | DEBUG | INFO | WARNING | ERROR</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-f">
+<span id="cmdoption-stride-file-level"></span><span class="sig-name descname"><span class="pre">-f</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--file-level</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;file_level&gt;</span></span><a class="headerlink" href="#cmdoption-stride-f" title="Link to this definition">¶</a></dt>
+<dd><p>Console log level</p>
+<dl class="field-list simple">
+<dt class="field-odd">Default<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">'DEBUG'</span></code></p>
+</dd>
+<dt class="field-even">Options<span class="colon">:</span></dt>
+<dd class="field-even"><p>TRACE | DEBUG | INFO | WARNING | ERROR</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-r">
+<span id="cmdoption-stride-reraise-exceptions"></span><span class="sig-name descname"><span class="pre">-r</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--reraise-exceptions</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-stride-r" title="Link to this definition">¶</a></dt>
+<dd><p>Re-raise all stride exceptions. Useful for debugging errors.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Default<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<section id="stride-calculated-tables">
+<h3>calculated-tables<a class="headerlink" href="#stride-calculated-tables" title="Link to this heading">¶</a></h3>
+<p>Calculated table commands</p>
+<p class="rubric">Usage</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>stride<span class="w"> </span>calculated-tables<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span><span class="w"> </span>COMMAND<span class="w"> </span><span class="o">[</span>ARGS<span class="o">]</span>...
+</pre></div>
+</div>
+<section id="stride-calculated-tables-export">
+<h4>export<a class="headerlink" href="#stride-calculated-tables-export" title="Link to this heading">¶</a></h4>
+<p>Export the specified calculated table to filename. Supports CSV and Parquet, inferred
+from the filename’s suffix.</p>
+<p class="rubric">Usage</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>stride<span class="w"> </span>calculated-tables<span class="w"> </span><span class="nb">export</span><span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span><span class="w"> </span>PROJECT_PATH
+</pre></div>
+</div>
+<p class="rubric">Options</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-calculated-tables-export-f">
+<span id="cmdoption-stride-calculated-tables-export-filename"></span><span class="sig-name descname"><span class="pre">-f</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--filename</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;filename&gt;</span></span><a class="headerlink" href="#cmdoption-stride-calculated-tables-export-f" title="Link to this definition">¶</a></dt>
+<dd><p>Filename to create. Defaults to a CSV in the current directory. Supports CSV and Parquet, inferred from the file extension.</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-calculated-tables-export-overwrite">
+<span class="sig-name descname"><span class="pre">--overwrite</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-stride-calculated-tables-export-overwrite" title="Link to this definition">¶</a></dt>
+<dd><p>Overwrite the output directory if it exists.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Default<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-calculated-tables-export-s">
+<span id="cmdoption-stride-calculated-tables-export-scenario"></span><span class="sig-name descname"><span class="pre">-s</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--scenario</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;scenario&gt;</span></span><a class="headerlink" href="#cmdoption-stride-calculated-tables-export-s" title="Link to this definition">¶</a></dt>
+<dd><p><strong>Required</strong> Scenario name</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-calculated-tables-export-t">
+<span id="cmdoption-stride-calculated-tables-export-table-name"></span><span class="sig-name descname"><span class="pre">-t</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--table-name</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;table_name&gt;</span></span><a class="headerlink" href="#cmdoption-stride-calculated-tables-export-t" title="Link to this definition">¶</a></dt>
+<dd><p><strong>Required</strong> calculated table name</p>
+</dd></dl>
+
+<p class="rubric">Arguments</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-calculated-tables-export-arg-PROJECT_PATH">
+<span class="sig-name descname"><span class="pre">PROJECT_PATH</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-stride-calculated-tables-export-arg-PROJECT_PATH" title="Link to this definition">¶</a></dt>
+<dd><p>Required argument</p>
+</dd></dl>
+
+<p>Examples:</p>
+<p>$ stride calculated-tables export my_project </p>
+<blockquote>
+<div><p>–scenario=baseline </p>
+<p class="attribution">—table-name=energy_intensity_res_hdi_population_load_shapes </p>
+</div></blockquote>
+<blockquote>
+<div><p>–filename=custom_load_shapes.csv</p>
+</div></blockquote>
+</section>
+<section id="stride-calculated-tables-list">
+<h4>list<a class="headerlink" href="#stride-calculated-tables-list" title="Link to this heading">¶</a></h4>
+<p>List the calculated tables in the project and whether they are being overridden.</p>
+<p class="rubric">Usage</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>stride<span class="w"> </span>calculated-tables<span class="w"> </span>list<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span><span class="w"> </span>PROJECT_PATH
+</pre></div>
+</div>
+<p class="rubric">Arguments</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-calculated-tables-list-arg-PROJECT_PATH">
+<span class="sig-name descname"><span class="pre">PROJECT_PATH</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-stride-calculated-tables-list-arg-PROJECT_PATH" title="Link to this definition">¶</a></dt>
+<dd><p>Required argument</p>
+</dd></dl>
+
+</section>
+<section id="stride-calculated-tables-override">
+<h4>override<a class="headerlink" href="#stride-calculated-tables-override" title="Link to this heading">¶</a></h4>
+<p>Override a scenario’s calculated table.</p>
+<p class="rubric">Usage</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>stride<span class="w"> </span>calculated-tables<span class="w"> </span>override<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span><span class="w"> </span>PROJECT_PATH
+</pre></div>
+</div>
+<p class="rubric">Options</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-calculated-tables-override-f">
+<span id="cmdoption-stride-calculated-tables-override-filename"></span><span class="sig-name descname"><span class="pre">-f</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--filename</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;filename&gt;</span></span><a class="headerlink" href="#cmdoption-stride-calculated-tables-override-f" title="Link to this definition">¶</a></dt>
+<dd><p><strong>Required</strong> Filename of the new table</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-calculated-tables-override-s">
+<span id="cmdoption-stride-calculated-tables-override-scenario"></span><span class="sig-name descname"><span class="pre">-s</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--scenario</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;scenario&gt;</span></span><a class="headerlink" href="#cmdoption-stride-calculated-tables-override-s" title="Link to this definition">¶</a></dt>
+<dd><p><strong>Required</strong> Scenario name</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-calculated-tables-override-t">
+<span id="cmdoption-stride-calculated-tables-override-table-name"></span><span class="sig-name descname"><span class="pre">-t</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--table-name</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;table_name&gt;</span></span><a class="headerlink" href="#cmdoption-stride-calculated-tables-override-t" title="Link to this definition">¶</a></dt>
+<dd><p><strong>Required</strong> calculated table name</p>
+</dd></dl>
+
+<p class="rubric">Arguments</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-calculated-tables-override-arg-PROJECT_PATH">
+<span class="sig-name descname"><span class="pre">PROJECT_PATH</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-stride-calculated-tables-override-arg-PROJECT_PATH" title="Link to this definition">¶</a></dt>
+<dd><p>Required argument</p>
+</dd></dl>
+
+<p>Examples:</p>
+<p>$ stride calculated-tables override my_project </p>
+<blockquote>
+<div><p>–scenario=custom_load_shapes </p>
+<p class="attribution">—table-name=energy_projection_res_load_shapes </p>
+</div></blockquote>
+<blockquote>
+<div><p>–filename=custom_load_shapes.csv</p>
+</div></blockquote>
+</section>
+<section id="stride-calculated-tables-remove-override">
+<h4>remove-override<a class="headerlink" href="#stride-calculated-tables-remove-override" title="Link to this heading">¶</a></h4>
+<p>Remove the overridden calculated table.</p>
+<p class="rubric">Usage</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>stride<span class="w"> </span>calculated-tables<span class="w"> </span>remove-override<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span><span class="w"> </span>PROJECT_PATH
+</pre></div>
+</div>
+<p class="rubric">Options</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-calculated-tables-remove-override-s">
+<span id="cmdoption-stride-calculated-tables-remove-override-scenario"></span><span class="sig-name descname"><span class="pre">-s</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--scenario</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;scenario&gt;</span></span><a class="headerlink" href="#cmdoption-stride-calculated-tables-remove-override-s" title="Link to this definition">¶</a></dt>
+<dd><p><strong>Required</strong> Scenario name</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-calculated-tables-remove-override-t">
+<span id="cmdoption-stride-calculated-tables-remove-override-table-name"></span><span class="sig-name descname"><span class="pre">-t</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--table-name</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;table_name&gt;</span></span><a class="headerlink" href="#cmdoption-stride-calculated-tables-remove-override-t" title="Link to this definition">¶</a></dt>
+<dd><p><strong>Required</strong> Overridden calculated table name</p>
+</dd></dl>
+
+<p class="rubric">Arguments</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-calculated-tables-remove-override-arg-PROJECT_PATH">
+<span class="sig-name descname"><span class="pre">PROJECT_PATH</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-stride-calculated-tables-remove-override-arg-PROJECT_PATH" title="Link to this definition">¶</a></dt>
+<dd><p>Required argument</p>
+</dd></dl>
+
+<p>Examples:</p>
+<p>$ stride calculated-tables remove-override my_project </p>
+<blockquote>
+<div><p>–scenario=baseline </p>
+<p class="attribution">—table-name=energy_intensity_res_hdi_population_load_shapes_override </p>
+</div></blockquote>
+</section>
+<section id="stride-calculated-tables-show">
+<h4>show<a class="headerlink" href="#stride-calculated-tables-show" title="Link to this heading">¶</a></h4>
+<p>Print a limited number of rows of the table to the console.</p>
+<p class="rubric">Usage</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>stride<span class="w"> </span>calculated-tables<span class="w"> </span>show<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span><span class="w"> </span>PROJECT_PATH<span class="w"> </span>TABLE
+</pre></div>
+</div>
+<p class="rubric">Options</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-calculated-tables-show-s">
+<span id="cmdoption-stride-calculated-tables-show-scenario"></span><span class="sig-name descname"><span class="pre">-s</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--scenario</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;scenario&gt;</span></span><a class="headerlink" href="#cmdoption-stride-calculated-tables-show-s" title="Link to this definition">¶</a></dt>
+<dd><p>Project scenario</p>
+<dl class="field-list simple">
+<dt class="field-odd">Default<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">'baseline'</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-calculated-tables-show-l">
+<span id="cmdoption-stride-calculated-tables-show-limit"></span><span class="sig-name descname"><span class="pre">-l</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--limit</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;limit&gt;</span></span><a class="headerlink" href="#cmdoption-stride-calculated-tables-show-l" title="Link to this definition">¶</a></dt>
+<dd><p>Max number of rows in the table to show.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Default<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">20</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<p class="rubric">Arguments</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-calculated-tables-show-arg-PROJECT_PATH">
+<span class="sig-name descname"><span class="pre">PROJECT_PATH</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-stride-calculated-tables-show-arg-PROJECT_PATH" title="Link to this definition">¶</a></dt>
+<dd><p>Required argument</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-calculated-tables-show-arg-TABLE">
+<span class="sig-name descname"><span class="pre">TABLE</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-stride-calculated-tables-show-arg-TABLE" title="Link to this definition">¶</a></dt>
+<dd><p>Required argument</p>
+</dd></dl>
+
+</section>
+</section>
+<section id="stride-data-tables">
+<h3>data-tables<a class="headerlink" href="#stride-data-tables" title="Link to this heading">¶</a></h3>
+<p>Data table commands</p>
+<p class="rubric">Usage</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>stride<span class="w"> </span>data-tables<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span><span class="w"> </span>COMMAND<span class="w"> </span><span class="o">[</span>ARGS<span class="o">]</span>...
+</pre></div>
+</div>
+<section id="stride-data-tables-list">
+<h4>list<a class="headerlink" href="#stride-data-tables-list" title="Link to this heading">¶</a></h4>
+<p>List the data tables available in any project.</p>
+<p class="rubric">Usage</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>stride<span class="w"> </span>data-tables<span class="w"> </span>list<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
+</pre></div>
+</div>
+</section>
+<section id="stride-data-tables-show">
+<h4>show<a class="headerlink" href="#stride-data-tables-show" title="Link to this heading">¶</a></h4>
+<p>Print a limited number of rows of the data table to the console.</p>
+<p class="rubric">Usage</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>stride<span class="w"> </span>data-tables<span class="w"> </span>show<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span><span class="w"> </span>PROJECT_PATH<span class="w"> </span>DATA_TABLE_NAME
+</pre></div>
+</div>
+<p class="rubric">Options</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-data-tables-show-s">
+<span id="cmdoption-stride-data-tables-show-scenario"></span><span class="sig-name descname"><span class="pre">-s</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--scenario</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;scenario&gt;</span></span><a class="headerlink" href="#cmdoption-stride-data-tables-show-s" title="Link to this definition">¶</a></dt>
+<dd><p>Project scenario</p>
+<dl class="field-list simple">
+<dt class="field-odd">Default<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">'baseline'</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-data-tables-show-l">
+<span id="cmdoption-stride-data-tables-show-limit"></span><span class="sig-name descname"><span class="pre">-l</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--limit</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;limit&gt;</span></span><a class="headerlink" href="#cmdoption-stride-data-tables-show-l" title="Link to this definition">¶</a></dt>
+<dd><p>Max number of rows in the table to show.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Default<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">20</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<p class="rubric">Arguments</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-data-tables-show-arg-PROJECT_PATH">
+<span class="sig-name descname"><span class="pre">PROJECT_PATH</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-stride-data-tables-show-arg-PROJECT_PATH" title="Link to this definition">¶</a></dt>
+<dd><p>Required argument</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-data-tables-show-arg-DATA_TABLE_NAME">
+<span class="sig-name descname"><span class="pre">DATA_TABLE_NAME</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-stride-data-tables-show-arg-DATA_TABLE_NAME" title="Link to this definition">¶</a></dt>
+<dd><p>Required argument</p>
+</dd></dl>
+
+</section>
+</section>
+<section id="stride-datasets">
+<h3>datasets<a class="headerlink" href="#stride-datasets" title="Link to this heading">¶</a></h3>
+<p>Dataset commands</p>
+<p class="rubric">Usage</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>stride<span class="w"> </span>datasets<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span><span class="w"> </span>COMMAND<span class="w"> </span><span class="o">[</span>ARGS<span class="o">]</span>...
+</pre></div>
+</div>
+<section id="stride-datasets-download">
+<h4>download<a class="headerlink" href="#stride-datasets-download" title="Link to this heading">¶</a></h4>
+<p>Download a dataset from a remote repository.</p>
+<p>NAME is the name of a known dataset (use ‘stride datasets list-remote’ to see available
+datasets). Alternatively, use –url and –subdirectory to download from a custom repository.</p>
+<p class="rubric">Usage</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>stride<span class="w"> </span>datasets<span class="w"> </span>download<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span><span class="w"> </span><span class="o">[</span>NAME<span class="o">]</span>
+</pre></div>
+</div>
+<p class="rubric">Options</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-datasets-download-d">
+<span id="cmdoption-stride-datasets-download-data-dir"></span><span class="sig-name descname"><span class="pre">-d</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--data-dir</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;data_dir&gt;</span></span><a class="headerlink" href="#cmdoption-stride-datasets-download-d" title="Link to this definition">¶</a></dt>
+<dd><p>Directory where the dataset will be placed. [default: ~/.stride/data]</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-datasets-download-v">
+<span id="cmdoption-stride-datasets-download-version"></span><span class="sig-name descname"><span class="pre">-v</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--version</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;version&gt;</span></span><a class="headerlink" href="#cmdoption-stride-datasets-download-v" title="Link to this definition">¶</a></dt>
+<dd><p>Release version/tag to download. Defaults to the latest release.</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-datasets-download-url">
+<span class="sig-name descname"><span class="pre">--url</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;url&gt;</span></span><a class="headerlink" href="#cmdoption-stride-datasets-download-url" title="Link to this definition">¶</a></dt>
+<dd><p>GitHub repository URL for custom datasets (e.g., <a class="reference external" href="https://github.com/owner/repo">https://github.com/owner/repo</a>)</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-datasets-download-subdirectory">
+<span class="sig-name descname"><span class="pre">--subdirectory</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;subdirectory&gt;</span></span><a class="headerlink" href="#cmdoption-stride-datasets-download-subdirectory" title="Link to this definition">¶</a></dt>
+<dd><p>Subdirectory within the repository containing the dataset. Required with –url.</p>
+</dd></dl>
+
+<p class="rubric">Arguments</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-datasets-download-arg-NAME">
+<span class="sig-name descname"><span class="pre">NAME</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-stride-datasets-download-arg-NAME" title="Link to this definition">¶</a></dt>
+<dd><p>Optional argument</p>
+</dd></dl>
+
+<p class="rubric">Environment variables</p>
+<dl class="std envvar" id="stride-datasets-download-data-dir-stride-data-dir">
+<dt class="sig sig-object std">
+<span class="sig-name descname"><span class="pre">STRIDE_DATA_DIR</span></span></dt>
+<dd><blockquote>
+<div><p>Provide a default for <a class="reference internal" href="#cmdoption-stride-datasets-download-d"><code class="xref std std-option docutils literal notranslate"><span class="pre">-d</span></code></a></p>
+</div></blockquote>
+</dd></dl>
+
+<p>Examples:</p>
+<p>Download a known dataset to the default location (~/.stride/data):</p>
+<p>$ stride datasets download global</p>
+<p>Download to a specific directory:</p>
+<p>$ stride datasets download global –data-dir ./my_data</p>
+<p>Download a specific version:</p>
+<p>$ stride datasets download global –version v0.1.0.beta.1</p>
+<p>Download from a custom repository:</p>
+<p>$ stride datasets download –url <a class="reference external" href="https://github.com/user/repo">https://github.com/user/repo</a> –subdirectory data</p>
+<p>Use STRIDE_DATA_DIR environment variable to set a persistent default:</p>
+<p>$ export STRIDE_DATA_DIR=/path/to/data</p>
+<p>$ stride datasets download global</p>
+</section>
+<section id="stride-datasets-list-countries">
+<h4>list-countries<a class="headerlink" href="#stride-datasets-list-countries" title="Link to this heading">¶</a></h4>
+<p>List the countries available in a dataset.</p>
+<p class="rubric">Usage</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>stride<span class="w"> </span>datasets<span class="w"> </span>list-countries<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
+</pre></div>
+</div>
+<p class="rubric">Options</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-datasets-list-countries-D">
+<span id="cmdoption-stride-datasets-list-countries-dataset"></span><span class="sig-name descname"><span class="pre">-D</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--dataset</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;dataset&gt;</span></span><a class="headerlink" href="#cmdoption-stride-datasets-list-countries-D" title="Link to this definition">¶</a></dt>
+<dd><p>Name of dataset. Examples include ‘global’ and ‘global-test’.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Default<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">'global'</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-datasets-list-countries-data-dir">
+<span class="sig-name descname"><span class="pre">--data-dir</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;data_dir&gt;</span></span><a class="headerlink" href="#cmdoption-stride-datasets-list-countries-data-dir" title="Link to this definition">¶</a></dt>
+<dd><p>Directory containing datasets. [default: ~/.stride/data]</p>
+</dd></dl>
+
+<p class="rubric">Environment variables</p>
+<dl class="std envvar" id="stride-datasets-list-countries-data-dir-stride-data-dir">
+<dt class="sig sig-object std">
+<span class="sig-name descname"><span class="pre">STRIDE_DATA_DIR</span></span></dt>
+<dd><blockquote>
+<div><p>Provide a default for <a class="reference internal" href="#cmdoption-stride-datasets-list-countries-data-dir"><code class="xref std std-option docutils literal notranslate"><span class="pre">--data-dir</span></code></a></p>
+</div></blockquote>
+</dd></dl>
+
+<p>Examples:</p>
+<p>List countries in the full dataset:</p>
+<p>$ stride datasets list-countries</p>
+<p>List countries in the test dataset:</p>
+<p>$ stride datasets list-countries -D global-test</p>
+<p>List countries using a custom data directory:</p>
+<p>$ stride datasets list-countries –data-dir /path/to/data</p>
+</section>
+<section id="stride-datasets-list-model-years">
+<h4>list-model-years<a class="headerlink" href="#stride-datasets-list-model-years" title="Link to this heading">¶</a></h4>
+<p>List the model years available in a dataset.</p>
+<p class="rubric">Usage</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>stride<span class="w"> </span>datasets<span class="w"> </span>list-model-years<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
+</pre></div>
+</div>
+<p class="rubric">Options</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-datasets-list-model-years-D">
+<span id="cmdoption-stride-datasets-list-model-years-dataset"></span><span class="sig-name descname"><span class="pre">-D</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--dataset</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;dataset&gt;</span></span><a class="headerlink" href="#cmdoption-stride-datasets-list-model-years-D" title="Link to this definition">¶</a></dt>
+<dd><p>Name of dataset. Examples include ‘global’ and ‘global-test’.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Default<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">'global'</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-datasets-list-model-years-data-dir">
+<span class="sig-name descname"><span class="pre">--data-dir</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;data_dir&gt;</span></span><a class="headerlink" href="#cmdoption-stride-datasets-list-model-years-data-dir" title="Link to this definition">¶</a></dt>
+<dd><p>Directory containing datasets. [default: ~/.stride/data]</p>
+</dd></dl>
+
+<p class="rubric">Environment variables</p>
+<dl class="std envvar" id="stride-datasets-list-model-years-data-dir-stride-data-dir">
+<dt class="sig sig-object std">
+<span class="sig-name descname"><span class="pre">STRIDE_DATA_DIR</span></span></dt>
+<dd><blockquote>
+<div><p>Provide a default for <a class="reference internal" href="#cmdoption-stride-datasets-list-model-years-data-dir"><code class="xref std std-option docutils literal notranslate"><span class="pre">--data-dir</span></code></a></p>
+</div></blockquote>
+</dd></dl>
+
+<p>Examples:</p>
+<p>List model years in the full dataset:</p>
+<p>$ stride datasets list-model-years</p>
+<p>List model years in the test dataset:</p>
+<p>$ stride datasets list-model-years -D global-test</p>
+</section>
+<section id="stride-datasets-list-remote">
+<h4>list-remote<a class="headerlink" href="#stride-datasets-list-remote" title="Link to this heading">¶</a></h4>
+<p>List known datasets available for download.</p>
+<p class="rubric">Usage</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>stride<span class="w"> </span>datasets<span class="w"> </span>list-remote<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
+</pre></div>
+</div>
+</section>
+<section id="stride-datasets-list-weather-years">
+<h4>list-weather-years<a class="headerlink" href="#stride-datasets-list-weather-years" title="Link to this heading">¶</a></h4>
+<p>List the weather years available in a dataset.</p>
+<p class="rubric">Usage</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>stride<span class="w"> </span>datasets<span class="w"> </span>list-weather-years<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
+</pre></div>
+</div>
+<p class="rubric">Options</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-datasets-list-weather-years-D">
+<span id="cmdoption-stride-datasets-list-weather-years-dataset"></span><span class="sig-name descname"><span class="pre">-D</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--dataset</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;dataset&gt;</span></span><a class="headerlink" href="#cmdoption-stride-datasets-list-weather-years-D" title="Link to this definition">¶</a></dt>
+<dd><p>Name of dataset. Examples include ‘global’ and ‘global-test’.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Default<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">'global'</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-datasets-list-weather-years-data-dir">
+<span class="sig-name descname"><span class="pre">--data-dir</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;data_dir&gt;</span></span><a class="headerlink" href="#cmdoption-stride-datasets-list-weather-years-data-dir" title="Link to this definition">¶</a></dt>
+<dd><p>Directory containing datasets. [default: ~/.stride/data]</p>
+</dd></dl>
+
+<p class="rubric">Environment variables</p>
+<dl class="std envvar" id="stride-datasets-list-weather-years-data-dir-stride-data-dir">
+<dt class="sig sig-object std">
+<span class="sig-name descname"><span class="pre">STRIDE_DATA_DIR</span></span></dt>
+<dd><blockquote>
+<div><p>Provide a default for <a class="reference internal" href="#cmdoption-stride-datasets-list-weather-years-data-dir"><code class="xref std std-option docutils literal notranslate"><span class="pre">--data-dir</span></code></a></p>
+</div></blockquote>
+</dd></dl>
+
+<p>Examples:</p>
+<p>List weather years in the full dataset:</p>
+<p>$ stride datasets list-weather-years</p>
+<p>List weather years in the test dataset:</p>
+<p>$ stride datasets list-weather-years -D global-test</p>
+</section>
+</section>
+<section id="stride-palette">
+<h3>palette<a class="headerlink" href="#stride-palette" title="Link to this heading">¶</a></h3>
+<p>Palette commands</p>
+<p class="rubric">Usage</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>stride<span class="w"> </span>palette<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span><span class="w"> </span>COMMAND<span class="w"> </span><span class="o">[</span>ARGS<span class="o">]</span>...
+</pre></div>
+</div>
+<section id="stride-palette-get-default">
+<h4>get-default<a class="headerlink" href="#stride-palette-get-default" title="Link to this heading">¶</a></h4>
+<p>Show the current default user palette.</p>
+<p>Examples:</p>
+<p>$ stride palette get-default</p>
+<p class="rubric">Usage</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>stride<span class="w"> </span>palette<span class="w"> </span>get-default<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
+</pre></div>
+</div>
+</section>
+<section id="stride-palette-init">
+<h4>init<a class="headerlink" href="#stride-palette-init" title="Link to this heading">¶</a></h4>
+<p>Initialize a new palette with colors assigned to labels.</p>
+<p>Sources (optional):</p>
+<p>–from-project: Initialize from a project (queries database for unique labels or copies existing palette)</p>
+<p>–from-user: Copy from an existing user palette in ~/.stride/palettes/</p>
+<p>(No source): Create an empty palette for manual population via TUI</p>
+<p>The palette can be saved to user space (default) or embedded in a project.</p>
+<p class="rubric">Usage</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>stride<span class="w"> </span>palette<span class="w"> </span>init<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
+</pre></div>
+</div>
+<p class="rubric">Options</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-palette-init-name">
+<span class="sig-name descname"><span class="pre">--name</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;name&gt;</span></span><a class="headerlink" href="#cmdoption-stride-palette-init-name" title="Link to this definition">¶</a></dt>
+<dd><p><strong>Required</strong> Name for the new palette</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-palette-init-from-project">
+<span class="sig-name descname"><span class="pre">--from-project</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;from_project&gt;</span></span><a class="headerlink" href="#cmdoption-stride-palette-init-from-project" title="Link to this definition">¶</a></dt>
+<dd><p>Initialize from project (query database for labels or copy existing palette)</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-palette-init-from-user">
+<span class="sig-name descname"><span class="pre">--from-user</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;from_user&gt;</span></span><a class="headerlink" href="#cmdoption-stride-palette-init-from-user" title="Link to this definition">¶</a></dt>
+<dd><p>Copy from an existing user palette</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-palette-init-project">
+<span class="sig-name descname"><span class="pre">--project</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-stride-palette-init-project" title="Link to this definition">¶</a></dt>
+<dd><p>Save to project palette (requires –from-project)</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-palette-init-user">
+<span class="sig-name descname"><span class="pre">--user</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-stride-palette-init-user" title="Link to this definition">¶</a></dt>
+<dd><p>Save to user palette (default)</p>
+</dd></dl>
+
+<p>Examples:</p>
+<p># Create an empty palette (for manual population)</p>
+<p>$ stride palette init –name=my_palette –user</p>
+<p># Initialize from project (queries database for unique labels)</p>
+<p>$ stride palette init –name=my_palette –from-project=test_project</p>
+<p># Initialize from existing user palette</p>
+<p>$ stride palette init –name=my_palette –from-user=base_palette</p>
+<p># Save to user (default) or project location</p>
+<p>$ stride palette init –name=my_palette –from-project=test_project –user</p>
+<p>$ stride palette init –name=my_palette –from-project=test_project –project</p>
+</section>
+<section id="stride-palette-list">
+<h4>list<a class="headerlink" href="#stride-palette-list" title="Link to this heading">¶</a></h4>
+<p>List available color palettes.</p>
+<p class="rubric">Usage</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>stride<span class="w"> </span>palette<span class="w"> </span>list<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
+</pre></div>
+</div>
+<p class="rubric">Options</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-palette-list-project">
+<span class="sig-name descname"><span class="pre">--project</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-stride-palette-list-project" title="Link to this definition">¶</a></dt>
+<dd><p>List project palettes (requires project path)</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-palette-list-user">
+<span class="sig-name descname"><span class="pre">--user</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-stride-palette-list-user" title="Link to this definition">¶</a></dt>
+<dd><p>List user palettes (default)</p>
+</dd></dl>
+
+</section>
+<section id="stride-palette-refresh">
+<h4>refresh<a class="headerlink" href="#stride-palette-refresh" title="Link to this heading">¶</a></h4>
+<p>Refresh palette colors to use correct themes for each category.</p>
+<p>This fixes palettes where metrics might be using model year colors or
+other incorrect theme assignments. It reassigns all colors while
+preserving the labels in each category.</p>
+<p class="rubric">Usage</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>stride<span class="w"> </span>palette<span class="w"> </span>refresh<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span><span class="w"> </span>PROJECT_PATH
+</pre></div>
+</div>
+<p class="rubric">Arguments</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-palette-refresh-arg-PROJECT_PATH">
+<span class="sig-name descname"><span class="pre">PROJECT_PATH</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-stride-palette-refresh-arg-PROJECT_PATH" title="Link to this definition">¶</a></dt>
+<dd><p>Required argument</p>
+</dd></dl>
+
+<p>Examples:</p>
+<p># Fix palette colors for a project</p>
+<p>$ stride palette refresh my_project</p>
+</section>
+<section id="stride-palette-set-default">
+<h4>set-default<a class="headerlink" href="#stride-palette-set-default" title="Link to this heading">¶</a></h4>
+<p>Set or clear the default user palette.</p>
+<p>The default user palette will be automatically used when starting the dashboard
+unless overridden with –user-palette option.</p>
+<p>Examples:</p>
+<p>Set a default palette:
+$ stride palette set-default my_palette</p>
+<p>Clear the default palette:
+$ stride palette set-default</p>
+<p class="rubric">Usage</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>stride<span class="w"> </span>palette<span class="w"> </span>set-default<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span><span class="w"> </span><span class="o">[</span>PALETTE_NAME<span class="o">]</span>
+</pre></div>
+</div>
+<p class="rubric">Arguments</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-palette-set-default-arg-PALETTE_NAME">
+<span class="sig-name descname"><span class="pre">PALETTE_NAME</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-stride-palette-set-default-arg-PALETTE_NAME" title="Link to this definition">¶</a></dt>
+<dd><p>Optional argument</p>
+</dd></dl>
+
+</section>
+<section id="stride-palette-view">
+<h4>view<a class="headerlink" href="#stride-palette-view" title="Link to this heading">¶</a></h4>
+<p>View a color palette in an interactive TUI.</p>
+<p>For project palettes, NAME should be the path to the project directory.
+For user palettes, NAME should be the palette name.</p>
+<p class="rubric">Usage</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>stride<span class="w"> </span>palette<span class="w"> </span>view<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span><span class="w"> </span>NAME
+</pre></div>
+</div>
+<p class="rubric">Options</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-palette-view-project">
+<span class="sig-name descname"><span class="pre">--project</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-stride-palette-view-project" title="Link to this definition">¶</a></dt>
+<dd><p>View a project palette (default)</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-palette-view-user">
+<span class="sig-name descname"><span class="pre">--user</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-stride-palette-view-user" title="Link to this definition">¶</a></dt>
+<dd><p>View a user palette</p>
+</dd></dl>
+
+<p class="rubric">Arguments</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-palette-view-arg-NAME">
+<span class="sig-name descname"><span class="pre">NAME</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-stride-palette-view-arg-NAME" title="Link to this definition">¶</a></dt>
+<dd><p>Required argument</p>
+</dd></dl>
+
+<p>Examples:</p>
+<p>$ stride palette view test_project –project</p>
+<p>$ stride palette view my_palette –user</p>
+</section>
+</section>
+<section id="stride-projects">
+<h3>projects<a class="headerlink" href="#stride-projects" title="Link to this heading">¶</a></h3>
+<p>Project commands</p>
+<p class="rubric">Usage</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>stride<span class="w"> </span>projects<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span><span class="w"> </span>COMMAND<span class="w"> </span><span class="o">[</span>ARGS<span class="o">]</span>...
+</pre></div>
+</div>
+<section id="stride-projects-create">
+<h4>create<a class="headerlink" href="#stride-projects-create" title="Link to this heading">¶</a></h4>
+<p>Create a Stride project.</p>
+<p class="rubric">Usage</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>stride<span class="w"> </span>projects<span class="w"> </span>create<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span><span class="w"> </span>CONFIG_FILE
+</pre></div>
+</div>
+<p class="rubric">Options</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-projects-create-d">
+<span id="cmdoption-stride-projects-create-directory"></span><span class="sig-name descname"><span class="pre">-d</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--directory</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;directory&gt;</span></span><a class="headerlink" href="#cmdoption-stride-projects-create-d" title="Link to this definition">¶</a></dt>
+<dd><p>Base directory for the project</p>
+<dl class="field-list simple">
+<dt class="field-odd">Default<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">PosixPath('.')</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-projects-create-overwrite">
+<span class="sig-name descname"><span class="pre">--overwrite</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-stride-projects-create-overwrite" title="Link to this definition">¶</a></dt>
+<dd><p>Overwrite the output directory if it exists.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Default<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-projects-create-D">
+<span id="cmdoption-stride-projects-create-dataset"></span><span class="sig-name descname"><span class="pre">-D</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--dataset</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;dataset&gt;</span></span><a class="headerlink" href="#cmdoption-stride-projects-create-D" title="Link to this definition">¶</a></dt>
+<dd><p>Name of dataset. Examples include ‘global’ and ‘global-test’.</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-projects-create-data-dir">
+<span class="sig-name descname"><span class="pre">--data-dir</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;data_dir&gt;</span></span><a class="headerlink" href="#cmdoption-stride-projects-create-data-dir" title="Link to this definition">¶</a></dt>
+<dd><p>Directory containing datasets. [default: ~/.stride/data]</p>
+</dd></dl>
+
+<p class="rubric">Arguments</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-projects-create-arg-CONFIG_FILE">
+<span class="sig-name descname"><span class="pre">CONFIG_FILE</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-stride-projects-create-arg-CONFIG_FILE" title="Link to this definition">¶</a></dt>
+<dd><p>Required argument</p>
+</dd></dl>
+
+<p class="rubric">Environment variables</p>
+<dl class="std envvar" id="stride-projects-create-data-dir-stride-data-dir">
+<dt class="sig sig-object std">
+<span class="sig-name descname"><span class="pre">STRIDE_DATA_DIR</span></span></dt>
+<dd><blockquote>
+<div><p>Provide a default for <a class="reference internal" href="#cmdoption-stride-projects-create-data-dir"><code class="xref std std-option docutils literal notranslate"><span class="pre">--data-dir</span></code></a></p>
+</div></blockquote>
+</dd></dl>
+
+<p>Examples:</p>
+<p>$ stride projects create my_project.json5</p>
+</section>
+<section id="stride-projects-export-energy-projection">
+<h4>export-energy-projection<a class="headerlink" href="#stride-projects-export-energy-projection" title="Link to this heading">¶</a></h4>
+<p>Export the energy projection table to a file.</p>
+<p class="rubric">Usage</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>stride<span class="w"> </span>projects<span class="w"> </span>export-energy-projection<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span><span class="w"> </span>PROJECT_PATH
+</pre></div>
+</div>
+<p class="rubric">Options</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-projects-export-energy-projection-f">
+<span id="cmdoption-stride-projects-export-energy-projection-filename"></span><span class="sig-name descname"><span class="pre">-f</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--filename</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;filename&gt;</span></span><a class="headerlink" href="#cmdoption-stride-projects-export-energy-projection-f" title="Link to this definition">¶</a></dt>
+<dd><p>Exported filename. Supports .csv and .parquet.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Default<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">'energy_projection.csv'</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-projects-export-energy-projection-overwrite">
+<span class="sig-name descname"><span class="pre">--overwrite</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-stride-projects-export-energy-projection-overwrite" title="Link to this definition">¶</a></dt>
+<dd><p>Overwrite the exported filename if it exists.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Default<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<p class="rubric">Arguments</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-projects-export-energy-projection-arg-PROJECT_PATH">
+<span class="sig-name descname"><span class="pre">PROJECT_PATH</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-stride-projects-export-energy-projection-arg-PROJECT_PATH" title="Link to this definition">¶</a></dt>
+<dd><p>Required argument</p>
+</dd></dl>
+
+<p>Examples:</p>
+<p>$ stride projects export-energy-projection test_project</p>
+<p>$ stride projects export-energy-projection test_project -f energy_projection.parquet</p>
+</section>
+<section id="stride-projects-init">
+<h4>init<a class="headerlink" href="#stride-projects-init" title="Link to this heading">¶</a></h4>
+<p>Create a template project configuration file.</p>
+<p>This generates a JSON5 file that can be used with ‘stride projects create’.</p>
+<p class="rubric">Usage</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>stride<span class="w"> </span>projects<span class="w"> </span>init<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
+</pre></div>
+</div>
+<p class="rubric">Options</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-projects-init-c">
+<span id="cmdoption-stride-projects-init-country"></span><span class="sig-name descname"><span class="pre">-c</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--country</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;country&gt;</span></span><a class="headerlink" href="#cmdoption-stride-projects-init-c" title="Link to this definition">¶</a></dt>
+<dd><p>Country name for the project.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Default<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">'Germany'</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-projects-init-o">
+<span id="cmdoption-stride-projects-init-output"></span><span class="sig-name descname"><span class="pre">-o</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--output</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;output&gt;</span></span><a class="headerlink" href="#cmdoption-stride-projects-init-o" title="Link to this definition">¶</a></dt>
+<dd><p>Output filename for the template.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Default<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">'project.json5'</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-projects-init-project-id">
+<span class="sig-name descname"><span class="pre">--project-id</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;project_id&gt;</span></span><a class="headerlink" href="#cmdoption-stride-projects-init-project-id" title="Link to this definition">¶</a></dt>
+<dd><p>Project ID. Defaults to ‘{country}_project’.</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-projects-init-overwrite">
+<span class="sig-name descname"><span class="pre">--overwrite</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-stride-projects-init-overwrite" title="Link to this definition">¶</a></dt>
+<dd><p>Overwrite the output file if it exists.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Default<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<p>Examples:</p>
+<p>Create a template for Germany:</p>
+<p>$ stride projects init –country Germany</p>
+<p>Create a template with a custom filename:</p>
+<p>$ stride projects init –country Chile -o chile_project.json5</p>
+</section>
+</section>
+<section id="stride-scenarios">
+<h3>scenarios<a class="headerlink" href="#stride-scenarios" title="Link to this heading">¶</a></h3>
+<p>Scenario commands</p>
+<p class="rubric">Usage</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>stride<span class="w"> </span>scenarios<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span><span class="w"> </span>COMMAND<span class="w"> </span><span class="o">[</span>ARGS<span class="o">]</span>...
+</pre></div>
+</div>
+<section id="stride-scenarios-list">
+<h4>list<a class="headerlink" href="#stride-scenarios-list" title="Link to this heading">¶</a></h4>
+<p>List the scenarios stored in the project.</p>
+<p class="rubric">Usage</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>stride<span class="w"> </span>scenarios<span class="w"> </span>list<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span><span class="w"> </span>PROJECT_PATH
+</pre></div>
+</div>
+<p class="rubric">Arguments</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-scenarios-list-arg-PROJECT_PATH">
+<span class="sig-name descname"><span class="pre">PROJECT_PATH</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-stride-scenarios-list-arg-PROJECT_PATH" title="Link to this definition">¶</a></dt>
+<dd><p>Required argument</p>
+</dd></dl>
+
+</section>
+</section>
+<section id="stride-view">
+<h3>view<a class="headerlink" href="#stride-view" title="Link to this heading">¶</a></h3>
+<p>Start the STRIDE dashboard UI.</p>
+<p>If PROJECT_PATH is provided, opens the UI with that project loaded.
+If no project is provided, opens the UI without a project where you can
+load one using the sidebar.</p>
+<p>By default, if a default user palette is set, it will override the project palette.
+Use –no-default-palette to disable this behavior, or –user-palette to specify
+a different user palette to use.</p>
+<p class="rubric">Usage</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>stride<span class="w"> </span>view<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span><span class="w"> </span><span class="o">[</span>PROJECT_PATH<span class="o">]</span>
+</pre></div>
+</div>
+<p class="rubric">Options</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-view-host">
+<span class="sig-name descname"><span class="pre">--host</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;host&gt;</span></span><a class="headerlink" href="#cmdoption-stride-view-host" title="Link to this definition">¶</a></dt>
+<dd><p>Host to run the UI server on</p>
+<dl class="field-list simple">
+<dt class="field-odd">Default<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">'127.0.0.1'</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-view-port">
+<span class="sig-name descname"><span class="pre">--port</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;port&gt;</span></span><a class="headerlink" href="#cmdoption-stride-view-port" title="Link to this definition">¶</a></dt>
+<dd><p>Port to run the UI server on</p>
+<dl class="field-list simple">
+<dt class="field-odd">Default<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">8050</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-view-debug">
+<span class="sig-name descname"><span class="pre">--debug</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-stride-view-debug" title="Link to this definition">¶</a></dt>
+<dd><p>Run in debug mode</p>
+<dl class="field-list simple">
+<dt class="field-odd">Default<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-view-user-palette">
+<span class="sig-name descname"><span class="pre">--user-palette</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;user_palette&gt;</span></span><a class="headerlink" href="#cmdoption-stride-view-user-palette" title="Link to this definition">¶</a></dt>
+<dd><p>Override project palette with a user palette</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-view-no-default-palette">
+<span class="sig-name descname"><span class="pre">--no-default-palette</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-stride-view-no-default-palette" title="Link to this definition">¶</a></dt>
+<dd><p>Disable automatic loading of default user palette</p>
+</dd></dl>
+
+<p class="rubric">Arguments</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-stride-view-arg-PROJECT_PATH">
+<span class="sig-name descname"><span class="pre">PROJECT_PATH</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-stride-view-arg-PROJECT_PATH" title="Link to this definition">¶</a></dt>
+<dd><p>Optional argument</p>
+</dd></dl>
+
+</section>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          <a class="prev-page" href="project_api.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">stride Project API</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2025, Alliance for Sustainable Energy, LLC
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">CLI reference</a><ul>
+<li><a class="reference internal" href="#stride">stride</a><ul>
+<li><a class="reference internal" href="#stride-calculated-tables">calculated-tables</a><ul>
+<li><a class="reference internal" href="#stride-calculated-tables-export">export</a></li>
+<li><a class="reference internal" href="#stride-calculated-tables-list">list</a></li>
+<li><a class="reference internal" href="#stride-calculated-tables-override">override</a></li>
+<li><a class="reference internal" href="#stride-calculated-tables-remove-override">remove-override</a></li>
+<li><a class="reference internal" href="#stride-calculated-tables-show">show</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#stride-data-tables">data-tables</a><ul>
+<li><a class="reference internal" href="#stride-data-tables-list">list</a></li>
+<li><a class="reference internal" href="#stride-data-tables-show">show</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#stride-datasets">datasets</a><ul>
+<li><a class="reference internal" href="#stride-datasets-download">download</a></li>
+<li><a class="reference internal" href="#stride-datasets-list-countries">list-countries</a></li>
+<li><a class="reference internal" href="#stride-datasets-list-model-years">list-model-years</a></li>
+<li><a class="reference internal" href="#stride-datasets-list-remote">list-remote</a></li>
+<li><a class="reference internal" href="#stride-datasets-list-weather-years">list-weather-years</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#stride-palette">palette</a><ul>
+<li><a class="reference internal" href="#stride-palette-get-default">get-default</a></li>
+<li><a class="reference internal" href="#stride-palette-init">init</a></li>
+<li><a class="reference internal" href="#stride-palette-list">list</a></li>
+<li><a class="reference internal" href="#stride-palette-refresh">refresh</a></li>
+<li><a class="reference internal" href="#stride-palette-set-default">set-default</a></li>
+<li><a class="reference internal" href="#stride-palette-view">view</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#stride-projects">projects</a><ul>
+<li><a class="reference internal" href="#stride-projects-create">create</a></li>
+<li><a class="reference internal" href="#stride-projects-export-energy-projection">export-energy-projection</a></li>
+<li><a class="reference internal" href="#stride-projects-init">init</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#stride-scenarios">scenarios</a><ul>
+<li><a class="reference internal" href="#stride-scenarios-list">list</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#stride-view">view</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=f539c95a"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=3a0c56fd"></script>
+    </body>
+</html>

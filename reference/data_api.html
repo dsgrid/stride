@@ -1,0 +1,1012 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="stride Project API" href="project_api.html"><link rel="prev" title="Reference" href="index.html">
+
+    <!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
+        <title>Data API - Stride Documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/autodoc_pydantic.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">Stride Documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  
+  <span class="sidebar-brand-text">Stride Documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../explanation/index.html">Core Concepts</a><input aria-label="Toggle navigation of Core Concepts" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../explanation/data_download.html">Data Download</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../explanation/data_validation.html">Data Validation with dsgrid</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../explanation/customizing_checks.html">Customizing Dataset Checks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../explanation/dbt_computation.html">dbt Computation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../explanation/weather_year_modeling.html">Weather Year Modeling</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../how_tos/index.html">How Tos</a><input aria-label="Toggle navigation of How Tos" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../how_tos/getting_started/index.html">Getting Started</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how_tos/download_datasets.html">Download Datasets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how_tos/override_calculated_tables.html">Override Calculated Tables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how_tos/launch_dashboard.html">Launch the Dashboard</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how_tos/customize_palette.html">Customize the Color Palette</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how_tos/compare_scenarios.html">Compare Scenarios</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../how_tos/export_results.html">Export Results</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../tutorials/index.html">Tutorials</a><input aria-label="Toggle navigation of Tutorials" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/create_project.html">Create a project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/dbt_project.html">Browse the dbt project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/manage_calculated_tables.html">Manage calculated tables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/data_api_tutorial.html">Process results with Python</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/debugging_stride.html">Debug stride source code</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Reference</a><input aria-label="Toggle navigation of Reference" checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Data API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="project_api.html">stride Project API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cli_reference.html">CLI reference</a></li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../_sources/reference/data_api.md.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="data-api">
+<span id="data-api-reference"></span><h1>Data API<a class="headerlink" href="#data-api" title="Link to this heading">¶</a></h1>
+<p>This page displays the data API methods available for accessing, filtering, and aggregating the stride energy projection table.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="stride.api.APIClient">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">stride.api.</span></span><span class="sig-name descname"><span class="pre">APIClient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">project</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="project_api.html#stride.Project" title="stride.project.Project"><span class="pre">Project</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#stride.api.APIClient" title="Link to this definition">¶</a></dt>
+<dd><p>Singleton API client for querying STRIDE electricity load and demand data.</p>
+<p>This class provides a thread-safe singleton interface to a DuckDB database containing
+electricity consumption, demand, and related metrics data. It ensures only one database
+connection exists throughout the application lifecycle while providing convenient
+methods for common data queries used in dashboard visualizations.</p>
+<p>The client supports various data retrieval patterns including:
+- Annual consumption and peak demand metrics with optional breakdowns
+- Load duration curves for capacity planning analysis
+- Time series data with flexible resampling and grouping
+- Seasonal load pattern analysis
+- Secondary metrics integration (economic, demographic, weather data)</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="stride.api.APIClient.db">
+<span class="sig-name descname"><span class="pre">db</span></span><a class="headerlink" href="#stride.api.APIClient.db" title="Link to this definition">¶</a></dt>
+<dd><p>The underlying DuckDB database connection</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>duckdb.DuckDBPyConnection</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="stride.api.APIClient.project_config">
+<span class="sig-name descname"><span class="pre">project_config</span></span><a class="headerlink" href="#stride.api.APIClient.project_config" title="Link to this definition">¶</a></dt>
+<dd><p>The project configuration if provided</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ProjectConfig, optional</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="stride.api.APIClient.energy_proj_table">
+<span class="sig-name descname"><span class="pre">energy_proj_table</span></span><a class="headerlink" href="#stride.api.APIClient.energy_proj_table" title="Link to this definition">¶</a></dt>
+<dd><p>Name of the energy projection table</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="stride.api.APIClient.project_country">
+<span class="sig-name descname"><span class="pre">project_country</span></span><a class="headerlink" href="#stride.api.APIClient.project_country" title="Link to this definition">¶</a></dt>
+<dd><p>Country identifier for the project</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Initialize with database path</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">client</span> <span class="o">=</span> <span class="n">APIClient</span><span class="p">(</span><span class="s2">&quot;/path/to/database.db&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Initialize with ProjectConfig</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">client</span> <span class="o">=</span> <span class="n">APIClient</span><span class="p">(</span><span class="n">project_config</span><span class="o">=</span><span class="n">config</span><span class="p">,</span> <span class="n">db_connection</span><span class="o">=</span><span class="n">conn</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Query annual consumption by sector</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">consumption</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_annual_electricity_consumption</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">scenarios</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;baseline&quot;</span><span class="p">,</span> <span class="s2">&quot;high_growth&quot;</span><span class="p">],</span> <span class="n">group_by</span><span class="o">=</span><span class="s2">&quot;Sector&quot;</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="py property">
+<dt class="sig sig-object py" id="stride.api.APIClient.years">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">years</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#stride.api.APIClient.years" title="Link to this definition">¶</a></dt>
+<dd><p>Get cached list of valid model years.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A list of valid model years from the database.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>list[int]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="stride.api.APIClient.scenarios">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">scenarios</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#stride.api.APIClient.scenarios" title="Link to this definition">¶</a></dt>
+<dd><p>Get cached list of valid scenarios.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A list of valid scenarios from the database.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>list[str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stride.api.APIClient.refresh_metadata">
+<span class="sig-name descname"><span class="pre">refresh_metadata</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#stride.api.APIClient.refresh_metadata" title="Link to this definition">¶</a></dt>
+<dd><p>Refresh cached years and scenarios by re-reading from database.
+Call this if the database content has changed.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stride.api.APIClient.get_unique_sectors">
+<span class="sig-name descname"><span class="pre">get_unique_sectors</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#stride.api.APIClient.get_unique_sectors" title="Link to this definition">¶</a></dt>
+<dd><p>Get unique sectors from the energy projection table.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Sorted list of unique sectors from the database</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>list[str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stride.api.APIClient.get_unique_end_uses">
+<span class="sig-name descname"><span class="pre">get_unique_end_uses</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#stride.api.APIClient.get_unique_end_uses" title="Link to this definition">¶</a></dt>
+<dd><p>Get unique end uses (metrics) from the energy projection table.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Sorted list of unique end uses/metrics from the database</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>list[str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stride.api.APIClient.get_years">
+<span class="sig-name descname"><span class="pre">get_years</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#stride.api.APIClient.get_years" title="Link to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A list of valid model years. Used for validating inputs into api query functions.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>list[int]</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">client</span> <span class="o">=</span> <span class="n">APIClient</span><span class="p">(</span><span class="n">path_or_conn</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">years</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_years</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">years</span><span class="p">)</span>
+<span class="go">[2025, 2030, 2035, 2040, 2045, 2050]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stride.api.APIClient.get_annual_electricity_consumption">
+<span class="sig-name descname"><span class="pre">get_annual_electricity_consumption</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scenarios</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">years</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">group_by</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'End</span> <span class="pre">Use'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Sector'</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#stride.api.APIClient.get_annual_electricity_consumption" title="Link to this definition">¶</a></dt>
+<dd><p>Queries the Total Annual Consumption for each scenario.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>years</strong> (<em>list</em><em>[</em><em>int</em><em>]</em><em>, </em><em>optional</em>) – Valid projection years for the opened project. If None, uses all projection years.</p></li>
+<li><p><strong>group_by</strong> (<em>ConsumptionBreakdown</em><em>, </em><em>optional</em>) – Optionally breakdown by Sector and end Use. If None, uses total.</p></li>
+<li><p><strong>scenarios</strong> (<em>list</em><em>[</em><em>str</em><em>]</em><em>, </em><em>optional</em>) – Optional list of scenarios to filter by. If None, uses all scenarios available.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p>DataFrame with consumption values in tall format.</p>
+<p>Columns:
+- scenario: str, scenario name
+- year: int, projection year
+- sector/end_use: str, breakdown category (if group_by specified)
+- value: float, consumption value in MWh</p>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">client</span> <span class="o">=</span> <span class="n">APIClient</span><span class="p">(</span><span class="n">path_or_conn</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Get total consumption for all scenarios and years</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">df</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_annual_electricity_consumption</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">|-------------|------|-------------|-------|</span>
+<span class="o">|</span> <span class="n">scenario</span>    <span class="o">|</span> <span class="n">year</span> <span class="o">|</span> <span class="n">value</span> <span class="o">|</span>
+<span class="o">|-------------|------|-------|</span>
+<span class="o">|</span> <span class="n">baseline</span>    <span class="o">|</span> <span class="mi">2025</span> <span class="o">|</span> <span class="mi">5500</span>  <span class="o">|</span>
+<span class="o">|</span> <span class="n">baseline</span>    <span class="o">|</span> <span class="mi">2030</span> <span class="o">|</span> <span class="mi">5900</span>  <span class="o">|</span>
+<span class="o">|</span> <span class="n">high_growth</span> <span class="o">|</span> <span class="mi">2025</span> <span class="o">|</span> <span class="mi">6000</span>  <span class="o">|</span>
+<span class="o">|</span> <span class="n">high_growth</span> <span class="o">|</span> <span class="mi">2030</span> <span class="o">|</span> <span class="mi">6500</span>  <span class="o">|</span>
+<span class="o">|-------------|------|-------------|-------|</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Get consumption by sector for specific scenarios</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">df</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_annual_electricity_consumption</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">scenarios</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;baseline&quot;</span><span class="p">,</span> <span class="s2">&quot;high_growth&quot;</span><span class="p">],</span> <span class="n">group_by</span><span class="o">=</span><span class="s2">&quot;Sector&quot;</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">|-------------|------|-------------|-------|</span>
+<span class="o">|</span> <span class="n">scenario</span>    <span class="o">|</span> <span class="n">year</span> <span class="o">|</span> <span class="n">sector</span>      <span class="o">|</span> <span class="n">value</span> <span class="o">|</span>
+<span class="o">|-------------|------|-------------|-------|</span>
+<span class="o">|</span> <span class="n">baseline</span>    <span class="o">|</span> <span class="mi">2025</span> <span class="o">|</span> <span class="n">Commercial</span>  <span class="o">|</span> <span class="mi">1500</span>  <span class="o">|</span>
+<span class="o">|</span> <span class="n">baseline</span>    <span class="o">|</span> <span class="mi">2025</span> <span class="o">|</span> <span class="n">Industrial</span>  <span class="o">|</span> <span class="mi">2200</span>  <span class="o">|</span>
+<span class="o">|</span> <span class="n">baseline</span>    <span class="o">|</span> <span class="mi">2025</span> <span class="o">|</span> <span class="n">Residential</span> <span class="o">|</span> <span class="mi">1800</span>  <span class="o">|</span>
+<span class="o">|</span> <span class="n">baseline</span>    <span class="o">|</span> <span class="mi">2030</span> <span class="o">|</span> <span class="n">Commercial</span>  <span class="o">|</span> <span class="mi">1650</span>  <span class="o">|</span>
+<span class="o">|</span> <span class="n">high_growth</span> <span class="o">|</span> <span class="mi">2025</span> <span class="o">|</span> <span class="n">Commercial</span>  <span class="o">|</span> <span class="mi">1600</span>  <span class="o">|</span>
+<span class="o">|-------------|------|-------------|-------|</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stride.api.APIClient.get_annual_peak_demand">
+<span class="sig-name descname"><span class="pre">get_annual_peak_demand</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scenarios</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">years</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">group_by</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'End</span> <span class="pre">Use'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Sector'</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#stride.api.APIClient.get_annual_peak_demand" title="Link to this definition">¶</a></dt>
+<dd><p>Queries the peak annual consumption for each scenario. If group_by is specified,
+uses the peak timestamp to look up corresponding End Use or Sector values.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>years</strong> (<em>list</em><em>[</em><em>int</em><em>]</em><em>, </em><em>optional</em>) – Valid projection years for the opened project. If None, uses all projection years.</p></li>
+<li><p><strong>group_by</strong> (<em>ConsumptionBreakdown</em><em>, </em><em>optional</em>) – Optionally breakdown by Sector and end Use. If None, uses total.</p></li>
+<li><p><strong>scenarios</strong> (<em>list</em><em>[</em><em>str</em><em>]</em><em>, </em><em>optional</em>) – Optional list of scenarios to filter by. If None, uses all scenarios available.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p>DataFrame with peak demand values in tall format.</p>
+<p>Columns:
+- scenario: str, scenario name
+- year: int, projection year
+- sector/end_use: str, breakdown category (if group_by specified)
+- value: float, peak demand value in MW</p>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">client</span> <span class="o">=</span> <span class="n">APIClient</span><span class="p">(</span><span class="n">path_or_conn</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Get peak demand for all scenarios and years (no breakdown)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">df</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_annual_peak_demand</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">|-------------|------|-------|</span>
+<span class="o">|</span> <span class="n">scenario</span>    <span class="o">|</span> <span class="n">year</span> <span class="o">|</span> <span class="n">value</span> <span class="o">|</span>
+<span class="o">|-------------|------|-------|</span>
+<span class="o">|</span> <span class="n">baseline</span>    <span class="o">|</span> <span class="mi">2025</span> <span class="o">|</span> <span class="mi">5500</span>  <span class="o">|</span>
+<span class="o">|</span> <span class="n">baseline</span>    <span class="o">|</span> <span class="mi">2030</span> <span class="o">|</span> <span class="mi">5900</span>  <span class="o">|</span>
+<span class="o">|</span> <span class="n">high_growth</span> <span class="o">|</span> <span class="mi">2025</span> <span class="o">|</span> <span class="mi">6000</span>  <span class="o">|</span>
+<span class="o">|</span> <span class="n">high_growth</span> <span class="o">|</span> <span class="mi">2030</span> <span class="o">|</span> <span class="mi">6500</span>  <span class="o">|</span>
+<span class="o">|-------------|------|-------|</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Get peak demand by sector for specific scenarios</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">df</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_annual_peak_demand</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">scenarios</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;baseline&quot;</span><span class="p">,</span> <span class="s2">&quot;high_growth&quot;</span><span class="p">],</span> <span class="n">group_by</span><span class="o">=</span><span class="s2">&quot;Sector&quot;</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">|-------------|------|-------------|-------|</span>
+<span class="o">|</span> <span class="n">scenario</span>    <span class="o">|</span> <span class="n">year</span> <span class="o">|</span> <span class="n">sector</span>      <span class="o">|</span> <span class="n">value</span> <span class="o">|</span>
+<span class="o">|-------------|------|-------------|-------|</span>
+<span class="o">|</span> <span class="n">baseline</span>    <span class="o">|</span> <span class="mi">2025</span> <span class="o">|</span> <span class="n">Commercial</span>  <span class="o">|</span> <span class="mi">1500</span>  <span class="o">|</span>
+<span class="o">|</span> <span class="n">baseline</span>    <span class="o">|</span> <span class="mi">2025</span> <span class="o">|</span> <span class="n">Industrial</span>  <span class="o">|</span> <span class="mi">2200</span>  <span class="o">|</span>
+<span class="o">|</span> <span class="n">baseline</span>    <span class="o">|</span> <span class="mi">2025</span> <span class="o">|</span> <span class="n">Residential</span> <span class="o">|</span> <span class="mi">1800</span>  <span class="o">|</span>
+<span class="o">|</span> <span class="n">baseline</span>    <span class="o">|</span> <span class="mi">2030</span> <span class="o">|</span> <span class="n">Commercial</span>  <span class="o">|</span> <span class="mi">1650</span>  <span class="o">|</span>
+<span class="o">|</span> <span class="n">high_growth</span> <span class="o">|</span> <span class="mi">2025</span> <span class="o">|</span> <span class="n">Commercial</span>  <span class="o">|</span> <span class="mi">1600</span>  <span class="o">|</span>
+<span class="o">|-------------|------|-------------|-------|</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stride.api.APIClient.get_secondary_metric">
+<span class="sig-name descname"><span class="pre">get_secondary_metric</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scenario</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metric</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'GDP'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'GDP</span> <span class="pre">Per</span> <span class="pre">Capita'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Human</span> <span class="pre">Development</span> <span class="pre">Index'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Population'</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">years</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#stride.api.APIClient.get_secondary_metric" title="Link to this definition">¶</a></dt>
+<dd><p>Queries the database for the secondary metric to overlay against a particular plot on the secondary axis</p>
+<p>!!!Must be able to handle multiple overrides of a particular metric to differentiate between scenarios!!!</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>scenario</strong> (<em>str</em>) – A valid scenario for the project.</p></li>
+<li><p><strong>metric</strong> (<em>SecondaryMetric</em>) – The secondary metric to query.</p></li>
+<li><p><strong>years</strong> (<em>list</em><em>[</em><em>int</em><em>]</em><em>, </em><em>optional</em>) – A list of valid model years to filter by. Uses all model years if None specified.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p>DataFrame with secondary metric values.</p>
+<p>Columns:
+- year: int, model year
+- value: float, metric value for the specified scenario and metric type</p>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">client</span> <span class="o">=</span> <span class="n">APIClient</span><span class="p">(</span><span class="n">path_or_conn</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">df</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_secondary_metric</span><span class="p">(</span><span class="s2">&quot;baseline&quot;</span><span class="p">,</span> <span class="s2">&quot;GDP&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mi">2025</span><span class="p">,</span> <span class="mi">2030</span><span class="p">,</span> <span class="mi">2035</span><span class="p">])</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">|------|-------|</span>
+<span class="o">|</span> <span class="n">year</span> <span class="o">|</span> <span class="n">value</span> <span class="o">|</span>
+<span class="o">|------|-------|</span>
+<span class="o">|</span> <span class="mi">2025</span> <span class="o">|</span> <span class="mf">1250.5</span><span class="o">|</span>
+<span class="o">|</span> <span class="mi">2030</span> <span class="o">|</span> <span class="mf">1380.2</span><span class="o">|</span>
+<span class="o">|</span> <span class="mi">2035</span> <span class="o">|</span> <span class="mf">1520.8</span><span class="o">|</span>
+<span class="o">|------|-------|</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stride.api.APIClient.get_load_duration_curve">
+<span class="sig-name descname"><span class="pre">get_load_duration_curve</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">years</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scenarios</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#stride.api.APIClient.get_load_duration_curve" title="Link to this definition">¶</a></dt>
+<dd><p>Gets the load duration curve for each scenario or year</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>years</strong> (<em>int</em><em> | </em><em>list</em><em>[</em><em>int</em><em>]</em><em>, </em><em>optional</em>) – A valid year or list of years for the given project. If None, uses first year.</p></li>
+<li><p><strong>scenarios</strong> (<em>list</em><em>[</em><em>str</em><em>]</em><em>, </em><em>optional</em>) – List of scenarios to filter by. If None, uses all scenarios.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p>DataFrame with load duration curve data.</p>
+<dl>
+<dt>Columns:</dt><dd><ul class="simple">
+<li><p>{scenario_name} or {year}: float, demand values sorted from highest to lowest
+for each scenario (if multiple scenarios) or year (if multiple years)</p></li>
+</ul>
+<p>Index: row number (0 to 8759 for hourly data)</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If both years and scenarios are lists with more than one item</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">client</span> <span class="o">=</span> <span class="n">APIClient</span><span class="p">(</span><span class="n">path_or_conn</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Single year, multiple scenarios</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">df</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_load_duration_curve</span><span class="p">(</span><span class="mi">2030</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;baseline&quot;</span><span class="p">,</span> <span class="s2">&quot;high_growth&quot;</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Multiple years, single scenario</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">df</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_load_duration_curve</span><span class="p">([</span><span class="mi">2025</span><span class="p">,</span> <span class="mi">2030</span><span class="p">],</span> <span class="p">[</span><span class="s2">&quot;baseline&quot;</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Single year, single scenario</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">df</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_load_duration_curve</span><span class="p">(</span><span class="mi">2030</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;baseline&quot;</span><span class="p">])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stride.api.APIClient.get_scenario_summary">
+<span class="sig-name descname"><span class="pre">get_scenario_summary</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scenario</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">year</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#stride.api.APIClient.get_scenario_summary" title="Link to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>scenario</strong> (<em>str</em>) – A valid scenario from the project.</p></li>
+<li><p><strong>year</strong> (<em>int</em>) – The projection year to get the summary.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p>Dictionary of KPI metrics with metric names as keys and values as floats.</p>
+<p>Keys:
+- TOTAL_CONSUMPTION: float, total electricity consumption (MWh)
+- PERCENT_GROWTH: float, percentage growth from base year
+- PEAK_DEMAND: float, peak demand (MW)
+- Additional KPIs to be defined</p>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict[str, float]</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">client</span> <span class="o">=</span> <span class="n">APIClient</span><span class="p">(</span><span class="n">path_or_conn</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">summary</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_scenario_summary</span><span class="p">(</span><span class="s2">&quot;baseline&quot;</span><span class="p">,</span> <span class="mi">2030</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">summary</span><span class="p">)</span>
+<span class="go">{</span>
+<span class="go">    &#39;TOTAL_CONSUMPTION&#39;: 45.2,</span>
+<span class="go">    &#39;PERCENT_GROWTH&#39;: 12.5,</span>
+<span class="go">    &#39;PEAK_DEMAND&#39;: 5500.0</span>
+<span class="go">}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stride.api.APIClient.get_weather_metric">
+<span class="sig-name descname"><span class="pre">get_weather_metric</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scenario</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">year</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wvar</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'BAIT'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'HDD'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'CDD'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Temperature'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Solar_Radiation'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Wind_Speed'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Dew_Point'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Humidity'</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resample</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'Hourly'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Daily</span> <span class="pre">Mean'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Weekly</span> <span class="pre">Mean'</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timegroup</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'Seasonal'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Seasonal</span> <span class="pre">and</span> <span class="pre">Weekday/Weekend'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Weekday/Weekend'</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#stride.api.APIClient.get_weather_metric" title="Link to this definition">¶</a></dt>
+<dd><p>Gets the weather time series data to use as a secondary axis. Optionally Resample to Daily or weekly mean</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>scenario</strong> (<em>str</em>) – The scenario specific weather source data</p></li>
+<li><p><strong>year</strong> (<em>int</em>) – The valid model year to choose for the weather metric</p></li>
+<li><p><strong>wvar</strong> (<em>WeatherVar</em>) – The weather variable to choose (currently only “BAIT” is supported)</p></li>
+<li><p><strong>resample</strong> (<em>ResampleOptions</em><em>, </em><em>optional</em>) – Resampling option for the data</p></li>
+<li><p><strong>timegroup</strong> (<em>TimeGroup</em><em>, </em><em>optional</em>) – Time grouping option</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p>Pandas DataFrame with weather values</p>
+<dl class="simple">
+<dt>Columns:</dt><dd><ul class="simple">
+<li><p>datetime: Datetime64, datetime or time period depending on resample option</p></li>
+<li><p>value: float, BAIT (Balance Point Adjusted Integrated Temperature) values</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">client</span> <span class="o">=</span> <span class="n">APIClient</span><span class="p">(</span><span class="n">path_or_conn</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">weather</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_weather_metric</span><span class="p">(</span><span class="s2">&quot;baseline&quot;</span><span class="p">,</span> <span class="mi">2030</span><span class="p">,</span> <span class="s2">&quot;BAIT&quot;</span><span class="p">,</span> <span class="s2">&quot;Daily Mean&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">weather</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">|------------|-------|</span>
+<span class="o">|</span>  <span class="n">datetime</span>  <span class="o">|</span> <span class="n">value</span> <span class="o">|</span>
+<span class="o">|------------|-------|</span>
+<span class="o">|</span> <span class="mi">2030</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">01</span> <span class="o">|</span>  <span class="mf">5.2</span>  <span class="o">|</span>
+<span class="o">|</span> <span class="mi">2030</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">02</span> <span class="o">|</span>  <span class="mf">6.1</span>  <span class="o">|</span>
+<span class="o">|</span> <span class="mi">2030</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">03</span> <span class="o">|</span>  <span class="mf">4.8</span>  <span class="o">|</span>
+<span class="o">|</span> <span class="mi">2030</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">04</span> <span class="o">|</span>  <span class="mf">7.3</span>  <span class="o">|</span>
+<span class="o">|</span> <span class="mi">2030</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">05</span> <span class="o">|</span>  <span class="mf">8.9</span>  <span class="o">|</span>
+<span class="o">|------------|-------|</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stride.api.APIClient.get_time_series_comparison">
+<span class="sig-name descname"><span class="pre">get_time_series_comparison</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scenario</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">years</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">group_by</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'End</span> <span class="pre">Use'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Sector'</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resample</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'Hourly'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Daily</span> <span class="pre">Mean'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Weekly</span> <span class="pre">Mean'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'Daily</span> <span class="pre">Mean'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#stride.api.APIClient.get_time_series_comparison" title="Link to this definition">¶</a></dt>
+<dd><p>User selects 1 or more than model years. Returns tall format data with time period information.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>scenario</strong> (<em>str</em>) – A valid scenario for the project.</p></li>
+<li><p><strong>years</strong> (<em>Union</em><em>[</em><em>int</em><em>, </em><em>list</em><em>[</em><em>int</em><em>]</em><em>]</em>) – 1 or 2 model years to view on the same chart.</p></li>
+<li><p><strong>group_by</strong> (<em>ConsumptionBreakdown</em>) – The load broken down by sector or end use.</p></li>
+<li><p><strong>resample</strong> (<em>ResampleOptions</em><em>, </em><em>optional</em>) – Resampling option for the data. Use None for raw hourly data.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p>DataFrame with electricity consumption time series data in tall format.</p>
+<p>Columns:
+- scenario: str, scenario name
+- year: int, projection year
+- time_period: int, time period (hour of year for raw data, day/week for resampled)
+- sector/end_use: str, breakdown category (if group_by specified)
+- value: float, consumption value</p>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">client</span> <span class="o">=</span> <span class="n">APIClient</span><span class="p">(</span><span class="n">path_or_conn</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Raw hourly data with group_by</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">df</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_time_series_comparison</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="s2">&quot;baseline&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mi">2025</span><span class="p">,</span> <span class="mi">2030</span><span class="p">],</span> <span class="s2">&quot;Sector&quot;</span><span class="p">,</span> <span class="n">resample</span><span class="o">=</span><span class="kc">None</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">|----------|------|-------------|-------------|--------|</span>
+<span class="o">|</span> <span class="n">scenario</span> <span class="o">|</span> <span class="n">year</span> <span class="o">|</span> <span class="n">time_period</span> <span class="o">|</span> <span class="n">sector</span>      <span class="o">|</span> <span class="n">value</span>  <span class="o">|</span>
+<span class="o">|----------|------|-------------|-------------|--------|</span>
+<span class="o">|</span> <span class="n">baseline</span> <span class="o">|</span> <span class="mi">2025</span> <span class="o">|</span> <span class="mi">1</span>           <span class="o">|</span> <span class="n">Commercial</span>  <span class="o">|</span> <span class="mf">125.5</span>  <span class="o">|</span>
+<span class="o">|</span> <span class="n">baseline</span> <span class="o">|</span> <span class="mi">2025</span> <span class="o">|</span> <span class="mi">1</span>           <span class="o">|</span> <span class="n">Industrial</span>  <span class="o">|</span> <span class="mf">210.3</span>  <span class="o">|</span>
+<span class="o">|</span> <span class="n">baseline</span> <span class="o">|</span> <span class="mi">2025</span> <span class="o">|</span> <span class="mi">1</span>           <span class="o">|</span> <span class="n">Residential</span> <span class="o">|</span> <span class="mf">180.7</span>  <span class="o">|</span>
+<span class="o">|</span> <span class="n">baseline</span> <span class="o">|</span> <span class="mi">2025</span> <span class="o">|</span> <span class="mi">2</span>           <span class="o">|</span> <span class="n">Commercial</span>  <span class="o">|</span> <span class="mf">124.8</span>  <span class="o">|</span>
+<span class="o">|----------|------|-------------|-------------|--------|</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Resampled data with group_by specified</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">df</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_time_series_comparison</span><span class="p">(</span><span class="s2">&quot;baseline&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mi">2025</span><span class="p">,</span> <span class="mi">2030</span><span class="p">],</span> <span class="s2">&quot;Sector&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">|----------|------|-------------|-------------|--------|</span>
+<span class="o">|</span> <span class="n">scenario</span> <span class="o">|</span> <span class="n">year</span> <span class="o">|</span> <span class="n">time_period</span> <span class="o">|</span> <span class="n">sector</span>      <span class="o">|</span> <span class="n">value</span>  <span class="o">|</span>
+<span class="o">|----------|------|-------------|-------------|--------|</span>
+<span class="o">|</span> <span class="n">baseline</span> <span class="o">|</span> <span class="mi">2025</span> <span class="o">|</span> <span class="mi">1</span>           <span class="o">|</span> <span class="n">Commercial</span>  <span class="o">|</span> <span class="mf">1250.5</span> <span class="o">|</span>
+<span class="o">|</span> <span class="n">baseline</span> <span class="o">|</span> <span class="mi">2025</span> <span class="o">|</span> <span class="mi">1</span>           <span class="o">|</span> <span class="n">Industrial</span>  <span class="o">|</span> <span class="mf">2100.3</span> <span class="o">|</span>
+<span class="o">|</span> <span class="n">baseline</span> <span class="o">|</span> <span class="mi">2025</span> <span class="o">|</span> <span class="mi">1</span>           <span class="o">|</span> <span class="n">Residential</span> <span class="o">|</span> <span class="mf">1800.7</span> <span class="o">|</span>
+<span class="o">|</span> <span class="n">baseline</span> <span class="o">|</span> <span class="mi">2025</span> <span class="o">|</span> <span class="mi">2</span>           <span class="o">|</span> <span class="n">Commercial</span>  <span class="o">|</span> <span class="mf">1245.8</span> <span class="o">|</span>
+<span class="o">|</span> <span class="n">baseline</span> <span class="o">|</span> <span class="mi">2030</span> <span class="o">|</span> <span class="mi">1</span>           <span class="o">|</span> <span class="n">Commercial</span>  <span class="o">|</span> <span class="mf">1380.2</span> <span class="o">|</span>
+<span class="o">|----------|------|-------------|-------------|--------|</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Raw hourly data without group_by</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">df</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_time_series_comparison</span><span class="p">(</span><span class="s2">&quot;baseline&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mi">2025</span><span class="p">,</span> <span class="mi">2030</span><span class="p">],</span> <span class="n">resample</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">|----------|------|-------------|--------|</span>
+<span class="o">|</span> <span class="n">scenario</span> <span class="o">|</span> <span class="n">year</span> <span class="o">|</span> <span class="n">time_period</span> <span class="o">|</span> <span class="n">value</span>  <span class="o">|</span>
+<span class="o">|----------|------|-------------|--------|</span>
+<span class="o">|</span> <span class="n">baseline</span> <span class="o">|</span> <span class="mi">2025</span> <span class="o">|</span> <span class="mi">1</span>           <span class="o">|</span> <span class="mf">5150.5</span> <span class="o">|</span>
+<span class="o">|</span> <span class="n">baseline</span> <span class="o">|</span> <span class="mi">2025</span> <span class="o">|</span> <span class="mi">2</span>           <span class="o">|</span> <span class="mf">5136.2</span> <span class="o">|</span>
+<span class="o">|</span> <span class="n">baseline</span> <span class="o">|</span> <span class="mi">2030</span> <span class="o">|</span> <span class="mi">1</span>           <span class="o">|</span> <span class="mf">5675.4</span> <span class="o">|</span>
+<span class="o">|</span> <span class="n">baseline</span> <span class="o">|</span> <span class="mi">2030</span> <span class="o">|</span> <span class="mi">2</span>           <span class="o">|</span> <span class="mf">5666.5</span> <span class="o">|</span>
+<span class="o">|----------|------|-------------|--------|</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stride.api.APIClient.get_seasonal_load_lines">
+<span class="sig-name descname"><span class="pre">get_seasonal_load_lines</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scenario</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">years</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">group_by</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'Seasonal'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Seasonal</span> <span class="pre">and</span> <span class="pre">Weekday/Weekend'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Weekday/Weekend'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'Seasonal'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'Average</span> <span class="pre">Day'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Peak</span> <span class="pre">Day'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Minimum</span> <span class="pre">Day'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Median</span> <span class="pre">Day'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'Average</span> <span class="pre">Day'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#stride.api.APIClient.get_seasonal_load_lines" title="Link to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>scenario</strong> (<em>str</em>) – A valid scenario within the project.</p></li>
+<li><p><strong>group_by</strong> (<em>TimeGroup</em>) – Seasonal, Weekday/Weekend, or Both.</p></li>
+<li><p><strong>agg</strong> (<em>TimeGroupAgg</em>) – How to aggregate each hour of the day.</p></li>
+<li><p><strong>years</strong> (<em>int</em><em> | </em><em>list</em><em>[</em><em>int</em><em>]</em><em>] </em><em>| </em><em>None</em>) – A single or list of valid model years.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p>DataFrame with seasonal load line data in tall format.</p>
+<p>Columns:
+- scenario: str, scenario name
+- year: int, projection year
+- season: str, season name (Winter, Spring, Summer, Fall) - if group_by includes “Seasonal”
+- day_type: str, day type (Weekday, Weekend) - if group_by includes “Weekday/Weekend”
+- hour_of_day: int, hour of day (0-23)
+- value: float, aggregated load value</p>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">client</span> <span class="o">=</span> <span class="n">APIClient</span><span class="p">(</span><span class="n">path_or_conn</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Seasonal grouping only</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">df</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_seasonal_load_lines</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="s2">&quot;baseline&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mi">2025</span><span class="p">,</span> <span class="mi">2030</span><span class="p">],</span> <span class="s2">&quot;Seasonal&quot;</span><span class="p">,</span> <span class="s2">&quot;Average Day&quot;</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">|----------|------|--------|-------------|--------|</span>
+<span class="o">|</span> <span class="n">scenario</span> <span class="o">|</span> <span class="n">year</span> <span class="o">|</span> <span class="n">season</span> <span class="o">|</span> <span class="n">hour_of_day</span> <span class="o">|</span> <span class="n">value</span>  <span class="o">|</span>
+<span class="o">|----------|------|--------|-------------|--------|</span>
+<span class="o">|</span> <span class="n">baseline</span> <span class="o">|</span> <span class="mi">2025</span> <span class="o">|</span> <span class="n">Winter</span> <span class="o">|</span> <span class="mi">0</span>           <span class="o">|</span> <span class="mf">3200.5</span> <span class="o">|</span>
+<span class="o">|</span> <span class="n">baseline</span> <span class="o">|</span> <span class="mi">2025</span> <span class="o">|</span> <span class="n">Winter</span> <span class="o">|</span> <span class="mi">1</span>           <span class="o">|</span> <span class="mf">3100.2</span> <span class="o">|</span>
+<span class="o">|</span> <span class="n">baseline</span> <span class="o">|</span> <span class="mi">2025</span> <span class="o">|</span> <span class="n">Winter</span> <span class="o">|</span> <span class="mi">2</span>           <span class="o">|</span> <span class="mf">3050.8</span> <span class="o">|</span>
+<span class="o">|</span> <span class="n">baseline</span> <span class="o">|</span> <span class="mi">2025</span> <span class="o">|</span> <span class="n">Spring</span> <span class="o">|</span> <span class="mi">0</span>           <span class="o">|</span> <span class="mf">2800.3</span> <span class="o">|</span>
+<span class="o">|</span> <span class="n">baseline</span> <span class="o">|</span> <span class="mi">2030</span> <span class="o">|</span> <span class="n">Winter</span> <span class="o">|</span> <span class="mi">0</span>           <span class="o">|</span> <span class="mf">3450.2</span> <span class="o">|</span>
+<span class="o">|----------|------|--------|-------------|--------|</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Both seasonal and weekday/weekend grouping</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">df</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_seasonal_load_lines</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="s2">&quot;baseline&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mi">2025</span><span class="p">],</span> <span class="s2">&quot;Seasonal and Weekday/Weekend&quot;</span><span class="p">,</span> <span class="s2">&quot;Average Day&quot;</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">|----------|------|--------|----------|-------------|--------|</span>
+<span class="o">|</span> <span class="n">scenario</span> <span class="o">|</span> <span class="n">year</span> <span class="o">|</span> <span class="n">season</span> <span class="o">|</span> <span class="n">day_type</span> <span class="o">|</span> <span class="n">hour_of_day</span> <span class="o">|</span> <span class="n">value</span>  <span class="o">|</span>
+<span class="o">|----------|------|--------|----------|-------------|--------|</span>
+<span class="o">|</span> <span class="n">baseline</span> <span class="o">|</span> <span class="mi">2025</span> <span class="o">|</span> <span class="n">Winter</span> <span class="o">|</span> <span class="n">Weekday</span>  <span class="o">|</span> <span class="mi">0</span>           <span class="o">|</span> <span class="mf">3400.5</span> <span class="o">|</span>
+<span class="o">|</span> <span class="n">baseline</span> <span class="o">|</span> <span class="mi">2025</span> <span class="o">|</span> <span class="n">Winter</span> <span class="o">|</span> <span class="n">Weekday</span>  <span class="o">|</span> <span class="mi">1</span>           <span class="o">|</span> <span class="mf">3350.2</span> <span class="o">|</span>
+<span class="o">|</span> <span class="n">baseline</span> <span class="o">|</span> <span class="mi">2025</span> <span class="o">|</span> <span class="n">Winter</span> <span class="o">|</span> <span class="n">Weekend</span>  <span class="o">|</span> <span class="mi">0</span>           <span class="o">|</span> <span class="mf">3000.3</span> <span class="o">|</span>
+<span class="o">|</span> <span class="n">baseline</span> <span class="o">|</span> <span class="mi">2025</span> <span class="o">|</span> <span class="n">Spring</span> <span class="o">|</span> <span class="n">Weekday</span>  <span class="o">|</span> <span class="mi">0</span>           <span class="o">|</span> <span class="mf">2900.7</span> <span class="o">|</span>
+<span class="o">|----------|------|--------|----------|-------------|--------|</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="stride.api.APIClient.get_seasonal_load_area">
+<span class="sig-name descname"><span class="pre">get_seasonal_load_area</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scenario</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">year</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">group_by</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'Seasonal'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Seasonal</span> <span class="pre">and</span> <span class="pre">Weekday/Weekend'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Weekday/Weekend'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'Seasonal'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">agg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'Average</span> <span class="pre">Day'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Peak</span> <span class="pre">Day'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Minimum</span> <span class="pre">Day'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Median</span> <span class="pre">Day'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'Average</span> <span class="pre">Day'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">breakdown</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'End</span> <span class="pre">Use'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Sector'</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#stride.api.APIClient.get_seasonal_load_area" title="Link to this definition">¶</a></dt>
+<dd><p>Get seasonal load area data for a single year with optional breakdown by sector/end_use.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>scenario</strong> (<em>str</em>) – A valid scenario within the project.</p></li>
+<li><p><strong>year</strong> (<em>int</em>) – A single valid model year.</p></li>
+<li><p><strong>group_by</strong> (<em>TimeGroup</em>) – Seasonal, Weekday/Weekend, or Both.</p></li>
+<li><p><strong>agg</strong> (<em>TimeGroupAgg</em>) – How to aggregate each hour of the day.</p></li>
+<li><p><strong>breakdown</strong> (<em>ConsumptionBreakdown</em><em>, </em><em>optional</em>) – Optional breakdown by Sector or End Use.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p>DataFrame with seasonal load area data in tall format.</p>
+<p>Columns:
+- scenario: str, scenario name
+- year: int, projection year
+- season: str, season name (Winter, Spring, Summer, Fall) - if group_by includes “Seasonal”
+- day_type: str, day type (Weekday, Weekend) - if group_by includes “Weekday/Weekend”
+- hour_of_day: int, hour of day (0-23)
+- sector/end_use: str, breakdown category (if breakdown specified)
+- value: float, aggregated load value</p>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">client</span> <span class="o">=</span> <span class="n">APIClient</span><span class="p">(</span><span class="n">path_or_conn</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">df</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_seasonal_load_area</span><span class="p">(</span><span class="s2">&quot;baseline&quot;</span><span class="p">,</span> <span class="mi">2030</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">|-------------|------|--------|-------------|-------|</span>
+<span class="o">|</span> <span class="n">scenario</span>    <span class="o">|</span> <span class="n">year</span> <span class="o">|</span> <span class="n">season</span> <span class="o">|</span> <span class="n">hour_of_day</span> <span class="o">|</span> <span class="n">value</span> <span class="o">|</span>
+<span class="o">|-------------|------|--------|-------------|-------|</span>
+<span class="o">|</span> <span class="n">baseline</span>    <span class="o">|</span> <span class="mi">2030</span> <span class="o">|</span> <span class="n">Winter</span> <span class="o">|</span> <span class="mi">0</span>           <span class="o">|</span> <span class="mf">3400.5</span><span class="o">|</span>
+<span class="o">|</span> <span class="n">baseline</span>    <span class="o">|</span> <span class="mi">2030</span> <span class="o">|</span> <span class="n">Winter</span> <span class="o">|</span> <span class="mi">1</span>           <span class="o">|</span> <span class="mf">3350.2</span><span class="o">|</span>
+<span class="o">|</span> <span class="n">baseline</span>    <span class="o">|</span> <span class="mi">2030</span> <span class="o">|</span> <span class="n">Spring</span> <span class="o">|</span> <span class="mi">0</span>           <span class="o">|</span> <span class="mf">2900.7</span><span class="o">|</span>
+<span class="o">|</span> <span class="n">baseline</span>    <span class="o">|</span> <span class="mi">2030</span> <span class="o">|</span> <span class="n">Spring</span> <span class="o">|</span> <span class="mi">1</span>           <span class="o">|</span> <span class="mf">2850.3</span><span class="o">|</span>
+<span class="o">|-------------|------|--------|-------------|-------|</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">df</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get_seasonal_load_area</span><span class="p">(</span><span class="s2">&quot;baseline&quot;</span><span class="p">,</span> <span class="mi">2030</span><span class="p">,</span> <span class="n">breakdown</span><span class="o">=</span><span class="s2">&quot;Sector&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">|-------------|------|--------|-------------|-------------|-------|</span>
+<span class="o">|</span> <span class="n">scenario</span>    <span class="o">|</span> <span class="n">year</span> <span class="o">|</span> <span class="n">season</span> <span class="o">|</span> <span class="n">hour_of_day</span> <span class="o">|</span> <span class="n">sector</span>      <span class="o">|</span> <span class="n">value</span> <span class="o">|</span>
+<span class="o">|-------------|------|--------|-------------|-------------|-------|</span>
+<span class="o">|</span> <span class="n">baseline</span>    <span class="o">|</span> <span class="mi">2030</span> <span class="o">|</span> <span class="n">Winter</span> <span class="o">|</span> <span class="mi">0</span>           <span class="o">|</span> <span class="n">Commercial</span>  <span class="o">|</span> <span class="mf">1200.5</span><span class="o">|</span>
+<span class="o">|</span> <span class="n">baseline</span>    <span class="o">|</span> <span class="mi">2030</span> <span class="o">|</span> <span class="n">Winter</span> <span class="o">|</span> <span class="mi">0</span>           <span class="o">|</span> <span class="n">Industrial</span>  <span class="o">|</span> <span class="mf">1500.2</span><span class="o">|</span>
+<span class="o">|</span> <span class="n">baseline</span>    <span class="o">|</span> <span class="mi">2030</span> <span class="o">|</span> <span class="n">Winter</span> <span class="o">|</span> <span class="mi">0</span>           <span class="o">|</span> <span class="n">Residential</span> <span class="o">|</span> <span class="mf">1700.8</span><span class="o">|</span>
+<span class="o">|</span> <span class="n">baseline</span>    <span class="o">|</span> <span class="mi">2030</span> <span class="o">|</span> <span class="n">Spring</span> <span class="o">|</span> <span class="mi">0</span>           <span class="o">|</span> <span class="n">Commercial</span>  <span class="o">|</span> <span class="mf">1300.7</span><span class="o">|</span>
+<span class="o">|</span> <span class="n">baseline</span>    <span class="o">|</span> <span class="mi">2030</span> <span class="o">|</span> <span class="n">Spring</span> <span class="o">|</span> <span class="mi">0</span>           <span class="o">|</span> <span class="n">Industrial</span>  <span class="o">|</span> <span class="mf">1600.3</span><span class="o">|</span>
+<span class="o">|-------------|------|--------|-------------|-------------|-------|</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="project_api.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">stride Project API</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="index.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Reference</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2025, Alliance for Sustainable Energy, LLC
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Data API</a><ul>
+<li><a class="reference internal" href="#stride.api.APIClient"><code class="docutils literal notranslate"><span class="pre">APIClient</span></code></a><ul>
+<li><a class="reference internal" href="#stride.api.APIClient.db"><code class="docutils literal notranslate"><span class="pre">APIClient.db</span></code></a></li>
+<li><a class="reference internal" href="#stride.api.APIClient.project_config"><code class="docutils literal notranslate"><span class="pre">APIClient.project_config</span></code></a></li>
+<li><a class="reference internal" href="#stride.api.APIClient.energy_proj_table"><code class="docutils literal notranslate"><span class="pre">APIClient.energy_proj_table</span></code></a></li>
+<li><a class="reference internal" href="#stride.api.APIClient.project_country"><code class="docutils literal notranslate"><span class="pre">APIClient.project_country</span></code></a></li>
+<li><a class="reference internal" href="#stride.api.APIClient.years"><code class="docutils literal notranslate"><span class="pre">APIClient.years</span></code></a></li>
+<li><a class="reference internal" href="#stride.api.APIClient.scenarios"><code class="docutils literal notranslate"><span class="pre">APIClient.scenarios</span></code></a></li>
+<li><a class="reference internal" href="#stride.api.APIClient.refresh_metadata"><code class="docutils literal notranslate"><span class="pre">APIClient.refresh_metadata()</span></code></a></li>
+<li><a class="reference internal" href="#stride.api.APIClient.get_unique_sectors"><code class="docutils literal notranslate"><span class="pre">APIClient.get_unique_sectors()</span></code></a></li>
+<li><a class="reference internal" href="#stride.api.APIClient.get_unique_end_uses"><code class="docutils literal notranslate"><span class="pre">APIClient.get_unique_end_uses()</span></code></a></li>
+<li><a class="reference internal" href="#stride.api.APIClient.get_years"><code class="docutils literal notranslate"><span class="pre">APIClient.get_years()</span></code></a></li>
+<li><a class="reference internal" href="#stride.api.APIClient.get_annual_electricity_consumption"><code class="docutils literal notranslate"><span class="pre">APIClient.get_annual_electricity_consumption()</span></code></a></li>
+<li><a class="reference internal" href="#stride.api.APIClient.get_annual_peak_demand"><code class="docutils literal notranslate"><span class="pre">APIClient.get_annual_peak_demand()</span></code></a></li>
+<li><a class="reference internal" href="#stride.api.APIClient.get_secondary_metric"><code class="docutils literal notranslate"><span class="pre">APIClient.get_secondary_metric()</span></code></a></li>
+<li><a class="reference internal" href="#stride.api.APIClient.get_load_duration_curve"><code class="docutils literal notranslate"><span class="pre">APIClient.get_load_duration_curve()</span></code></a></li>
+<li><a class="reference internal" href="#stride.api.APIClient.get_scenario_summary"><code class="docutils literal notranslate"><span class="pre">APIClient.get_scenario_summary()</span></code></a></li>
+<li><a class="reference internal" href="#stride.api.APIClient.get_weather_metric"><code class="docutils literal notranslate"><span class="pre">APIClient.get_weather_metric()</span></code></a></li>
+<li><a class="reference internal" href="#stride.api.APIClient.get_time_series_comparison"><code class="docutils literal notranslate"><span class="pre">APIClient.get_time_series_comparison()</span></code></a></li>
+<li><a class="reference internal" href="#stride.api.APIClient.get_seasonal_load_lines"><code class="docutils literal notranslate"><span class="pre">APIClient.get_seasonal_load_lines()</span></code></a></li>
+<li><a class="reference internal" href="#stride.api.APIClient.get_seasonal_load_area"><code class="docutils literal notranslate"><span class="pre">APIClient.get_seasonal_load_area()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=f539c95a"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=3a0c56fd"></script>
+    </body>
+</html>
