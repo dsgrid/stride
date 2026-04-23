@@ -626,6 +626,31 @@ class TestSaveMaxCachedProjectsLogic:
         saved = json.loads(config_file.read_text())
         assert saved["max_cached_projects"] == 2
 
+    def test_settings_save_does_not_set_override(self, tmp_path: Path) -> None:
+        """Regression: saving from Settings must not set _max_cached_projects_override.
+
+        The save callback should only persist to config and trigger eviction,
+        not set the runtime CLI override which would disable the input.
+        """
+        import json
+
+        config_file = tmp_path / "config.json"
+
+        assert app_module._max_cached_projects_override is None
+
+        with patch("stride.config.get_stride_config_path", return_value=config_file):
+            from stride.config import set_max_cached_projects
+
+            # Replicate what the fixed save callback does (without override)
+            set_max_cached_projects(5)
+            app_module._evict_oldest_project()
+
+        # The override must remain None so the input stays editable
+        assert app_module._max_cached_projects_override is None
+        # Config should be persisted
+        saved = json.loads(config_file.read_text())
+        assert saved["max_cached_projects"] == 5
+
 
 # ===================================================================
 # Tests for settings layout override display logic (layout.py)

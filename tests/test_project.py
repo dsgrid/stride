@@ -1,4 +1,5 @@
 from pathlib import Path
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
@@ -614,6 +615,75 @@ def test_create_project_with_invalid_data_dir(
     )
     assert result.exit_code != 0
     assert "Dataset directory not found" in result.output
+
+
+def test_create_project_registers_recent_project(
+    copy_project_input_data: tuple[Path, Path, Path],
+) -> None:
+    """Test that 'stride projects create' calls add_recent_project for the viewer dropdown."""
+    from unittest.mock import MagicMock
+
+    tmp_path, _, project_config_file = copy_project_input_data
+
+    mock_project = MagicMock()
+    mock_project.path = tmp_path / "test_project"
+    mock_project.config.project_id = "test_project"
+
+    runner = CliRunner()
+    with (
+        patch("stride.cli.stride.Project.create", return_value=mock_project),
+        patch("stride.ui.project_manager.add_recent_project") as mock_add,
+    ):
+        result = runner.invoke(
+            cli,
+            [
+                "projects",
+                "create",
+                str(project_config_file),
+                "-d",
+                str(tmp_path),
+                "--dataset",
+                "global-test",
+            ],
+        )
+        assert result.exit_code == 0, f"Project creation failed: {result.output}"
+        mock_add.assert_called_once_with(mock_project.path, "test_project")
+
+
+def test_create_project_register_failure_does_not_crash(
+    copy_project_input_data: tuple[Path, Path, Path],
+) -> None:
+    """Test that a failure in add_recent_project does not crash project creation."""
+    from unittest.mock import MagicMock
+
+    tmp_path, _, project_config_file = copy_project_input_data
+
+    mock_project = MagicMock()
+    mock_project.path = tmp_path / "test_project"
+    mock_project.config.project_id = "test_project"
+
+    runner = CliRunner()
+    with (
+        patch("stride.cli.stride.Project.create", return_value=mock_project),
+        patch(
+            "stride.ui.project_manager.add_recent_project",
+            side_effect=OSError("Permission denied"),
+        ),
+    ):
+        result = runner.invoke(
+            cli,
+            [
+                "projects",
+                "create",
+                str(project_config_file),
+                "-d",
+                str(tmp_path),
+                "--dataset",
+                "global-test",
+            ],
+        )
+        # Command should still succeed despite the registration failure
+        assert result.exit_code == 0, f"Project creation failed: {result.output}"
 
 
 def test_projects_init_command(tmp_path: Path) -> None:
