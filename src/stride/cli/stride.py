@@ -9,7 +9,7 @@ from dsgrid.cli.common import path_callback
 from dsgrid.exceptions import DSGBaseException
 from loguru import logger
 
-from stride import Project
+from stride import Project, __version__
 from stride.config import CACHED_PROJECTS_UPPER_BOUND
 from stride.models import CalculatedTableOverride
 from stride.project import list_valid_countries, list_valid_model_years, list_valid_weather_years
@@ -28,6 +28,7 @@ LOGURU_LEVELS = ["TRACE", "DEBUG", "INFO", "WARNING", "ERROR"]
 
 
 @click.group("stride")
+@click.version_option(__version__, "-V", "--version", prog_name="stride")
 @click.option(
     "-c",
     "--console-level",
