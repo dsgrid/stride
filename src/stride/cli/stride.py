@@ -89,16 +89,15 @@ $ stride projects init --country Chile -o chile_project.json5\n
 @click.option(
     "-o",
     "--output",
-    default="project.json5",
-    show_default=True,
-    help="Output filename for the template.",
+    default=None,
+    help="Output filename for the template. Defaults to '{country.lower()}_project.json5'.",
     type=click.Path(),
     callback=path_callback,
 )
 @click.option(
     "--project-id",
     default=None,
-    help="Project ID. Defaults to '{country}_project'.",
+    help="Project ID. Defaults to '{country.lower()}_project'.",
 )
 @click.option(
     "--overwrite",
@@ -111,7 +110,7 @@ $ stride projects init --country Chile -o chile_project.json5\n
 def init_project(
     ctx: click.Context,
     country: str,
-    output: Path,
+    output: Path | None,
     project_id: str | None,
     overwrite: bool,
 ) -> None:
@@ -121,11 +120,13 @@ def init_project(
     """
     from stride.project import generate_project_template
 
+    project_id = project_id or f"{country.lower()}_project"
+    output = output or Path(f"{project_id}.json5")
+
     if output.exists() and not overwrite:
         logger.error(f"Output file already exists: {output}. Use --overwrite to replace it.")
         ctx.exit(1)
 
-    project_id = project_id or f"{country.lower()}_project"
     content = generate_project_template(country=country, project_id=project_id)
     output.write_text(content)
     print(f"Created project template: {output}")
