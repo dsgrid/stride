@@ -29,6 +29,8 @@ adjusted_degree_days AS (
     SELECT
         dd.geography,
         dd.timestamp,
+        dd.time_zone,
+        dd.local_date,
         dd.weather_year,
         dd.month,
         dd.day,
@@ -89,6 +91,8 @@ adjusted_totals AS (
 SELECT
     ad.geography,
     ad.timestamp,
+    ad.time_zone,
+    ad.local_date,
     ad.weather_year,
     ad.month,
     ad.day,

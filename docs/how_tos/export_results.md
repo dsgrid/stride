@@ -28,6 +28,14 @@ Export to .parquet:
    INFO: Exported the energy projection table to output\energy_projection.parquet
 ```
 
+```{note}
+CSV files contain timestamps in the project's time zone (the country's standard time, no
+daylight saving time) with an explicit UTC offset, e.g., `2018-01-01 00:00:00+01`. Parquet files
+store each timestamp as a UTC instant, which most tools read back in UTC or in your computer's
+time zone; use the `time_zone` column to convert to local standard time. See
+{ref}`time-conventions`.
+```
+
 ## Export a Single Calculated Table
 
 Export a specific table:

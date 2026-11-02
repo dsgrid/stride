@@ -1,3 +1,5 @@
+from zoneinfo import ZoneInfo
+
 from duckdb import DuckDBPyConnection, DuckDBPyRelation
 from pandas.testing import assert_frame_equal
 
@@ -92,7 +94,22 @@ def compute_energy_projection(
     )
     rel_res = compute_energy_projection_res(con, scenario, country, model_years, weather_year)
 
-    return rel_cit.union(rel_res)
+    return add_time_zone(con, rel_cit.union(rel_res), scenario, country)
+
+
+def add_time_zone(
+    con: DuckDBPyConnection, rel: DuckDBPyRelation, scenario: str, country: str
+) -> DuckDBPyRelation:
+    """Add the geography's standard time zone, as recorded in the weather data."""
+    row = con.sql(
+        f"""
+        SELECT DISTINCT time_zone
+        FROM dsgrid_data.{scenario}__weather_bait__1_0_0
+        WHERE geography = '{country}'
+    """
+    ).fetchall()
+    assert len(row) == 1, row
+    return rel.select(f"*, '{row[0][0]}' AS time_zone")
 
 
 def compute_energy_projection_with_ev(
@@ -115,7 +132,7 @@ def compute_energy_projection_with_ev(
     # Residential uses standard calculation
     rel_res = compute_energy_projection_res(con, scenario, country, model_years, weather_year)
 
-    return rel_cit.union(rel_res)
+    return add_time_zone(con, rel_cit.union(rel_res), scenario, country)
 
 
 def compute_energy_projection_com_ind_tra_with_ev(
@@ -714,7 +731,10 @@ def get_load_shapes_expanded(
 ) -> DuckDBPyRelation:
     """Get load shapes expanded to full year with temperature adjustments applied.
 
-    This replicates the load_shapes_expanded dbt model.
+    This replicates the load_shapes_expanded dbt model. Load shape hours are in local standard
+    time, and the weather timestamps are instants at the start of each local-standard-time day,
+    so adding the hour to the weather timestamp gives the correct instant (standard time zones
+    have fixed UTC offsets).
     """
     model_years_tuple = tuple(model_years)
 
@@ -825,31 +845,30 @@ def compute_temperature_multipliers(
 
     This replicates the temperature_multipliers dbt model.
     """
-    # Get daily BAIT data (matching weather_bait_daily.sql)
-    weather_bait_daily = con.sql(  # noqa: F841
+    # Get daily BAIT data (equivalent to weather_bait_daily.sql). The date labels are derived
+    # independently of the dbt model: convert each weather instant to the geography's standard
+    # time zone with zoneinfo and take the local calendar date.
+    raw = con.sql(
         f"""
-        SELECT
-            geography
-            ,timestamp
-            ,MAX(CASE WHEN metric = 'Temperature' THEN value END) AS temperature
-            ,MAX(CASE WHEN metric = 'Solar_Radiation' THEN value END) AS solar_radiation
-            ,MAX(CASE WHEN metric = 'Wind_Speed' THEN value END) AS wind_speed
-            ,MAX(CASE WHEN metric = 'Dew_Point' THEN value END) AS dew_point
-            ,MAX(CASE WHEN metric = 'Humidity' THEN value END) AS humidity
-            ,MAX(CASE WHEN metric = 'BAIT' THEN value END) AS bait
-            ,EXTRACT(YEAR FROM DATE_TRUNC('day', timestamp)) AS weather_year
-            ,EXTRACT(MONTH FROM DATE_TRUNC('day', timestamp)) AS month
-            ,EXTRACT(DAY FROM DATE_TRUNC('day', timestamp)) AS day
-            ,CASE
-                WHEN DAYOFWEEK(DATE_TRUNC('day', timestamp)) IN (6, 7) THEN 'weekend'
-                ELSE 'weekday'
-            END AS day_type
+        SELECT geography, timestamp, time_zone, metric, value
         FROM dsgrid_data.{scenario}__weather_bait__1_0_0
         WHERE geography = '{country}'
-            AND EXTRACT(YEAR FROM timestamp) = {weather_year}
-        GROUP BY geography, timestamp
     """
+    ).df()
+    time_zones = raw["time_zone"].unique()
+    assert len(time_zones) == 1, time_zones
+    local = raw["timestamp"].dt.tz_convert(ZoneInfo(time_zones[0]))
+    raw = raw[local.dt.year == weather_year]
+    weather_bait_daily = (  # noqa: F841
+        raw.pivot_table(index=["geography", "timestamp"], columns="metric", values="value")
+        .reset_index()
+        .rename(columns={"BAIT": "bait"})[["geography", "timestamp", "bait"]]
     )
+    local = weather_bait_daily["timestamp"].dt.tz_convert(ZoneInfo(time_zones[0]))
+    weather_bait_daily["weather_year"] = local.dt.year
+    weather_bait_daily["month"] = local.dt.month
+    weather_bait_daily["day"] = local.dt.day
+    weather_bait_daily["day_type"] = ["weekend" if x >= 5 else "weekday" for x in local.dt.weekday]
 
     # Compute degree days (matching weather_degree_days.sql)
     weather_degree_days = con.sql(  # noqa: F841

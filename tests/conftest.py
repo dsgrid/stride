@@ -85,17 +85,22 @@ def weekday_weekend_test_data(default_project: Project) -> DuckDBPyConnection:
     Creates a test table with:
     - Weekday values = 1
     - Weekend values = 8
-    - Full year 2018 hourly data (8760 hours)
+    - Full year 2018 hourly data (8760 hours) in the project's local standard time, stored
+      as absolute instants (TIMESTAMPTZ), like the real energy_projection table
     """
     import duckdb
     import pandas as pd
 
     # Create a separate in-memory database for testing
     test_con = duckdb.connect(":memory:")
+    test_con.execute("SET TimeZone = 'UTC'")
 
     # Create 2018 hourly datetime index (8760 hours)
     datetime_index = pd.date_range(
-        start="2018-01-01 00:00:00", end="2018-12-31 23:00:00", freq="h"
+        start="2018-01-01 00:00:00",
+        end="2018-12-31 23:00:00",
+        freq="h",
+        tz=default_project.time_zone,
     )
 
     # Create test data
@@ -107,6 +112,7 @@ def weekday_weekend_test_data(default_project: Project) -> DuckDBPyConnection:
         test_data.append(
             {
                 "timestamp": dt,
+                "time_zone": default_project.time_zone,
                 "hour": i,  # 0-8759
                 "model_year": 2030,  # Test year
                 "geography": default_project.config.country,

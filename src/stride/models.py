@@ -151,6 +151,13 @@ class ProjectConfig(DSGBaseModel):  # type: ignore
     end_year: int = Field(description="End year for the forecasted data")
     step_year: int = Field(default=1, description="End year for the forecasted data")
     weather_year: int = Field(description="Weather year upon which the data is based")
+    time_zone: str | None = Field(
+        default=None,
+        description="Standard time zone of the country (e.g., 'Etc/GMT-1'), with no daylight "
+        "saving time. Set by stride when the project is created; users should not set it. "
+        "Hourly timestamps are stored as absolute instants (UTC) and are converted to this "
+        "time zone for local labels (date, month, weekday, hour of day), display, and CSV export.",
+    )
     model_parameters: ModelParameters = Field(
         default_factory=ModelParameters,
         description="Advanced model parameters for temperature adjustments and other calculations",

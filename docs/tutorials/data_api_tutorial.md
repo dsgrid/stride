@@ -171,6 +171,11 @@ df = client.get_seasonal_load_lines(
 )
 ```
 
+`hour_of_day`, seasons, and weekday/weekend are evaluated in the project's time zone, which is the
+country's standard time with no daylight saving time. `client.time_zone` returns it (e.g.,
+`Etc/GMT-1`), and `client.hour_of_day_label` gives a matching axis label such as
+`Hour of Day (UTC+01:00, standard time)`. See {ref}`time-conventions`.
+
 ## Secondary metrics
 
 Query economic and demographic data:
@@ -281,7 +286,12 @@ fig = px.line(
     y="value",
     color="season",
     title="Average Daily Load Profile by Season - 2030",
-    labels={"hour_of_day": "Hour of Day", "value": "Load (MW)", "season": "Season"}
+    labels={
+        # Names the time zone, e.g. "Hour of Day (UTC+01:00, standard time)"
+        "hour_of_day": client.hour_of_day_label,
+        "value": "Load (MW)",
+        "season": "Season",
+    },
 )
 fig.write_html("seasonal_profiles.html")
 fig.show()

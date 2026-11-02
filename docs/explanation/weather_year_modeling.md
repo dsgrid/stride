@@ -35,7 +35,7 @@ STRIDE uses Building-Adjusted Integrated Temperature (BAIT) data derived from ER
 The calculation methodology is similar to that described in Staffell, Pfenninger, and Johnson (2023).[^1]
 
 The weather data includes:
-- **Temporal resolution**: Daily (averaged from hourly ERA5 data)
+- **Temporal resolution**: Daily (averaged from hourly ERA5 data), with each day running from midnight to midnight in the country's local standard time
 - **Coverage**: Weather years 1995-2024
 - **Geographic representation**: Country-level, based on a single highly or most-populous location per country
 - **Variables**: Temperature, Solar Radiation, Wind Speed, Dew Point, Humidity, BAIT
@@ -188,15 +188,16 @@ This preserves energy conservation (multipliers still sum to `num_days`) while s
 
 Load shapes from the IMAGE Integrated Assessment Model (Castillo et al. 2022)[^2] provide hourly consumption profiles. The dataset includes:
 - **One weekday and one weekend day per month** (24 total representative days)
-- **24 hourly values per day** (e.g., hour 0 = midnight-1am, hour 23 = 11pm-midnight)
+- **24 hourly values per day** in local standard time (e.g., hour 0 = midnight-1am, hour 23 = 11pm-midnight)
 - **Segmentation by**: End use (Heating, Cooling, Other), sector (Residential, Commercial, Industrial, Transportation), geography, model year
 
 ### Expansion to full year
 
-The `load_shapes_expanded` dbt model expands these 24 representative days into 8760 hours (365 days × 24 hours) by:
+The `load_shapes_expanded` dbt model expands these 24 representative days into 8760 hours (365 days × 24 hours; 8784 hours in a leap year) by:
 
 1. **Matching each calendar day** of the selected weather year to its representative profile:
    - Days are matched by month (January → January representative day) and day type (weekday/weekend)
+   - Month and day type come from the day's local-standard-time date; Saturday and Sunday are weekend days
    - Example: Tuesday, January 15 uses the January weekday profile
    
 2. **Applying temperature multipliers** to adjust for weather:
@@ -211,7 +212,7 @@ The `load_shapes_expanded` dbt model expands these 24 representative days into 8
    END
    ```
 
-3. **Repeating the 24-hour pattern** for each day with its specific temperature multiplier
+3. **Repeating the 24-hour pattern** for each day with its specific temperature multiplier. Load shape hour *h* is placed at *h*:00 local standard time on that date and stored as an absolute instant; see {ref}`time-conventions`.
 
 **Result**: Full-year hourly load shapes that preserve:
 - Original hourly patterns from IMAGE (morning/evening peaks, daily cycles)
@@ -258,7 +259,7 @@ The weather year modeling pipeline is implemented in these dbt models:
 
 | Model | Purpose |
 |-------|---------|
-| `weather_bait_daily` | Pivots weather data from long to wide format and extracts date components |
+| `weather_bait_daily` | Pivots weather data from long to wide format and extracts local-standard-time date components |
 | `weather_degree_days` | Calculates daily HDD and CDD from BAIT |
 | `weather_degree_days_grouped` | Aggregates degree days by geography, weather year, month, and day type |
 | `temperature_multipliers` | Computes daily multipliers with shoulder month smoothing |
@@ -282,6 +283,7 @@ INFO: Temperature multiplier ranges for scenario=baseline:
 ## Related Topics
 
 - {ref}`dbt-computation` - Overall dbt transformation pipeline
+- {ref}`time-conventions` - Time zones of the input data and results
 - {ref}`create-project-tutorial` - Tutorial on creating a stride project
 - {ref}`dbt-projet` - Tutorial on browsing the dbt portion of a stride project
 - {ref}`data-api-tutorial` - Tutorial on accessing and processing result data using Python

@@ -36,6 +36,12 @@ CONFIG_FILE = "project.json5"
 DATABASE_FILE = "data.duckdb"
 REGISTRY_DATA_DIR = "registry_data"
 DBT_DIR = "dbt"
+# Every stride database session runs in UTC so that results never depend on the time zone of
+# the machine. Timestamps are stored as absolute instants (TIMESTAMPTZ); code that needs local
+# labels (date, month, weekday, hour of day) must convert explicitly with
+# timezone(<time zone>, timestamp) instead of extracting fields from a bare TIMESTAMPTZ.
+# The dbt profile (dbt/profiles.yml) pins the same setting.
+SESSION_TIME_ZONE = "UTC"
 
 
 class Project:
@@ -53,7 +59,9 @@ class Project:
         self._palette: ColorPalette | None = None
 
     def _connect(self, **connection_kwargs: Any) -> DuckDBPyConnection:
-        return duckdb.connect(self._path / REGISTRY_DATA_DIR / DATABASE_FILE, **connection_kwargs)
+        con = duckdb.connect(self._path / REGISTRY_DATA_DIR / DATABASE_FILE, **connection_kwargs)
+        con.execute(f"SET TimeZone = '{SESSION_TIME_ZONE}'")
+        return con
 
     def __enter__(self) -> Self:
         return self
@@ -118,6 +126,8 @@ class Project:
         )
 
         project = cls(config, project_path)
+        config.time_zone = lookup_time_zone(project.con, config.country)
+        logger.info("Project time zone (country standard time): {}", config.time_zone)
         project.con.sql("CREATE SCHEMA stride")
         project._clear_scenario_dataset_paths()
         for scenario in config.scenarios:
@@ -236,7 +246,20 @@ class Project:
             msg = f"{path} does not contain a Stride project"
             raise InvalidParameter(msg)
         config = ProjectConfig.from_file(config_file)
-        return cls(config, path, **connection_kwargs)
+        project = cls(config, path, **connection_kwargs)
+        if config.time_zone is None:
+            # Projects created before stride recorded the time zone.
+            config.time_zone = lookup_time_zone(project.con, config.country)
+        alignment_msg = check_energy_projection_time_alignment(project.con, config)
+        if alignment_msg is not None:
+            logger.warning(alignment_msg)
+        return project
+
+    @property
+    def time_zone(self) -> str:
+        """Return the project's time zone (the country's standard time, with no DST)."""
+        assert self._config.time_zone is not None
+        return self._config.time_zone
 
     def close(self) -> None:
         """Close the connection to the database."""
@@ -478,7 +501,7 @@ class Project:
         check_overwrite(filename, overwrite)
         self._check_calculated_table_present(scenario_name, table_name)
         full_name = f"{scenario_name}.{table_name}"
-        export_table(self._con, full_name, filename)
+        export_table(self._con, full_name, filename, time_zone=self.time_zone)
         logger.info("Exported scenario={} table={} to {}", scenario_name, table_name, filename)
 
     def show_calculated_table(self, scenario_name: str, table_name: str, limit: int = 20) -> None:
@@ -631,7 +654,9 @@ class Project:
                     multiplier_stats[5],
                 )
 
-            columns = "timestamp, model_year, scenario, sector, geography, metric, value"
+            columns = (
+                "timestamp, time_zone, model_year, scenario, sector, geography, metric, value"
+            )
             if i == 0:
                 query = f"""
                     CREATE OR REPLACE TABLE energy_projection
@@ -665,6 +690,12 @@ class Project:
         overwrite
             If True, overwrite the file if it already exists.
 
+        Notes
+        -----
+        CSV timestamps are written in the project's time zone (country standard time) with an
+        explicit UTC offset, e.g., ``2018-01-01 00:00:00+01``. Parquet timestamps are stored as
+        UTC-adjusted instants; use the ``time_zone`` column to convert them to local time.
+
         Examples
         --------
         >>> project.export_energy_projection()
@@ -674,7 +705,7 @@ class Project:
         # Might be easier to let them create their own SQL query.
         # CLI users may still want something.
         check_overwrite(filename, overwrite)
-        export_table(self._con, "energy_projection", filename)
+        export_table(self._con, "energy_projection", filename, time_zone=self.time_zone)
         logger.info("Exported the energy projection table to {}", filename)
 
     def get_energy_projection(self, scenario: str | None = None) -> DuckDBPyRelation:
@@ -861,6 +892,64 @@ class Project:
             [schema, name],
         ).fetchone()
         return result is not None and result[0] > 0
+
+
+def lookup_time_zone(con: DuckDBPyConnection, country: str) -> str:
+    """Return the standard time zone of the country, as recorded in the baseline weather data.
+
+    The weather data are daily values aligned to local standard time (no daylight saving time),
+    so their time zones (e.g., 'Etc/GMT-1' for Germany) define the project's time zone.
+    """
+    table = make_dsgrid_data_table_name("baseline", "weather_bait")
+    rows = con.execute(
+        f"SELECT DISTINCT time_zone FROM {table} WHERE geography = ?", [country]
+    ).fetchall()
+    time_zones = [str(x[0]) for x in rows if x[0] is not None]
+    if len(time_zones) != 1:
+        msg = f"Expected exactly one time zone for {country=} in {table}: {time_zones=}"
+        raise InvalidParameter(msg)
+    return time_zones[0]
+
+
+def check_energy_projection_time_alignment(
+    con: DuckDBPyConnection, config: ProjectConfig
+) -> str | None:
+    """Check that the energy projection covers the weather year in local standard time.
+
+    Returns
+    -------
+    str | None
+        A message describing the problem, or None if the table is aligned (or does not exist).
+    """
+    result = con.execute(
+        "SELECT column_name FROM information_schema.columns "
+        "WHERE table_schema = 'main' AND table_name = 'energy_projection'"
+    ).fetchall()
+    columns = {x[0] for x in result}
+    if not columns:
+        return None
+    if "time_zone" not in columns:
+        return (
+            "The energy_projection table in this project was computed by a version of stride "
+            "that did not handle time zones correctly, so days may be shifted relative to the "
+            "weather data and hours shifted in the viewer. Please re-create the project."
+        )
+    # Find the endpoints before converting them. Standard time zones have fixed offsets,
+    # so converting preserves the order of the timestamps.
+    rows = con.execute(
+        "SELECT time_zone, timezone(time_zone, MIN(timestamp)), timezone(time_zone, MAX(timestamp)) "
+        "FROM energy_projection GROUP BY time_zone"
+    ).fetchall()
+    expected_start = f"{config.weather_year}-01-01 00:00:00"
+    expected_end = f"{config.weather_year}-12-31 23:00:00"
+    for time_zone, start, end in rows:
+        if time_zone is None or str(start) != expected_start or str(end) != expected_end:
+            return (
+                f"The energy_projection table spans {start} to {end} in local standard time "
+                f"({time_zone}), but should span {expected_start} to {expected_end} for "
+                f"weather year {config.weather_year}. Please re-create the project."
+            )
+    return None
 
 
 def _parse_bool_env(name: str, default: bool) -> bool:

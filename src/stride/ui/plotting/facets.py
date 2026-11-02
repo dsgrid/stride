@@ -7,6 +7,7 @@ from plotly.subplots import make_subplots
 from stride.ui.palette import ColorCategory
 
 from .utils import (
+    DEFAULT_HOUR_AXIS_TITLE,
     DEFAULT_PLOTLY_TEMPLATE,
     TRANSPARENT,
     calculate_subplot_layout,
@@ -64,9 +65,16 @@ def add_seasonal_line_traces(
 
 
 def seasonal_load_lines(
-    df: pd.DataFrame, color_generator: "ColorManager", template: str = DEFAULT_PLOTLY_TEMPLATE
+    df: pd.DataFrame,
+    color_generator: "ColorManager",
+    template: str = DEFAULT_PLOTLY_TEMPLATE,
+    hour_axis_title: str = DEFAULT_HOUR_AXIS_TITLE,
 ) -> go.Figure:
-    """Create faceted subplots for seasonal load lines."""
+    """Create faceted subplots for seasonal load lines.
+
+    hour_axis_title should name the time zone of the hour_of_day values
+    (see APIClient.hour_of_day_label).
+    """
     if df.empty:
         fig = go.Figure()
         fig.add_annotation(
@@ -100,7 +108,7 @@ def seasonal_load_lines(
     axis = get_axis_style(template)
 
     if layout_config["facet_col"]:
-        annotations_list = create_seasonal_annotations(layout_config)
+        annotations_list = create_seasonal_annotations(layout_config, hour_axis_title)
 
         fig.update_layout(
             template=template,
@@ -154,7 +162,7 @@ def seasonal_load_lines(
             plot_bgcolor=TRANSPARENT,
             paper_bgcolor=TRANSPARENT,
             margin=dict(l=20, r=20, t=20, b=40),
-            xaxis_title="Hour of Day",
+            xaxis_title=hour_axis_title,
             yaxis_title="Average Power Demand (MW)",
             xaxis=dict(
                 range=[0, 23],
@@ -277,9 +285,16 @@ def _add_stacked_area_traces(
 
 
 def seasonal_load_area(
-    df: pd.DataFrame, color_generator: "ColorManager", template: str = DEFAULT_PLOTLY_TEMPLATE
+    df: pd.DataFrame,
+    color_generator: "ColorManager",
+    template: str = DEFAULT_PLOTLY_TEMPLATE,
+    hour_axis_title: str = DEFAULT_HOUR_AXIS_TITLE,
 ) -> go.Figure:
-    """Create faceted area charts for seasonal load patterns."""
+    """Create faceted area charts for seasonal load patterns.
+
+    hour_axis_title should name the time zone of the hour_of_day values
+    (see APIClient.hour_of_day_label).
+    """
     if df.empty:
         fig = go.Figure()
         fig.add_annotation(
@@ -323,7 +338,7 @@ def seasonal_load_area(
     axis = get_axis_style(template)
 
     if layout_config["facet_col"]:
-        annotations_list = create_seasonal_annotations(layout_config)
+        annotations_list = create_seasonal_annotations(layout_config, hour_axis_title)
 
         fig.update_layout(
             template=template,
@@ -366,7 +381,7 @@ def seasonal_load_area(
             plot_bgcolor=TRANSPARENT,
             paper_bgcolor=TRANSPARENT,
             margin=dict(l=20, r=20, t=20, b=40),
-            xaxis_title="Hour of Day",
+            xaxis_title=hour_axis_title,
             yaxis_title="Average Power Demand (MW)",
             xaxis=dict(
                 range=[0, 23],
