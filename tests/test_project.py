@@ -619,21 +619,24 @@ def test_create_project_with_invalid_data_dir(
 
 def test_create_project_registers_recent_project(
     copy_project_input_data: tuple[Path, Path, Path],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Test that 'stride projects create' calls add_recent_project for the viewer dropdown."""
+    """Test that 'stride projects create' writes the project to the recent-projects config."""
     from unittest.mock import MagicMock
 
+    from stride.ui.project_manager import get_recent_projects
+
     tmp_path, _, project_config_file = copy_project_input_data
+    config_dir = tmp_path / "stride_config"
+    config_dir.mkdir()
+    monkeypatch.setattr("stride.config.get_stride_config_dir", lambda: config_dir)
 
     mock_project = MagicMock()
     mock_project.path = tmp_path / "test_project"
     mock_project.config.project_id = "test_project"
 
     runner = CliRunner()
-    with (
-        patch("stride.cli.stride.Project.create", return_value=mock_project),
-        patch("stride.ui.project_manager.add_recent_project") as mock_add,
-    ):
+    with patch("stride.cli.stride.Project.create", return_value=mock_project):
         result = runner.invoke(
             cli,
             [
@@ -647,7 +650,12 @@ def test_create_project_registers_recent_project(
             ],
         )
         assert result.exit_code == 0, f"Project creation failed: {result.output}"
-        mock_add.assert_called_once_with(mock_project.path, "test_project")
+
+    assert (config_dir / "config.json").exists()
+    recent = get_recent_projects()
+    assert len(recent) == 1
+    assert recent[0]["project_id"] == "test_project"
+    assert recent[0]["path"] == str(mock_project.path.resolve())
 
 
 def test_create_project_register_failure_does_not_crash(
