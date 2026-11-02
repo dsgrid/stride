@@ -3,9 +3,9 @@
 
 ## Installation
 
-1. Install Python 3.11 or later.
+1. Install Python 3.11, 3.12, or 3.13.
 
-2. Create a Python 3.11+ virtual environment. This example uses the ``venv`` module in the standard
+2. Create a virtual environment with one of those Python versions. This example uses the ``venv`` module in the standard
 library to create a virtual environment in your current directory. You may prefer a single
 `python-envs` in your home directory instead of the current directory. You may also prefer ``conda``
 or ``mamba``.
