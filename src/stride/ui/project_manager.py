@@ -8,6 +8,7 @@ from dsgrid.utils.files import dump_json_file, load_json_file
 from loguru import logger
 
 from stride import Project, ProjectConfig
+from stride.config import get_stride_config_path
 from stride.project import CONFIG_FILE
 
 
@@ -21,8 +22,7 @@ def get_stride_projects_dir() -> Path:
         Path to the projects directory
     """
     # Check if there's a config file with projects directory
-    config_dir = Path.home() / ".stride"
-    config_file = config_dir / "config.json"
+    config_file = get_stride_config_path()
 
     if config_file.exists():
         try:
@@ -46,9 +46,7 @@ def set_stride_projects_dir(projects_dir: Path) -> None:
     projects_dir : Path
         Path to the projects directory
     """
-    config_dir = Path.home() / ".stride"
-    config_dir.mkdir(parents=True, exist_ok=True)
-    config_file = config_dir / "config.json"
+    config_file = get_stride_config_path()
 
     # Load existing config or create new one
     config = {}
@@ -191,8 +189,7 @@ def get_recent_projects(max_count: int = 10) -> list[dict[str, Any]]:
     list[dict[str, Any]]
         List of recent project info dictionaries
     """
-    config_dir = Path.home() / ".stride"
-    config_file = config_dir / "config.json"
+    config_file = get_stride_config_path()
 
     if not config_file.exists():
         return []
@@ -224,9 +221,7 @@ def add_recent_project(project_path: str | Path, project_id: str) -> None:
     project_id : str
         Project ID
     """
-    config_dir = Path.home() / ".stride"
-    config_dir.mkdir(parents=True, exist_ok=True)
-    config_file = config_dir / "config.json"
+    config_file = get_stride_config_path()
 
     # Load existing config or create new one
     config = load_json_file(config_file) if config_file.exists() else {}
