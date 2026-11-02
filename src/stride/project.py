@@ -3,6 +3,7 @@ import os
 import shutil
 import subprocess
 import sys
+import sysconfig
 import time
 from collections import defaultdict
 from pathlib import Path
@@ -584,9 +585,7 @@ class Project:
                 f"{override_str}}}"
             )
             # TODO: May want to run `build` instead of `run` if we add dbt tests.
-            # Use dbt from the same environment as the running Python interpreter
-            dbt_executable = Path(sys.executable).parent / "dbt"
-            cmd = [str(dbt_executable), "run", "--vars", vars_string]
+            cmd = [get_dbt_executable(), "run", "--vars", vars_string]
             self._con.close()
             try:
                 os.chdir(self._path / DBT_DIR)
@@ -950,6 +949,25 @@ def check_energy_projection_time_alignment(
                 f"weather year {config.weather_year}. Please re-create the project."
             )
     return None
+
+
+def get_dbt_executable() -> str:
+    """Return the path to dbt, preferring the one installed with the running Python.
+
+    The environment's scripts directory holds console scripts such as dbt. In a virtual
+    environment it is the same directory as the Python executable, but in a regular Windows
+    installation it is the ``Scripts`` subdirectory.
+    """
+    name = "dbt.exe" if sys.platform == "win32" else "dbt"
+    for directory in (sysconfig.get_path("scripts"), str(Path(sys.executable).parent)):
+        candidate = Path(directory) / name
+        if candidate.is_file():
+            return str(candidate)
+    found = shutil.which("dbt")
+    if found is None:
+        msg = "Could not find the dbt executable. Install stride's dependencies with pip."
+        raise InvalidOperation(msg)
+    return found
 
 
 def _parse_bool_env(name: str, default: bool) -> bool:

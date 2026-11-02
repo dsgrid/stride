@@ -16,6 +16,7 @@ from stride.project import (
     CONFIG_FILE,
     _get_base_and_override_names,
     generate_project_template,
+    get_dbt_executable,
     list_valid_countries,
     list_valid_model_years,
     list_valid_weather_years,
@@ -634,6 +635,8 @@ def test_version_matches_distribution_metadata() -> None:
     from importlib.metadata import version
 
     assert __version__ == version("stride-load-forecast")
+
+
 def test_create_project_registers_recent_project(
     copy_project_input_data: tuple[Path, Path, Path],
     monkeypatch: pytest.MonkeyPatch,
@@ -1049,3 +1052,33 @@ def test_create_project_with_env_var(copy_project_input_data: tuple[Path, Path, 
         f"Expected dataset path '{expected_dataset_path}' not found in output. "
         f"Output was: {result.output}"
     )
+
+
+def test_get_dbt_executable_in_separate_scripts_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """In a regular (non-virtual-environment) Windows installation, console scripts such as
+    dbt live in a Scripts directory that is not the Python executable's directory.
+    """
+    import sys
+    import sysconfig
+
+    scripts_dir = tmp_path / "Scripts"
+    scripts_dir.mkdir()
+    dbt = scripts_dir / ("dbt.exe" if sys.platform == "win32" else "dbt")
+    dbt.touch()
+    monkeypatch.setattr(sys, "executable", str(tmp_path / "python.exe"))
+    monkeypatch.setattr(sysconfig, "get_path", lambda name: str(scripts_dir))
+    assert get_dbt_executable() == str(dbt)
+
+
+def test_get_dbt_executable_not_found(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import shutil as shutil_module
+    import sys
+    import sysconfig
+
+    monkeypatch.setattr(sys, "executable", str(tmp_path / "python.exe"))
+    monkeypatch.setattr(sysconfig, "get_path", lambda name: str(tmp_path))
+    monkeypatch.setattr(shutil_module, "which", lambda name: None)
+    with pytest.raises(InvalidOperation, match="dbt"):
+        get_dbt_executable()
