@@ -13,7 +13,7 @@ Reference values are computed with pandas and zoneinfo, independently of the dbt
 
 import json
 from pathlib import Path
-from typing import Generator
+from typing import Generator, cast
 from zoneinfo import ZoneInfo
 
 import duckdb
@@ -70,7 +70,7 @@ def leap_year_project(tmp_path_factory: TempPathFactory) -> Generator[Project, N
 
 @pytest.fixture(params=["default_project", "leap_year_project"])
 def project(request: pytest.FixtureRequest) -> Project:
-    return request.getfixturevalue(request.param)
+    return cast(Project, request.getfixturevalue(request.param))
 
 
 EXPECTED_TIME_ZONES = {"country_1": "Etc/GMT-1", "country_2": "Etc/GMT-7"}
@@ -96,7 +96,8 @@ def _read_weather_bait(project: Project) -> pd.DataFrame:
     ).df()
     local = df["timestamp"].dt.tz_convert(ZoneInfo(project.time_zone))
     df["local_date"] = local.dt.tz_localize(None)
-    return df[local.dt.year == project.config.weather_year].reset_index(drop=True)
+    result: pd.DataFrame = df[local.dt.year == project.config.weather_year]
+    return result.reset_index(drop=True)
 
 
 def test_session_time_zone_is_utc(project: Project) -> None:
