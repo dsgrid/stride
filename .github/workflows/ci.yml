@@ -7,19 +7,23 @@ on:
   pull_request:
 
 env:
-  DEFAULT_PYTHON: "3.12"
+  DEFAULT_PYTHON: "3.13"
   DEFAULT_OS: ubuntu-latest
 
 jobs:
   pytest:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ["3.12"]
-        # Windows is failing because dsgrid submodule file paths are too long.
-        # Need to publish dsgrid on pypi to fix it.
-        # os: [ubuntu-latest, windows-latest]
-        os: [ubuntu-latest]
+        # Test the oldest and newest supported Python versions, plus Windows.
+        include:
+          - os: ubuntu-latest
+            python-version: "3.11"
+          - os: ubuntu-latest
+            python-version: "3.13"
+          - os: windows-latest
+            python-version: "3.13"
 
     steps:
     - uses: actions/checkout@v4
@@ -36,6 +40,7 @@ jobs:
       with:
         ssh-private-key: ${{ secrets.STRIDE_DATA_DEPLOY_KEY }}
     - name: Download test data
+      shell: bash
       run: |
         STRIDE_DATA_REF=$(cat .stride-data-ref | tr -d '[:space:]')
         echo "Cloning stride-data at ref: $STRIDE_DATA_REF"
