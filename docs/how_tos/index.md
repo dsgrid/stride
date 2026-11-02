@@ -12,5 +12,6 @@
     launch_dashboard
     customize_palette    
     compare_scenarios
-    export_results    
+    export_results
+    query_project_database
 ```

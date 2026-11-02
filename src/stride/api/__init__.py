@@ -25,6 +25,9 @@ Time conventions:
   and weather datetimes) are in the project's time zone, which is the country's standard
   time (no daylight saving time). See ``APIClient.time_zone``.
 - Never extract fields from a bare TIMESTAMPTZ column; use ``utils.local_time_expr``.
+- Local time is computed from each table's ``time_zone`` column. Tables from projects created
+  before stride stored time zones have no such column; for those, the project's time zone is
+  used instead.
 
 """
 
@@ -151,6 +154,16 @@ class APIClient:
         are in this time zone.
         """
         return self.project.time_zone
+
+    def _time_zone_for(self, table: str) -> str | None:
+        """Return the time zone argument for ``local_time_expr`` when querying ``table``.
+
+        Returns None (use the table's ``time_zone`` column) when the column exists. Otherwise,
+        returns the project's time zone, which keeps projects created before stride stored
+        time zones viewable.
+        """
+        columns = [x[0] for x in self.db.execute(f"DESCRIBE {table}").fetchall()]
+        return None if "time_zone" in columns else self.time_zone
 
     @property
     def hour_of_day_label(self) -> str:
@@ -1043,7 +1056,7 @@ class APIClient:
 
         # Weather rows are daily; their timestamps are instants at the start of each
         # local-standard-time day. Return and group by naive local time.
-        local_ts = local_time_expr(self.time_zone)
+        local_ts = local_time_expr(self._time_zone_for(table_to_query))
 
         # Build the query based on resample option
         if resample == "Hourly":
@@ -1198,7 +1211,7 @@ class APIClient:
         self._validate_years(years)
 
         # Days and weeks are counted in local standard time.
-        local_ts = local_time_expr(self.time_zone)
+        local_ts = local_time_expr(self._time_zone_for(self.energy_proj_table))
 
         if resample == "Hourly":
             # Raw hourly data - use hour of year as time_period
@@ -1263,12 +1276,13 @@ class APIClient:
             # Resampled data (existing logic)
             # Determine time period calculation based on resample option
             if resample == "Daily Mean":
-                time_period_calc = f"FLOOR(EXTRACT(DOY FROM {local_ts})) + 1"
+                # Day of year is 1-based (January 1 = 1), matching the weather series.
+                time_period_calc = "EXTRACT(DOY FROM local_timestamp)"
             elif resample == "Weekly Mean":
                 # Week calculation: FLOOR((DOY - 1) / 7) + 1 gives 1-indexed weeks
                 # Days 1-7 = week 1, 8-14 = week 2, etc. This avoids DATE_TRUNC cross-year issues.
                 # Same base calculation used in get_weather_metric() for consistency.
-                time_period_calc = f"FLOOR((EXTRACT(DOY FROM {local_ts}) - 1) / 7) + 1"
+                time_period_calc = "FLOOR((EXTRACT(DOY FROM local_timestamp) - 1) / 7) + 1"
             else:
                 err = f"Invalid resample option: {resample}"
                 raise ValueError(err)
@@ -1288,13 +1302,14 @@ class APIClient:
                         scenario,
                         model_year,
                         timestamp,
+                        {local_ts} AS local_timestamp,
                         {group_col},
                         SUM(value) as value
                     FROM energy_projection
                     WHERE geography = ?
                         AND scenario = ?
                         AND model_year = ANY(?)
-                    GROUP BY scenario, model_year, timestamp, {group_col}
+                    GROUP BY scenario, model_year, timestamp, local_timestamp, {group_col}
                 )
                 SELECT
                     scenario,
@@ -1314,12 +1329,13 @@ class APIClient:
                         scenario,
                         model_year,
                         timestamp,
+                        {local_ts} AS local_timestamp,
                         SUM(value) as value
                     FROM energy_projection
                     WHERE geography = ?
                         AND scenario = ?
                         AND model_year = ANY(?)
-                    GROUP BY scenario, model_year, timestamp
+                    GROUP BY scenario, model_year, timestamp, local_timestamp
                 )
                 SELECT
                     scenario,
@@ -1426,7 +1442,7 @@ class APIClient:
             years=years,
             group_by=group_by,
             agg=agg,
-            time_zone=self.time_zone,
+            time_zone=self._time_zone_for(self.energy_proj_table),
         )
 
         logger.debug(f"SQL Query:\n{sql}")
@@ -1519,7 +1535,7 @@ class APIClient:
             group_by=group_by,
             agg=agg,
             breakdown=breakdown,
-            time_zone=self.time_zone,
+            time_zone=self._time_zone_for(self.energy_proj_table),
         )
 
         logger.debug(f"SQL Query:\n{sql}")

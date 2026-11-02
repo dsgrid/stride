@@ -71,26 +71,32 @@ def literal_to_list(
     return result
 
 
-def local_time_expr(time_zone: str, column: str = "timestamp") -> str:
+def local_time_expr(time_zone: str | None = None, column: str = "timestamp") -> str:
     """Return a SQL expression that converts a TIMESTAMPTZ column to naive local time.
 
-    stride stores hourly timestamps as absolute instants (TIMESTAMPTZ) and runs database
-    sessions in UTC. Always derive local labels (date, day of year, weekday, hour of day)
-    from this expression rather than extracting fields from the bare TIMESTAMPTZ column,
-    which would silently use the session time zone.
+    stride stores hourly timestamps as absolute instants (TIMESTAMPTZ). Always derive local
+    labels (date, day of year, weekday, hour of day) from this expression rather than
+    extracting fields from the bare TIMESTAMPTZ column. A bare extraction uses the TimeZone
+    setting of whichever connection runs the query: UTC for stride's own connections
+    (``Project`` and dbt), but usually the computer's time zone for others, such as the
+    DuckDB CLI or ``duckdb.connect()``.
 
     Parameters
     ----------
-    time_zone : str
-        IANA time zone name, normally the project's standard time zone (e.g., 'Etc/GMT-1')
+    time_zone : str, optional
+        IANA time zone name (e.g., 'Etc/GMT-1'). By default, use each row's ``time_zone``
+        column, which supports tables with more than one geography.
     column : str, optional
         Name of the TIMESTAMPTZ column, by default "timestamp"
 
     Returns
     -------
     str
-        SQL expression, e.g., "timezone('Etc/GMT-1', timestamp)"
+        SQL expression, e.g., "timezone(time_zone, timestamp)" or
+        "timezone('Etc/GMT-1', timestamp)"
     """
+    if time_zone is None:
+        return f"timezone(time_zone, {column})"
     ZoneInfo(time_zone)  # Raises if the time zone is invalid; also guards the SQL literal.
     return f"timezone('{time_zone}', {column})"
 
@@ -230,14 +236,13 @@ def build_seasonal_query(
     group_by: TimeGroup,
     agg: TimeGroupAgg,
     breakdown: ConsumptionBreakdown | None = None,
-    *,
-    time_zone: str,
+    time_zone: str | None = None,
 ) -> tuple[str, list[Any]]:
     """
     Build a parameterized SQL query for seasonal load analysis.
 
-    Seasons, weekday/weekend, day of year, and hour of day are all evaluated in local time
-    (``time_zone``), not in the database session's time zone.
+    Seasons, weekday/weekend, day of year, and hour of day are all evaluated in local
+    standard time, not in the database session's time zone.
 
     Parameters
     ----------
@@ -255,8 +260,9 @@ def build_seasonal_query(
         Aggregation method
     breakdown : ConsumptionBreakdown, optional
         Optional breakdown by sector or end use
-    time_zone : str
-        Time zone in which to evaluate local labels (the project's standard time zone)
+    time_zone : str, optional
+        Time zone in which to evaluate local labels. By default, use the table's
+        ``time_zone`` column.
 
     Returns
     -------

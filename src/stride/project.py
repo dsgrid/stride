@@ -934,20 +934,21 @@ def check_energy_projection_time_alignment(
             "that did not handle time zones correctly, so days may be shifted relative to the "
             "weather data and hours shifted in the viewer. Please re-create the project."
         )
-    row = con.execute(
-        "SELECT MIN(timezone(time_zone, timestamp)), MAX(timezone(time_zone, timestamp)) "
-        "FROM energy_projection"
-    ).fetchone()
-    assert row is not None
-    start, end = row
+    # Find the endpoints before converting them. Standard time zones have fixed offsets,
+    # so converting preserves the order of the timestamps.
+    rows = con.execute(
+        "SELECT time_zone, timezone(time_zone, MIN(timestamp)), timezone(time_zone, MAX(timestamp)) "
+        "FROM energy_projection GROUP BY time_zone"
+    ).fetchall()
     expected_start = f"{config.weather_year}-01-01 00:00:00"
     expected_end = f"{config.weather_year}-12-31 23:00:00"
-    if start is None or str(start) != expected_start or str(end) != expected_end:
-        return (
-            f"The energy_projection table spans {start} to {end} in local standard time, "
-            f"but should span {expected_start} to {expected_end} for weather year "
-            f"{config.weather_year}. Please re-create the project."
-        )
+    for time_zone, start, end in rows:
+        if time_zone is None or str(start) != expected_start or str(end) != expected_end:
+            return (
+                f"The energy_projection table spans {start} to {end} in local standard time "
+                f"({time_zone}), but should span {expected_start} to {expected_end} for "
+                f"weather year {config.weather_year}. Please re-create the project."
+            )
     return None
 
 

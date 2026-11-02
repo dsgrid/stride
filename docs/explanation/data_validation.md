@@ -23,7 +23,7 @@ STRIDE creates a local dsgrid registry backed by DuckDB:
 <project>/registry_data/data.duckdb
 ```
 
-This registry stores metadata about registered datasets and their dimensions.
+This registry stores metadata about registered datasets and their dimensions. To explore the database yourself, see {ref}`query-project-database`.
 
 ### 2. Bulk Registration
 

@@ -286,7 +286,12 @@ fig = px.line(
     y="value",
     color="season",
     title="Average Daily Load Profile by Season - 2030",
-    labels={"hour_of_day": client.hour_of_day_label, "value": "Load (MW)", "season": "Season"}
+    labels={
+        # Names the time zone, e.g. "Hour of Day (UTC+01:00, standard time)"
+        "hour_of_day": client.hour_of_day_label,
+        "value": "Load (MW)",
+        "season": "Season",
+    },
 )
 fig.write_html("seasonal_profiles.html")
 fig.show()

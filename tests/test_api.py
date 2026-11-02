@@ -8,6 +8,7 @@ from duckdb import DuckDBPyConnection
 from stride.api import APIClient
 from stride.api.utils import literal_to_list, TimeGroup
 from stride.project import Project
+from time_reference import season
 
 
 def test_singleton_behavior(default_project: Project) -> None:
@@ -384,7 +385,6 @@ def test_seasonal_load_lines_time_groupings(  # noqa: C901
 ) -> None:
     """Test seasonal load lines with different time groupings."""
     import pandas as pd
-    from stride.api.utils import SPRING_DAY_START, SPRING_DAY_END, FALL_DAY_START, FALL_DAY_END
 
     test_con = weekday_weekend_test_data
     api_client.db = test_con
@@ -442,17 +442,9 @@ def test_seasonal_load_lines_time_groupings(  # noqa: C901
             ref_data = []
             for dt in datetime_index:
                 value = 1 if dt.weekday() < 5 else 8
-                # Map day of year to seasons using the same logic as utils.py
-                day_of_year = dt.timetuple().tm_yday
-                if day_of_year >= SPRING_DAY_START and day_of_year < SPRING_DAY_END:
-                    season = "Spring"
-                elif day_of_year >= SPRING_DAY_END and day_of_year < FALL_DAY_START:
-                    season = "Summer"
-                elif day_of_year >= FALL_DAY_START and day_of_year < FALL_DAY_END:
-                    season = "Fall"
-                else:
-                    season = "Winter"
-                ref_data.append({"hour_of_day": dt.hour, "season": season, "value": value})
+                ref_data.append(
+                    {"hour_of_day": dt.hour, "season": season(dt.dayofyear), "value": value}
+                )
             ref_df = pd.DataFrame(ref_data)
             # Calculate pandas seasonal averages (grouped by season and hour)
             pandas_seasonal = (
