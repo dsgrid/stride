@@ -85,7 +85,9 @@ def local_time_expr(time_zone: str | None = None, column: str = "timestamp") -> 
     ----------
     time_zone : str, optional
         IANA time zone name (e.g., 'Etc/GMT-1'). By default, use each row's ``time_zone``
-        column, which supports tables with more than one geography.
+        column, which supports tables with more than one geography. Prefer passing the zone
+        when a query covers one geography: DuckDB's timezone() is roughly 100 times slower
+        with a per-row zone column than with a literal.
     column : str, optional
         Name of the TIMESTAMPTZ column, by default "timestamp"
 

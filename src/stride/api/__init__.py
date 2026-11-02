@@ -25,9 +25,11 @@ Time conventions:
   and weather datetimes) are in the project's time zone, which is the country's standard
   time (no daylight saving time). See ``APIClient.time_zone``.
 - Never extract fields from a bare TIMESTAMPTZ column; use ``utils.local_time_expr``.
-- Local time is computed from each table's ``time_zone`` column. Tables from projects created
-  before stride stored time zones have no such column; for those, the project's time zone is
-  used instead.
+- The time zone comes from each table's ``time_zone`` column. Every query covers one
+  geography, so the API looks up that geography's zone once and passes it to the SQL as a
+  literal; DuckDB's timezone() is far slower when the zone is a per-row column. Tables from
+  projects created before stride stored time zones have no such column; for those, the
+  project's time zone is used instead.
 
 """
 
@@ -155,15 +157,25 @@ class APIClient:
         """
         return self.project.time_zone
 
-    def _time_zone_for(self, table: str) -> str | None:
-        """Return the time zone argument for ``local_time_expr`` when querying ``table``.
+    def _time_zone_for(self, table: str) -> str:
+        """Return the time zone of the project's geography in ``table``, for use as a literal
+        in ``local_time_expr``.
 
-        Returns None (use the table's ``time_zone`` column) when the column exists. Otherwise,
-        returns the project's time zone, which keeps projects created before stride stored
-        time zones viewable.
+        The zone is read from the table's ``time_zone`` column. Passing it as a literal is much
+        faster than letting DuckDB look up a per-row column. Tables from projects created
+        before stride stored time zones have no such column; for those, return the project's
+        time zone.
         """
         columns = [x[0] for x in self.db.execute(f"DESCRIBE {table}").fetchall()]
-        return None if "time_zone" in columns else self.time_zone
+        if "time_zone" not in columns:
+            return self.time_zone
+        rows = self.db.execute(
+            f"SELECT DISTINCT time_zone FROM {table} WHERE geography = ?", [self.project_country]
+        ).fetchall()
+        if len(rows) != 1 or rows[0][0] is None:
+            msg = f"Expected one time zone for {self.project_country} in {table}, found {rows}"
+            raise ValueError(msg)
+        return str(rows[0][0])
 
     @property
     def hour_of_day_label(self) -> str:

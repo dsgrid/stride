@@ -279,6 +279,18 @@ def test_results_do_not_depend_on_session_time_zone(
         project.con.execute("SET TimeZone = 'UTC'")
 
 
+def test_api_reads_time_zone_from_table(api_client: APIClient) -> None:
+    """The API takes the geography's time zone from the table, not from the project config."""
+    with duckdb.connect() as con:
+        con.execute(
+            "CREATE TABLE energy_projection AS "
+            "SELECT * FROM (VALUES (?, 'Etc/GMT+5'), ('other', 'Etc/GMT-9')) t(geography, time_zone)",
+            [api_client.project_country],
+        )
+        api_client.db = con
+        assert api_client._time_zone_for("energy_projection") == "Etc/GMT+5"
+
+
 def test_api_uses_project_time_zone_without_column(
     project: Project, api_client: APIClient
 ) -> None:
@@ -295,7 +307,7 @@ def test_api_uses_project_time_zone_without_column(
             api_client.get_time_series_comparison("baseline", model_year, resample="Daily Mean"),
         ]
 
-    assert api_client._time_zone_for("energy_projection") is None
+    assert api_client._time_zone_for("energy_projection") == project.time_zone
     expected = collect()
     old_table = (
         project.get_energy_projection("baseline")

@@ -71,10 +71,12 @@ load_shapes_expanded_to_full_year AS (
         ls.enduse,
         ls.multiplier_type,
         -- This is where the data become hourly. Load shape hours (0-23) are in local
-        -- standard time, so add them to the naive local-standard-time start of the day and
-        -- then localize the result with the geography's standard time zone. The resulting
-        -- timestamp is an absolute instant (TIMESTAMPTZ, stored as UTC).
-        timezone(tm.time_zone, tm.local_date + INTERVAL (ls.hour) HOUR) AS timestamp,
+        -- standard time, and tm.timestamp is the instant at which the local-standard-time
+        -- day starts. Standard time zones have fixed UTC offsets (no daylight saving time),
+        -- so adding the hours to that instant gives the correct absolute instant
+        -- (TIMESTAMPTZ, stored as UTC). This is much faster than calling timezone() with
+        -- the per-row time_zone column.
+        tm.timestamp + INTERVAL (ls.hour) HOUR AS timestamp,
         tm.time_zone,
         tm.weather_year,
         tm.month,

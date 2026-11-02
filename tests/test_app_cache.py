@@ -229,8 +229,10 @@ class TestLoadProjectLRU:
 
     def test_cached_project_moves_to_end(self) -> None:
         """Accessing a cached project should move it to the end of the dict (MRU)."""
-        app_module._loaded_projects["/first"] = _make_cache_entry("First")
-        app_module._loaded_projects["/second"] = _make_cache_entry("Second")
+        # load_project looks up resolved paths, which include a drive letter on Windows.
+        first = str(Path("/first").resolve())
+        app_module._loaded_projects[first] = _make_cache_entry("First")
+        app_module._loaded_projects[str(Path("/second").resolve())] = _make_cache_entry("Second")
 
         # Patch APIClient so it doesn't actually try to create an instance
         with patch.object(app_module, "APIClient"):
@@ -240,7 +242,7 @@ class TestLoadProjectLRU:
         assert "Switched to cached" in msg
         # /first should now be the last key (most recently used)
         keys = list(app_module._loaded_projects.keys())
-        assert keys[-1] == str(Path("/first").resolve())
+        assert keys[-1] == first
 
     def test_cached_project_updates_current_path(self) -> None:
         """Switching to a cached project should update _current_project_path."""
