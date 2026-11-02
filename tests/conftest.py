@@ -14,6 +14,15 @@ from stride.project import Project
 TEST_PROJECT_CONFIG = Path("tests") / "data" / "project_input.json5"
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _isolate_stride_config(tmp_path_factory: TempPathFactory) -> Generator[Path, None, None]:
+    """Keep tests from touching the user's real ~/.stride/config.json."""
+    config_dir = tmp_path_factory.mktemp("stride_config")
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr("stride.config.get_stride_config_dir", lambda: config_dir)
+        yield config_dir
+
+
 @pytest.fixture(scope="session")
 def project_config_file() -> Path:
     return TEST_PROJECT_CONFIG
