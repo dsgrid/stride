@@ -18,6 +18,14 @@ Key Features:
 - Flexible time aggregation and grouping options
 - Integration with secondary metrics (GDP, population, weather, etc.)
 
+Time conventions:
+- The energy_projection table stores timestamps as absolute instants (TIMESTAMPTZ), and the
+  database session runs in UTC.
+- All local labels returned by this API (hour of day, day of year, season, weekday/weekend,
+  and weather datetimes) are in the project's time zone, which is the country's standard
+  time (no daylight saving time). See ``APIClient.time_zone``.
+- Never extract fields from a bare TIMESTAMPTZ column; use ``utils.local_time_expr``.
+
 """
 
 from typing import Any
@@ -35,6 +43,8 @@ from .utils import (
     TimeGroupAgg,
     WeatherVar,
     build_seasonal_query,
+    format_utc_offset,
+    local_time_expr,
 )
 
 # TODO
@@ -132,6 +142,22 @@ class APIClient:
     def db(self, connection: DuckDBPyConnection | None) -> None:
         """Set the database connection on the project (used for testing)."""
         self._con = connection
+
+    @property
+    def time_zone(self) -> str:
+        """Return the project's time zone (country standard time, no daylight saving time).
+
+        All local labels returned by the API (hour of day, season, weekday/weekend, dates)
+        are in this time zone.
+        """
+        return self.project.time_zone
+
+    @property
+    def hour_of_day_label(self) -> str:
+        """Return an axis label for hour of day that names the time zone,
+        e.g., 'Hour of Day (UTC+01:00, standard time)'.
+        """
+        return f"Hour of Day ({format_utc_offset(self.time_zone)}, standard time)"
 
     @property
     def years(self) -> list[int]:
@@ -1015,28 +1041,32 @@ class APIClient:
 
         logger.debug(f"Querying table: {table_to_query} (has_override={has_override})")
 
+        # Weather rows are daily; their timestamps are instants at the start of each
+        # local-standard-time day. Return and group by naive local time.
+        local_ts = local_time_expr(self.time_zone)
+
         # Build the query based on resample option
         if resample == "Hourly":
             # Return hourly data
             # Note: Weather data uses weather_year column, not EXTRACT(YEAR FROM timestamp)
             sql = """
-            SELECT timestamp as datetime, {column} as value
+            SELECT {local_ts} as datetime, {column} as value
             FROM {table}
             WHERE geography = ?
             ORDER BY timestamp
-            """.format(table=table_to_query, column=column_name)
+            """.format(table=table_to_query, column=column_name, local_ts=local_ts)
         elif resample == "Daily Mean":
             # Aggregate to daily mean
             # Note: Weather data uses weather_year column, not EXTRACT(YEAR FROM timestamp)
             sql = """
             SELECT
-                DATE_TRUNC('day', timestamp) as datetime,
+                DATE_TRUNC('day', {local_ts}) as datetime,
                 AVG({column}) as value
             FROM {table}
             WHERE geography = ?
-            GROUP BY DATE_TRUNC('day', timestamp)
+            GROUP BY DATE_TRUNC('day', {local_ts})
             ORDER BY datetime
-            """.format(table=table_to_query, column=column_name)
+            """.format(table=table_to_query, column=column_name, local_ts=local_ts)
         elif resample == "Weekly Mean":
             # Aggregate to weekly mean using day-of-year to avoid cross-year week issues
             # Week calculation: FLOOR((DOY - 1) / 7) groups days 1-7 as week 0, 8-14 as week 1, etc.
@@ -1047,13 +1077,13 @@ class APIClient:
             # Note: Weather data uses weather_year column, not EXTRACT(YEAR FROM timestamp)
             sql = """
             SELECT
-                MIN(timestamp) as datetime,
+                MIN({local_ts}) as datetime,
                 AVG({column}) as value
             FROM {table}
             WHERE geography = ?
-            GROUP BY FLOOR((EXTRACT(DOY FROM timestamp) - 1) / 7)
+            GROUP BY FLOOR((EXTRACT(DOY FROM {local_ts}) - 1) / 7)
             ORDER BY datetime
-            """.format(table=table_to_query, column=column_name)
+            """.format(table=table_to_query, column=column_name, local_ts=local_ts)
         else:
             err = f"Resample option '{resample}' is not supported."
             raise ValueError(err)
@@ -1167,6 +1197,9 @@ class APIClient:
         self._validate_scenarios([scenario])
         self._validate_years(years)
 
+        # Days and weeks are counted in local standard time.
+        local_ts = local_time_expr(self.time_zone)
+
         if resample == "Hourly":
             # Raw hourly data - use hour of year as time_period
             time_period_calc = (
@@ -1230,12 +1263,12 @@ class APIClient:
             # Resampled data (existing logic)
             # Determine time period calculation based on resample option
             if resample == "Daily Mean":
-                time_period_calc = "FLOOR(EXTRACT(DOY FROM timestamp)) + 1"
+                time_period_calc = f"FLOOR(EXTRACT(DOY FROM {local_ts})) + 1"
             elif resample == "Weekly Mean":
                 # Week calculation: FLOOR((DOY - 1) / 7) + 1 gives 1-indexed weeks
                 # Days 1-7 = week 1, 8-14 = week 2, etc. This avoids DATE_TRUNC cross-year issues.
                 # Same base calculation used in get_weather_metric() for consistency.
-                time_period_calc = "FLOOR((EXTRACT(DOY FROM timestamp) - 1) / 7) + 1"
+                time_period_calc = f"FLOOR((EXTRACT(DOY FROM {local_ts}) - 1) / 7) + 1"
             else:
                 err = f"Invalid resample option: {resample}"
                 raise ValueError(err)
@@ -1393,6 +1426,7 @@ class APIClient:
             years=years,
             group_by=group_by,
             agg=agg,
+            time_zone=self.time_zone,
         )
 
         logger.debug(f"SQL Query:\n{sql}")
@@ -1485,6 +1519,7 @@ class APIClient:
             group_by=group_by,
             agg=agg,
             breakdown=breakdown,
+            time_zone=self.time_zone,
         )
 
         logger.debug(f"SQL Query:\n{sql}")

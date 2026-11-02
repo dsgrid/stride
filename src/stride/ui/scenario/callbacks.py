@@ -819,7 +819,7 @@ def update_seasonal_lines_plot(
             agg=agg,
         )
         # Use the new seasonal_load_lines plotting method
-        fig = plotter.seasonal_load_lines(df)
+        fig = plotter.seasonal_load_lines(df, hour_axis_title=data_handler.hour_of_day_label)
         return fig
     except Exception as e:
         print(f"Error in seasonal lines plot: {e}")
@@ -878,7 +878,7 @@ def update_seasonal_area_plot(
             breakdown=breakdown_value,
         )
         # Create area plot using the new seasonal_load_area method
-        fig = plotter.seasonal_load_area(df)
+        fig = plotter.seasonal_load_area(df, hour_axis_title=data_handler.hour_of_day_label)
         return fig
     except Exception as e:
         print(f"Error in seasonal area plot: {e}")

@@ -27,11 +27,14 @@ STRIDE includes an optional, more detailed projection for light-duty passenger e
 
 These sources shape the annual projections from the prior sections into hourly load forecasts, capturing typical diurnal and weekday/weekend patterns by sector and end use and day-to-day variations driven by historical weather:
 
-- [IMAGE Integrated Assessment Model](https://data.mendeley.com/datasets/pmd2dchk44/1) – Modeled load shapes by sector and end use by region, month, day type (weekday/weekend) and model year (1971 – 2100)
-- [ERA5](https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels?tab=overview) + [Demand Ninja Logic](https://doi.org/10.1038/s41560-023-01341-5) – Building-adjusted internal temperature (BAIT) and other weather variables for the most populous city in each country. Daily averages for historical weather years, currently 1995-2024. Can be computed for any years 1940 – present day.
+- [IMAGE Integrated Assessment Model](https://data.mendeley.com/datasets/pmd2dchk44/1) – Modeled load shapes by sector and end use by region, month, day type (weekday/weekend) and model year (1971 – 2100). Hours 0–23 are hour-beginning, in local standard time.
+- [ERA5](https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels?tab=overview) + [Demand Ninja Logic](https://doi.org/10.1038/s41560-023-01341-5) – Building-adjusted internal temperature (BAIT) and other weather variables for the most populous city in each country. Daily averages for historical weather years, currently 1995-2024. Can be computed for any years 1940 – present day. Each day is a local-standard-time day for the country.
+
+See {ref}`time-conventions` for how these time conventions carry through to the hourly results.
 
 ## Related Topics
 
 - {ref}`data-download` - How datasets are retrieved and stored locally
 - {ref}`data-validation` - How datasets are validated and registered with dsgrid
 - {ref}`weather-year-modeling` - How weather data are used to shape hourly load
+- {ref}`time-conventions` - Time zones of the input data and results

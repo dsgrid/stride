@@ -4,7 +4,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from . import facets, simple
-from .utils import DEFAULT_PLOTLY_TEMPLATE
+from .utils import DEFAULT_HOUR_AXIS_TITLE, DEFAULT_PLOTLY_TEMPLATE
 
 from stride.ui.palette import ColorCategory
 
@@ -176,14 +176,22 @@ class StridePlots:
         fig.update_layout(template=self._template)
         return fig
 
-    def seasonal_load_lines(self, df: pd.DataFrame) -> go.Figure:
+    def seasonal_load_lines(
+        self, df: pd.DataFrame, hour_axis_title: str = DEFAULT_HOUR_AXIS_TITLE
+    ) -> go.Figure:
         """Create faceted subplots for seasonal load lines."""
-        fig = facets.seasonal_load_lines(df, self._color_generator, template=self._template)
+        fig = facets.seasonal_load_lines(
+            df, self._color_generator, template=self._template, hour_axis_title=hour_axis_title
+        )
         fig.update_layout(template=self._template)
         return fig
 
-    def seasonal_load_area(self, df: pd.DataFrame) -> go.Figure:
+    def seasonal_load_area(
+        self, df: pd.DataFrame, hour_axis_title: str = DEFAULT_HOUR_AXIS_TITLE
+    ) -> go.Figure:
         """Create faceted area charts for seasonal load patterns."""
-        fig = facets.seasonal_load_area(df, self._color_generator, template=self._template)
+        fig = facets.seasonal_load_area(
+            df, self._color_generator, template=self._template, hour_axis_title=hour_axis_title
+        )
         fig.update_layout(template=self._template)
         return fig

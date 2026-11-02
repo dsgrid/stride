@@ -43,14 +43,23 @@ def create_table_from_file(
     return con.table(name)
 
 
-def export_table(con: DuckDBPyConnection, name: str, path: Path | str) -> None:
+def export_table(
+    con: DuckDBPyConnection, name: str, path: Path | str, time_zone: str | None = None
+) -> None:
     """Export a table in the database to a file. Supports CSV and Parquet, inferred from the
     file extension.
+
+    Parameters
+    ----------
+    time_zone
+        Optional, time zone in which to write TIMESTAMPTZ columns to CSV files. The values
+        include the UTC offset, so they remain unambiguous. Parquet files always store
+        UTC-adjusted instants, so this has no effect on them.
     """
     path_ = Path(path)
     match path_.suffix:
         case ".csv":
-            _export_table_to_csv(con, name, path_)
+            _export_table_to_csv(con, name, path_, time_zone=time_zone)
         case ".parquet":
             _export_table_to_parquet(con, name, path_)
         case _:
@@ -78,8 +87,22 @@ def _create_table_from_parquet(
     con.sql(f"{cmd} TABLE {name} AS SELECT * from read_parquet('{path_}')")
 
 
-def _export_table_to_csv(con: DuckDBPyConnection, name: str, path: Path | str) -> None:
-    con.sql(f"COPY {name} TO '{path}' (FORMAT CSV)")
+def _export_table_to_csv(
+    con: DuckDBPyConnection, name: str, path: Path | str, time_zone: str | None = None
+) -> None:
+    if time_zone is None:
+        con.sql(f"COPY {name} TO '{path}' (FORMAT CSV)")
+        return
+
+    # DuckDB renders TIMESTAMPTZ values in the session time zone.
+    row = con.execute("SELECT current_setting('TimeZone')").fetchone()
+    assert row is not None
+    orig_time_zone = row[0]
+    con.execute(f"SET TimeZone = '{time_zone}'")
+    try:
+        con.sql(f"COPY {name} TO '{path}' (FORMAT CSV)")
+    finally:
+        con.execute(f"SET TimeZone = '{orig_time_zone}'")
 
 
 def _export_table_to_parquet(con: DuckDBPyConnection, name: str, path: Path | str) -> None:

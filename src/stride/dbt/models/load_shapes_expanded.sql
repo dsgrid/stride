@@ -8,6 +8,7 @@ WITH load_shapes_base AS (
     -- Get load shapes data (representative days)
     -- This has hourly profiles for representative weekday/weekend days per month
     -- Data structure: month, hour, is_weekday represent typical days, not full year
+    -- hour is the hour-beginning hour of day (0-23) in local standard time
     SELECT
         geography,
         model_year,
@@ -59,7 +60,9 @@ load_shapes_with_multiplier_type AS (
 
 -- Expand load shapes to full year by joining with temperature multipliers
 -- Temperature multipliers have one row per actual day of the weather year
--- Representative days (month, day_type, hour) get expanded to all matching actual days
+-- Representative days (month, day_type, hour) get expanded to all matching actual days.
+-- month and day_type come from the local-standard-time date of each weather day
+-- (see weather_bait_daily.sql).
 load_shapes_expanded_to_full_year AS (
     SELECT
         ls.geography,
@@ -67,9 +70,12 @@ load_shapes_expanded_to_full_year AS (
         ls.sector,
         ls.enduse,
         ls.multiplier_type,
-        -- Create timestamp for this specific hour of this specific day
-        -- tm.timestamp is the date (at midnight), add hours to get the hourly timestamp
-        tm.timestamp + INTERVAL (ls.hour) HOUR AS timestamp,
+        -- This is where the data become hourly. Load shape hours (0-23) are in local
+        -- standard time, so add them to the naive local-standard-time start of the day and
+        -- then localize the result with the geography's standard time zone. The resulting
+        -- timestamp is an absolute instant (TIMESTAMPTZ, stored as UTC).
+        timezone(tm.time_zone, tm.local_date + INTERVAL (ls.hour) HOUR) AS timestamp,
+        tm.time_zone,
         tm.weather_year,
         tm.month,
         tm.day,
@@ -97,7 +103,11 @@ load_shapes_adjusted AS (
         sector,
         enduse,
         timestamp,
+        time_zone,
         weather_year,
+        month,
+        day_type,
+        hour,
         load_shape_value,
         multiplier,
         load_shape_value * multiplier AS adjusted_value

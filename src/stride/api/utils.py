@@ -1,4 +1,6 @@
+from datetime import datetime
 from typing import Any, Literal, get_args
+from zoneinfo import ZoneInfo
 
 # Re-export types that will be used by utils
 ConsumptionBreakdown = Literal["End Use", "Sector"]
@@ -67,6 +69,44 @@ def literal_to_list(
         result.insert(0, "None")
 
     return result
+
+
+def local_time_expr(time_zone: str, column: str = "timestamp") -> str:
+    """Return a SQL expression that converts a TIMESTAMPTZ column to naive local time.
+
+    stride stores hourly timestamps as absolute instants (TIMESTAMPTZ) and runs database
+    sessions in UTC. Always derive local labels (date, day of year, weekday, hour of day)
+    from this expression rather than extracting fields from the bare TIMESTAMPTZ column,
+    which would silently use the session time zone.
+
+    Parameters
+    ----------
+    time_zone : str
+        IANA time zone name, normally the project's standard time zone (e.g., 'Etc/GMT-1')
+    column : str, optional
+        Name of the TIMESTAMPTZ column, by default "timestamp"
+
+    Returns
+    -------
+    str
+        SQL expression, e.g., "timezone('Etc/GMT-1', timestamp)"
+    """
+    ZoneInfo(time_zone)  # Raises if the time zone is invalid; also guards the SQL literal.
+    return f"timezone('{time_zone}', {column})"
+
+
+def format_utc_offset(time_zone: str) -> str:
+    """Return the UTC offset of a fixed-offset (standard) time zone, e.g., 'UTC+01:00'.
+
+    The offset is evaluated on January 1 of a non-leap year, which is standard time in both
+    hemispheres for zones that observe daylight saving time.
+    """
+    offset = datetime(2001, 1, 1, tzinfo=ZoneInfo(time_zone)).utcoffset()
+    assert offset is not None
+    total_minutes = int(offset.total_seconds() // 60)
+    sign = "+" if total_minutes >= 0 else "-"
+    hours, minutes = divmod(abs(total_minutes), 60)
+    return f"UTC{sign}{hours:02d}:{minutes:02d}"
 
 
 def generate_season_case_statement(day_col: str = "day_of_year") -> str:
@@ -190,9 +230,14 @@ def build_seasonal_query(
     group_by: TimeGroup,
     agg: TimeGroupAgg,
     breakdown: ConsumptionBreakdown | None = None,
+    *,
+    time_zone: str,
 ) -> tuple[str, list[Any]]:
     """
     Build a parameterized SQL query for seasonal load analysis.
+
+    Seasons, weekday/weekend, day of year, and hour of day are all evaluated in local time
+    (``time_zone``), not in the database session's time zone.
 
     Parameters
     ----------
@@ -210,6 +255,8 @@ def build_seasonal_query(
         Aggregation method
     breakdown : ConsumptionBreakdown, optional
         Optional breakdown by sector or end use
+    time_zone : str
+        Time zone in which to evaluate local labels (the project's standard time zone)
 
     Returns
     -------
@@ -226,24 +273,27 @@ def build_seasonal_query(
     AND model_year = ANY(?)
     """
 
+    local_ts = local_time_expr(time_zone)
+
     # Extract day of year from timestamp for season determination
-    day_of_year_expr = "EXTRACT(DOY FROM timestamp)"
+    day_of_year_expr = f"EXTRACT(DOY FROM {local_ts})"
 
     # Seasonal mapping using day of year
     season_case = generate_season_case_statement(day_of_year_expr)
 
     # Day type mapping
-    day_type_case = """
+    # ISO day of week: 1=Monday ... 6=Saturday, 7=Sunday
+    day_type_case = f"""
     CASE
-        WHEN EXTRACT(DAYOFWEEK FROM timestamp) IN (0, 6) THEN 'Weekend'
+        WHEN ISODOW({local_ts}) IN (6, 7) THEN 'Weekend'
         ELSE 'Weekday'
     END"""
 
     # Hour extraction
-    hour_extract = "EXTRACT(HOUR FROM timestamp) as hour_of_day"
+    hour_extract = f"EXTRACT(HOUR FROM {local_ts}) as hour_of_day"
 
     # Day of year extraction for proper daily aggregation
-    day_of_year_extract = "EXTRACT(DOY FROM timestamp) as day_of_year"
+    day_of_year_extract = f"EXTRACT(DOY FROM {local_ts}) as day_of_year"
 
     # Determine aggregation function using the existing helper
     agg_func = get_aggregation_function(agg)

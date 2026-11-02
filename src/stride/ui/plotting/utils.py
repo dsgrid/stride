@@ -16,6 +16,9 @@ DEFAULT_BAR_COLOR = "rgba(0,0,200,0.8)"
 DEFAULT_PLOTLY_TEMPLATE = "plotly_white"
 DARK_PLOTLY_TEMPLATE = "plotly_dark"
 
+# Callers should pass a title that names the time zone (see APIClient.hour_of_day_label).
+DEFAULT_HOUR_AXIS_TITLE = "Hour of Day"
+
 # CSS theme class names (applied to DOM elements)
 DEFAULT_CSS_THEME = "light-theme"
 DARK_CSS_THEME = "dark-theme"
@@ -261,7 +264,9 @@ def determine_facet_layout(df: pd.DataFrame) -> dict[str, Any]:
         }
 
 
-def create_seasonal_annotations(layout_config: dict[str, Any]) -> list[dict[str, Any]]:
+def create_seasonal_annotations(
+    layout_config: dict[str, Any], hour_axis_title: str = DEFAULT_HOUR_AXIS_TITLE
+) -> list[dict[str, Any]]:
     """
     Create annotations for seasonal plots based on layout configuration.
     Returns
@@ -277,7 +282,7 @@ def create_seasonal_annotations(layout_config: dict[str, Any]) -> list[dict[str,
     annotations_list = [
         # Shared x-axis title
         dict(
-            text="Hour of Day",
+            text=hour_axis_title,
             xref="paper",
             yref="paper",
             x=0.5,

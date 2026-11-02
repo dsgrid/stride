@@ -4,3 +4,7 @@ stride:
     dev:
       type: duckdb
       path: '../registry_data/data.duckdb'
+      settings:
+        # Run in UTC so that results never depend on the time zone of the machine.
+        # Local labels are derived explicitly with timezone(time_zone, timestamp).
+        TimeZone: UTC

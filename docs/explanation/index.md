@@ -20,4 +20,5 @@ customizing_checks
 
 dbt_computation
 weather_year_modeling
+time_conventions
 ```
