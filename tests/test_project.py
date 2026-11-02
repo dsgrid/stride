@@ -9,7 +9,7 @@ from chronify.exceptions import InvalidOperation, InvalidParameter
 from dsgrid.utils.files import dump_json_file, load_json_file
 from pytest import TempPathFactory
 
-from stride import Project
+from stride import Project, __version__
 from stride.dataset_download import get_default_data_directory
 from stride.models import CalculatedTableOverride, ProjectConfig, Scenario
 from stride.project import (
@@ -617,6 +617,23 @@ def test_create_project_with_invalid_data_dir(
     assert "Dataset directory not found" in result.output
 
 
+@pytest.mark.parametrize("flag", ["--version", "-V"])
+def test_cli_version(flag: str) -> None:
+    """Test that 'stride --version' and 'stride -V' report the package version."""
+    runner = CliRunner()
+    result = runner.invoke(cli, [flag])
+    assert result.exit_code == 0, result.output
+    assert __version__ in result.output
+
+
+def test_version_matches_distribution_metadata() -> None:
+    """Test that stride.__version__ matches the installed distribution version.
+
+    If this fails locally after a version bump, re-run ``pip install -e .``.
+    """
+    from importlib.metadata import version
+
+    assert __version__ == version("stride-load-forecast")
 def test_create_project_registers_recent_project(
     copy_project_input_data: tuple[Path, Path, Path],
     monkeypatch: pytest.MonkeyPatch,
